@@ -19,9 +19,6 @@ let svg = d3.select('body').append('svg')
 d3.queue()
   .defer(d3.json, 'data/testData.json')
   .await((error, data) => {
-    // Journey pattern that we want to display
-    let journeyPatternShown = 'HTM:16:177';
-
     // Build the network project definition
     let projectNetwork = {};
 
