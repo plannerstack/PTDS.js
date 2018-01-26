@@ -1,0 +1,16 @@
+circle.stop {
+  fill: black;
+}
+
+circle.stopArea {
+  fill: red;
+}
+
+circle.vehicle {
+  fill: green;
+}
+
+line.link {
+  stroke-width: 1;
+  stroke: black;
+}
