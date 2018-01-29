@@ -244,7 +244,7 @@ class PTDS {
 
     // Special case handling: when the time asked for is the time of the last stop of the trip.
     // In that case the distance traveled is the distance at which the last stop is located
-    if (tripData.times[tripData.times.length - 1] == time) {
+    if (tripData.times[tripData.times.length - 1] === time) {
       return journeyPatternData.distances[journeyPatternData.distances.length - 1];
     }
 
@@ -284,7 +284,7 @@ class PTDS {
     const journeyPatternData = this.journeyPatterns[tripData.journeyPatternRef];
 
     // Special case handling: when the distance asked for is the distance at which the last stop is located
-    if (journeyPatternData.distances[journeyPatternData.distances.length - 1] == distance) {
+    if (journeyPatternData.distances[journeyPatternData.distances.length - 1] === distance) {
       const previousStopCode = journeyPatternData.pointsInSequence[journeyPatternData.pointsInSequence.length - 2];
       const nextStopCode = journeyPatternData.pointsInSequence[journeyPatternData.pointsInSequence.length - 1];
       const currentSegment = this.projectNetwork[`${previousStopCode}|${nextStopCode}`];
@@ -340,10 +340,10 @@ class PTDS {
    * which is typically midnight except for when daylight savings time is on
    * @return {Number} seconds elapsed since noon minus 12h till now
    */
-  _currentTimeInSecsSinceMidnight() {
-    const d = new Date();
-    const e = new Date(d);
-    const millisecondsSinceNoon = d - e.setHours(12, 0, 0, 0);
+  _currentTimeInSecsSinceMidnight(currentTime) {
+    currentTime = (typeof currentTime !== 'undefined') ? currentTime : new Date();
+    const noonTime = (new Date(currentTime)).setHours(12, 0, 0, 0);
+    const millisecondsSinceNoon = currentTime - noonTime;
     const secondsSinceNoon = Math.floor(millisecondsSinceNoon / 1000);
     const secondsSinceMidnight = secondsSinceNoon + 12 * 60 * 60;
 
@@ -445,9 +445,24 @@ d3.queue()
     ptds.drawJourneyPatternsLinks();
     ptds.drawStopAreas();
 
-    // Update every second the trips position
-    setInterval(() => {
-      const randomValidTime = Math.floor(Math.random() * 115200);
-      ptds.drawTripsAtTime(randomValidTime);
-    }, 100)
+    // Multiplier between time in the visualization and real time
+    // 1 real second corresponds to timeMultiplier seconds in the visualization
+    const timeMultiplier = 50;
+    const startTimeViz = ptds._currentTimeInSecsSinceMidnight();
+
+    d3.timer((elapsedMilliseconds) => {
+      // Compute elapsed seconds in the visualization
+      const elapsedSecondsInViz = elapsedMilliseconds * timeMultiplier / 1000;
+      // Compute "spiral" negative offset.
+      // There are two parameters for the spiral effect.
+      // Every spiralParam1 seconds the vehicles are sent back in time by spiralParam2 seconds.
+      const spiralParam1 = 60;
+      const spiralParam2 = 30;
+      const spiralOffset = Math.floor(elapsedSecondsInViz / spiralParam1) * spiralParam2;
+      const elapsedSecondsInVizWithOffset = elapsedSecondsInViz - spiralOffset;
+      // When the time of the visualization reaches the end of the day, go back to the initial start time
+      const vizTime = startTimeViz + elapsedSecondsInVizWithOffset % (115200 - startTimeViz);
+
+      ptds.drawTripsAtTime(vizTime);
+    })
 });
