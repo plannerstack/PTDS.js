@@ -68,8 +68,8 @@ class PTDS {
 
     // Radius used to draw the circle representing a stop
     this.stopRadius = 1;
-    this.stopAreaRadius = 2;
-    this.tripRadius = 2;
+    this.stopAreaRadius = 1;
+    this.tripRadius = 1;
   }
 
   _createSVG() {
@@ -96,8 +96,8 @@ class PTDS {
         .attr('transform', `translate(${margin.left},${margin.top})`);
 
     this.stopsGroup = this.svg.append('g').attr('id', 'stops');
-    this.stopAreasGroup = this.svg.append('g').attr('id', 'stopAreas');
     this.linksGroup = this.svg.append('g').attr('id', 'links');
+    this.stopAreasGroup = this.svg.append('g').attr('id', 'stopAreas');
     this.tripsGroup = this.svg.append('g').attr('id', 'trips');
   }
 
@@ -208,7 +208,6 @@ class PTDS {
    * Maps a position in the Dutch grid to a position in the canvas
    * maximizing the dimension of the rectangle containing the stops but maintaining
    * the original aspect ratio.
-   *
    * @param  {Point} point - The point in Dutch grid coordinates to map to the canvas coordinates
    * @return {Point} The point with coordinates in the canvas
    */
@@ -235,6 +234,7 @@ class PTDS {
   }
 
   /**
+   * Get the distance traveled by a vehicle in its trip along its journeypattern
    * @param  {Object} tripData - Data of a trip
    * @param  {Number} time - Time expressed as seconds since noon minus 12h
    * @return {Number} Current distance traveled by the vehicle in its trip
@@ -268,6 +268,8 @@ class PTDS {
   }
 
   /**
+   * Get the position of a vehicle in its trip given the distance from the start
+   * of its journey
    * @param  {Object} tripData - Data of a trip
    * @param  {Number} distance - Distance along the trip of the vehicle
    * @return {Point} Point in the map in which the vehicle is found now
@@ -301,6 +303,7 @@ class PTDS {
   }
 
   /**
+   * Get trips/vehicleJourneys that are active at the given time
    * @param  {Number} time - Time expressed as seconds since noon minus 12h
    * @return {Object} Active trips
    */
@@ -315,6 +318,21 @@ class PTDS {
     }
 
     return activeTrips;
+  }
+
+  /**
+   * Compute the number of seconds elapsed from noon minus 12h till now,
+   * which is typically midnight except for when daylight savings time is on
+   * @return {Number} seconds elapsed since noon minus 12h till now
+   */
+  _currentTimeInSecsSinceMidnight() {
+    const d = new Date();
+    const e = new Date(d);
+    const millisecondsSinceNoon = d - e.setHours(12, 0, 0, 0);
+    const secondsSinceNoon = Math.floor(millisecondsSinceNoon / 1000);
+    const secondsSinceMidnight = secondsSinceNoon + 12 * 60 * 60;
+
+    return secondsSinceMidnight;
   }
 
   /**
@@ -342,8 +360,7 @@ class PTDS {
         .attr('class', 'stopArea')
         .attr('cx', (point) => point.x)
         .attr('cy', (point) => point.y)
-        .attr('r', this.stopAreaRadius)
-        .style('opacity', 0.5);
+        .attr('r', this.stopAreaRadius);
   }
 
   /**
@@ -410,8 +427,10 @@ d3.queue()
     const ptds = new PTDS(data);
 
     //ptds.drawStops();
-    ptds.drawStopAreas();
     ptds.drawJourneyPatternsLinks();
+    ptds.drawStopAreas();
+
+    console.log(ptds._currentTimeInSecsSinceMidnight());
 
     // Update every second the trips position
     setInterval(() => {
