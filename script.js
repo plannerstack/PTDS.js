@@ -1,20 +1,3 @@
-// Get browser dimensions
-const window_width = window.innerWidth || document.documentElement.clientWidth || document.body.clientWidth;
-const window_height = window.innerHeight || document.documentElement.clientHeight || document.body.clientHeight;
-
-// D3 margin convention https://bl.ocks.org/mbostock/3019563
-const margin = {top: 50, right: 50, bottom: 50, left: 50};
-const canvasWidth = window_width - margin.left - margin.right;
-const canvasHeight = window_height - margin.top - margin.bottom;
-
-// Create main map SVG element applying the margins
-const svg = d3.select('body').append('svg')
-    .attr('id', 'map')
-    .attr('width', canvasWidth + margin.left + margin.right)
-    .attr('height', canvasHeight + margin.top + margin.bottom)
-  .append('g')
-    .attr('transform', `translate(${margin.left},${margin.top})`);
-
 /**
  * Class representing a generic point on the 2D plane
  */
@@ -73,20 +56,44 @@ class Segment {
  * Main PTDS class
  */
 class PTDS {
-  constructor(inputData, canvasWidth, canvasHeight, canvasObject) {
+  constructor(inputData) {
     this.journeyPatterns = inputData.journeyPatterns;
     this.scheduledStopPoints = inputData.scheduledStopPoints;
     this.vehicleJourneys = inputData.vehicleJourneys;
-    this.canvasWidth = canvasWidth;
-    this.canvasHeight = canvasHeight;
-    this.canvasObject = canvasObject;
 
+    this._createSVG();
     this._computeCoordinatesMapping();
     this._computeStopAreasAggregation();
     this._computeProjectNetwork();
 
     // Radius used to draw the circle representing a stop
     this.stopRadius = 1;
+    this.stopAreaRadius = 2;
+    this.tripRadius = 2;
+  }
+
+  _createSVG() {
+    // Get browser dimensions
+    const window_width = window.innerWidth || document.documentElement.clientWidth || document.body.clientWidth;
+    const window_height = window.innerHeight || document.documentElement.clientHeight || document.body.clientHeight;
+
+    // D3 margin convention https://bl.ocks.org/mbostock/3019563
+    const margin = {top: 50, right: 50, bottom: 50, left: 50};
+    this.canvasWidth = window_width - margin.left - margin.right;
+    this.canvasHeight = window_height - margin.top - margin.bottom;
+
+    // Create main map SVG element applying the margins
+    this.svg = d3.select('body').append('svg')
+        .attr('id', 'map')
+        .attr('width', this.canvasWidth + margin.left + margin.right)
+        .attr('height', this.canvasHeight + margin.top + margin.bottom)
+      .append('g')
+        .attr('transform', `translate(${margin.left},${margin.top})`);
+
+    this.stopsGroup = this.svg.append('g').attr('id', 'stops');
+    this.stopAreasGroup = this.svg.append('g').attr('id', 'stopAreas');
+    this.linksGroup = this.svg.append('g').attr('id', 'links');
+    this.tripsGroup = this.svg.append('g').attr('id', 'trips');
   }
 
   /**
@@ -285,7 +292,7 @@ class PTDS {
     // Get segment of the network on which the vehicle is now
     const currentSegment = this.projectNetwork[`${previousStopCode}|${nextStopCode}`];
 
-    return currentSegment.getPointByPercentage(percentage);
+    return currentSegment.stopAreasSegment.getPointByPercentage(percentage);
   }
 
   /**
@@ -309,57 +316,85 @@ class PTDS {
    * Draws the stops in map as circles
    */
   drawStops() {
-    this.stopsGroup = this.canvasObject.append('g').attr('id', 'stops');
+    const stops = this.stopsGroup.selectAll('circle.stop')
+      .data(Object.values(this.scheduledStopPoints).map((stopData) => this._mapToCanvas(new Point(stopData.x, stopData.y))));
 
-    this.stopsGroup.selectAll('circle.stop')
-      .data(Object.values(this.scheduledStopPoints).map((stopData) => this._mapToCanvas(new Point(stopData.x, stopData.y))))
-      .enter()
-      .append('circle')
+    stops.enter().append('circle')
         .attr('class', 'stop')
-        .attr('cx', (d) => d.x)
-        .attr('cy', (d) => d.y)
+        .attr('cx', (point) => point.x)
+        .attr('cy', (point) => point.y)
         .attr('r', this.stopRadius);
-
-    this.stopsGroup.exit().remove();
   }
 
   /**
    * Draws the stop areas in the map as red bigger circles
    */
   drawStopAreas() {
-    this.stopAreasGroup = this.canvasObject.append('g').attr('id', 'stopAreas');
+    const stopAreas = this.stopAreasGroup.selectAll('circle.stopArea')
+      .data(Object.values(this.stopAreasAggregation).map((stopAreaData) => this._mapToCanvas(stopAreaData.centroid)));
 
-    this.stopAreasGroup.selectAll('circle.stopArea')
-      .data(Object.values(this.stopAreasAggregation).map((stopAreaData) => this._mapToCanvas(stopAreaData.centroid)))
-      .enter()
-      .append('circle')
+    stopAreas.enter().append('circle')
         .attr('class', 'stopArea')
-        .attr('cx', (d) => d.x)
-        .attr('cy', (d) => d.y)
-        .attr('r', this.stopRadius * 2)
+        .attr('cx', (point) => point.x)
+        .attr('cy', (point) => point.y)
+        .attr('r', this.stopAreaRadius)
         .style('opacity', 0.5);
-
-    this.stopsGroup.exit().remove();
   }
 
   /**
    * Draws all the links between areas contained in the project definition
    */
   drawJourneyPatternsLinks() {
-    this.linksGroup = this.canvasObject.append('g').attr('id', 'links');
-
-    this.linksGroup.selectAll('line.link')
+    const links = this.linksGroup.selectAll('line.link')
       .data(Object.values(this.projectNetwork).map((linkData) => ({
         'stopAareaCentroidInCanvas': this._mapToCanvas(linkData.stopAreasSegment.pointA),
         'stopBareaCentroidInCanvas': this._mapToCanvas(linkData.stopAreasSegment.pointB)
-      })))
-      .enter()
-      .append('line')
+      })));
+
+    links.enter().append('line')
         .attr('class', 'link')
-        .attr('x1', (d) => d.stopAareaCentroidInCanvas.x)
-        .attr('y1', (d) => d.stopAareaCentroidInCanvas.y)
-        .attr('x2', (d) => d.stopBareaCentroidInCanvas.x)
-        .attr('y2', (d) => d.stopBareaCentroidInCanvas.y);
+        .attr('x1', (segment) => segment.stopAareaCentroidInCanvas.x)
+        .attr('y1', (segment) => segment.stopAareaCentroidInCanvas.y)
+        .attr('x2', (segment) => segment.stopBareaCentroidInCanvas.x)
+        .attr('y2', (segment) => segment.stopBareaCentroidInCanvas.y);
+  }
+
+  /**
+   * Draw the trips/vehicleJourneys at a given time
+   * @param  {Number} time - Time in seconds since noon minus 12h
+   */
+  drawTripsAtTime(time) {
+    const activeTrips = this._getActiveTrips(time);
+
+    let tripPositions = [];
+    for (const [tripCode, tripData] of Object.entries(activeTrips)) {
+      const tripDistance = this._getTripDistanceAtTime(tripData, time);
+      const tripPosition = this._getTripPositionFromDistance(tripData, tripDistance);
+      const tripPositionInCanvas = this._mapToCanvas(tripPosition);
+      tripPositions.push({
+        'tripCode': tripCode,
+        'tripPosition': tripPositionInCanvas
+      });
+    }
+
+    const trips = this.tripsGroup.selectAll('circle.trip')
+      .data(tripPositions, (trip) => trip.tripCode);
+
+    // Remove from the visualization the trips that are not active anymore
+    trips.exit().remove();
+
+    // Update the coordinates of the existing active trips
+    trips
+      .attr('cx', (trip) => trip.tripPosition.x)
+      .attr('cy', (trip) => trip.tripPosition.y);
+
+    // Add to the visualization the trips that just became active
+    trips.enter().append('circle')
+        .attr('class', 'trip')
+        .attr('data-tripcode', (trip) => trip.tripCode)
+        .attr('cx', (trip) => trip.tripPosition.x)
+        .attr('cy', (trip) => trip.tripPosition.y)
+        .attr('r', this.tripRadius);
   }
 }
 
@@ -367,9 +402,15 @@ class PTDS {
 d3.queue()
   .defer(d3.json, 'data/test.json')
   .await((error, data) => {
-    var ptds = new PTDS(data, canvasWidth, canvasHeight, svg);
+    const ptds = new PTDS(data);
 
     ptds.drawStops();
     ptds.drawStopAreas();
     ptds.drawJourneyPatternsLinks();
+
+    // Update every second the trips position
+    setInterval(() => {
+      const randomValidTime = Math.floor(Math.random() * 115200);
+      ptds.drawTripsAtTime(randomValidTime);
+    }, 1000)
 });
