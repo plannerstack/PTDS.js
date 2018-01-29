@@ -242,6 +242,12 @@ class PTDS {
   _getTripDistanceAtTime(tripData, time) {
     const journeyPatternData = this.journeyPatterns[tripData.journeyPatternRef];
 
+    // Special case handling: when the time asked for is the time of the last stop of the trip.
+    // In that case the distance traveled is the distance at which the last stop is located
+    if (tripData.times[tripData.times.length - 1] == time) {
+      return journeyPatternData.distances[journeyPatternData.distances.length - 1];
+    }
+
     // Find out the index corresponding to the latest time passed currently
     let lastTimeIndex = 0;
     for (let i = 0; i < tripData.times.length - 1; i++) {
@@ -276,6 +282,15 @@ class PTDS {
    */
   _getTripPositionFromDistance(tripData, distance) {
     const journeyPatternData = this.journeyPatterns[tripData.journeyPatternRef];
+
+    // Special case handling: when the distance asked for is the distance at which the last stop is located
+    if (journeyPatternData.distances[journeyPatternData.distances.length - 1] == distance) {
+      const previousStopCode = journeyPatternData.pointsInSequence[journeyPatternData.pointsInSequence.length - 2];
+      const nextStopCode = journeyPatternData.pointsInSequence[journeyPatternData.pointsInSequence.length - 1];
+      const currentSegment = this.projectNetwork[`${previousStopCode}|${nextStopCode}`];
+
+      return currentSegment.stopAreasSegment.getPointByPercentage(1.0);
+    }
 
     // Iterate over the journey pattern to find the previous and the next stop basing on the
     // current distance
@@ -430,11 +445,9 @@ d3.queue()
     ptds.drawJourneyPatternsLinks();
     ptds.drawStopAreas();
 
-    console.log(ptds._currentTimeInSecsSinceMidnight());
-
     // Update every second the trips position
     setInterval(() => {
       const randomValidTime = Math.floor(Math.random() * 115200);
       ptds.drawTripsAtTime(randomValidTime);
-    }, 1000)
+    }, 100)
 });
