@@ -338,12 +338,6 @@ class PTDS {
   /**
    * Compute the number of seconds elapsed from noon minus 12h till now,
    * which is typically midnight except for when daylight savings time is on
-   * @return {Number} seconds elapsed since noon minus 12h till now
-   */
-
-  /**
-   * Compute the number of seconds elapsed from noon minus 12h till now,
-   * which is typically midnight except for when daylight savings time is on
    * @param  {Object} currentTime Date object with current time to use as given by (new Date())
    * @return {Number} seconds elapsed since noon minus 12h till now
    */
