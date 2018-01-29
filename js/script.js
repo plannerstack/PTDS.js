@@ -179,9 +179,9 @@ class PTDS {
       const stopsList = journeyPatternData.pointsInSequence;
 
       // Iterate over pairs of stops and add them to the project definition
-      for (const i = 0; i < stopsList.length - 1; i++) {
-        const stopAcode = stopsList[i];
-        const stopBcode = stopsList[i+1];
+      for (const [index, ] of stopsList.slice(0, -1).entries()) {
+        const stopAcode = stopsList[index];
+        const stopBcode = stopsList[index+1];
 
         // Get coordinates of current pair of stops
         const stopAdata = this.scheduledStopPoints[stopAcode];
@@ -250,9 +250,9 @@ class PTDS {
 
     // Find out the index corresponding to the latest time passed currently
     let lastTimeIndex = 0;
-    for (const i = 0; i < tripData.times.length - 1; i++) {
-      if (tripData.times[i+1] > time) {
-        lastTimeIndex = i;
+    for (const [index, ] of tripData.times.slice(0, -1).entries()) {
+      if (tripData.times[index+1] > time) {
+        lastTimeIndex = index;
         break;
       }
     }
@@ -295,10 +295,10 @@ class PTDS {
     // Iterate over the journey pattern to find the previous and the next stop basing on the
     // current distance
     let lastStopIndex = -1;
-    for (const i = 0; i < journeyPatternData.distances.length - 1; i++) {
-      if (journeyPatternData.distances[i] <= distance &&
-          journeyPatternData.distances[i+1] > distance) {
-        lastStopIndex = i;
+    for (const [index, ] of journeyPatternData.distances.slice(0, -1).entries()) {
+      if (journeyPatternData.distances[index] <= distance &&
+          journeyPatternData.distances[index+1] > distance) {
+        lastStopIndex = index;
         break;
       }
     }
