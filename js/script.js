@@ -74,8 +74,12 @@ class PTDS {
 
   _createSVG() {
     // Get browser dimensions
-    const window_width = window.innerWidth || document.documentElement.clientWidth || document.body.clientWidth;
-    const window_height = window.innerHeight || document.documentElement.clientHeight || document.body.clientHeight;
+    // The (-4) correction factor is due to the fact that the browser
+    // will show the scrollbars even if the visualization is the same size
+    // as the browser window, for no apparent reason. This way
+    // the scrollbars are not shown.
+    const window_width = window.innerWidth - 4;
+    const window_height = window.innerHeight - 4;
 
     // D3 margin convention https://bl.ocks.org/mbostock/3019563
     const margin = {top: 50, right: 50, bottom: 50, left: 50};
@@ -87,6 +91,7 @@ class PTDS {
         .attr('id', 'map')
         .attr('width', this.canvasWidth + margin.left + margin.right)
         .attr('height', this.canvasHeight + margin.top + margin.bottom)
+        .call(d3.zoom().on('zoom', () => this.svg.attr('transform', d3.event.transform)))
       .append('g')
         .attr('transform', `translate(${margin.left},${margin.top})`);
 
@@ -404,7 +409,7 @@ d3.queue()
   .await((error, data) => {
     const ptds = new PTDS(data);
 
-    ptds.drawStops();
+    //ptds.drawStops();
     ptds.drawStopAreas();
     ptds.drawJourneyPatternsLinks();
 
