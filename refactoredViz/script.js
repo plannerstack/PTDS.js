@@ -228,6 +228,8 @@ class PTDS {
    * @return {Number} Current distance traveled by the vehicle in its trip
    */
   _getTripDistanceAtTime(tripData, time) {
+    const journeyPatternData = this.journeyPatterns[tripData.journeyPatternRef];
+
     // Find out the index corresponding to the latest time passed currently
     let lastTimeIndex = 0;
     for (let i = 0; i < tripData.times.length - 1; i++) {
@@ -243,8 +245,12 @@ class PTDS {
 
     // Use the percentage to compute the actual distance of the vehicle by correspondence
     // to the distance list
-    const currentDistance = tripData.distances[lastTimeIndex] +
-      percentage * (tripData.distances[lastTimeIndex+1] - tripData.distances[lastTimeIndex]);
+    const currentDistance = journeyPatternData.distances[lastStopIndex] +
+      percentage * (journeyPatternData.distances[lastTimeIndex+1] - journeyPatternData.distances[lastTimeIndex]);
+
+    // Keep this for realtime positioning later, but will require finding the lastTimeIndex, from the realtime times list.
+    // const currentDistance = tripData.distances[lastTimeIndex] +
+    //  percentage * (tripData.distances[lastTimeIndex+1] - tripData.distances[lastTimeIndex]);
 
     return currentDistance;
   }
