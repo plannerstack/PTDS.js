@@ -245,7 +245,7 @@ class PTDS {
 
     // Use the percentage to compute the actual distance of the vehicle by correspondence
     // to the distance list
-    const currentDistance = journeyPatternData.distances[lastStopIndex] +
+    const currentDistance = journeyPatternData.distances[lastTimeIndex] +
       percentage * (journeyPatternData.distances[lastTimeIndex+1] - journeyPatternData.distances[lastTimeIndex]);
 
     // Keep this for realtime positioning later, but will require finding the lastTimeIndex, from the realtime times list.
