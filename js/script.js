@@ -179,7 +179,7 @@ class PTDS {
       const stopsList = journeyPatternData.pointsInSequence;
 
       // Iterate over pairs of stops and add them to the project definition
-      for (let i = 0; i < stopsList.length - 1; i++) {
+      for (const i = 0; i < stopsList.length - 1; i++) {
         const stopAcode = stopsList[i];
         const stopBcode = stopsList[i+1];
 
@@ -250,7 +250,7 @@ class PTDS {
 
     // Find out the index corresponding to the latest time passed currently
     let lastTimeIndex = 0;
-    for (let i = 0; i < tripData.times.length - 1; i++) {
+    for (const i = 0; i < tripData.times.length - 1; i++) {
       if (tripData.times[i+1] > time) {
         lastTimeIndex = i;
         break;
@@ -295,7 +295,7 @@ class PTDS {
     // Iterate over the journey pattern to find the previous and the next stop basing on the
     // current distance
     let lastStopIndex = -1;
-    for (let i = 0; i < journeyPatternData.distances.length - 1; i++) {
+    for (const i = 0; i < journeyPatternData.distances.length - 1; i++) {
       if (journeyPatternData.distances[i] <= distance &&
           journeyPatternData.distances[i+1] > distance) {
         lastStopIndex = i;
@@ -325,7 +325,7 @@ class PTDS {
   _getActiveTrips(time) {
     // A trip is active if the time of the first stop is smaller (or equal) than the current time and
     // the time of the last stop if greater (or equal) than the current time
-    let isActiveTrip = (trip) => (trip.times[0] <= time && trip.times[trip.times.length - 1] >= time);
+    const isActiveTrip = (trip) => (trip.times[0] <= time && trip.times[trip.times.length - 1] >= time);
 
     let activeTrips = {};
     for (const [tripCode, tripData] of Object.entries(this.vehicleJourneys)) {
@@ -338,6 +338,13 @@ class PTDS {
   /**
    * Compute the number of seconds elapsed from noon minus 12h till now,
    * which is typically midnight except for when daylight savings time is on
+   * @return {Number} seconds elapsed since noon minus 12h till now
+   */
+
+  /**
+   * Compute the number of seconds elapsed from noon minus 12h till now,
+   * which is typically midnight except for when daylight savings time is on
+   * @param  {Object} currentTime Date object with current time to use as given by (new Date())
    * @return {Number} seconds elapsed since noon minus 12h till now
    */
   _currentTimeInSecsSinceMidnight(currentTime) {
