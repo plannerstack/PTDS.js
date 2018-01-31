@@ -17,11 +17,11 @@ class PTDS {
     this._computeStopAreasAggregation();
     this._computeProjectNetwork();
 
-    if (options.showLinks) this.drawJourneyPatternsLinks();
-    if (options.showStops) this.drawStops();
-    if (options.showStopAreas) this.drawStopAreas();
+    if (options.showLinks) this._drawJourneyPatternsLinks();
+    if (options.showStops) this._drawStops();
+    if (options.showStopAreas) this._drawStopAreas();
 
-    this.drawMareyDiagram();
+    this._drawMareyDiagram('HTM:1:363');
   }
 
   _createSVG() {
@@ -304,22 +304,16 @@ class PTDS {
   }
 
   /**
-   * Get trips/vehicleJourneys that are active at the given time
-   * @param  {Number} time - Time expressed as seconds since noon minus 12h
-   * @return {Object} Active trips
+   * Extracts all the trips given a filter function that returns true when the trip is to be kept
+   * @param  {Function} filterFunction - The function used to filter the trips
+   * @return {Object} The filtered trips object
    */
-  _getActiveTrips(time) {
-    // A trip is active if the time of the first stop is smaller (or equal) than the current time
-    // and the time of the last stop if greater (or equal) than the current time
-    const isActiveTrip = trip => (trip.times[0] <= time &&
-                                  trip.times[trip.times.length - 1] >= time);
-
-    const activeTrips = {};
+  _getFilteredTrips(filterFunction) {
+    const trips = {};
     for (const [tripCode, tripData] of Object.entries(this.vehicleJourneys)) {
-      if (isActiveTrip(tripData)) activeTrips[tripCode] = tripData;
+      if (filterFunction(tripData)) trips[tripCode] = tripData;
     }
-
-    return activeTrips;
+    return trips;
   }
 
   /**
@@ -327,7 +321,7 @@ class PTDS {
    * which is typically midnight except for when daylight savings time is on
    * @return {Number} seconds elapsed since noon minus 12h till now
    */
-  static currentTimeInSecsSinceMidnight() {
+  static _currentTimeInSecsSinceMidnight() {
     const currentTime = new Date();
     const noonTime = (new Date(currentTime)).setHours(12, 0, 0, 0);
     const millisecondsSinceNoon = currentTime - noonTime;
@@ -338,9 +332,20 @@ class PTDS {
   }
 
   /**
+   * Determines if a trip is to be considered active or not.
+   * The function needs to be curried with the time before using it.
+   * @param  {Number}  time - Time in seconds since noon minus 12h
+   * @return {Boolean} True if trip is active, false otherwise.
+   */
+  static isActiveTrip(time) {
+    return tripData => (tripData.times[0] <= time &&
+                        tripData.times[tripData.times.length - 1] >= time);
+  }
+
+  /**
    * Draws the stops in map as circles
    */
-  drawStops() {
+  _drawStops() {
     const stops = this.stopsGroup.selectAll('circle.stop')
       .data(Object.values(this.scheduledStopPoints).map(stopData =>
         this._mapToCanvas(new Point(stopData.x, stopData.y))));
@@ -355,7 +360,7 @@ class PTDS {
   /**
    * Draws the stop areas in the map as red bigger circles
    */
-  drawStopAreas() {
+  _drawStopAreas() {
     const stopAreas = this.stopAreasGroup.selectAll('circle.stopArea')
       .data(Object.values(this.stopAreasAggregation).map(stopAreaData =>
         this._mapToCanvas(stopAreaData.centroid)));
@@ -370,7 +375,7 @@ class PTDS {
   /**
    * Draws all the links between areas contained in the project definition
    */
-  drawJourneyPatternsLinks() {
+  _drawJourneyPatternsLinks() {
     const links = this.linksGroup.selectAll('line.link')
       .data(Object.values(this.projectNetwork).map(linkData => ({
         stopAareaCentroidInCanvas: this._mapToCanvas(linkData.stopAreasSegment.pointA),
@@ -390,7 +395,7 @@ class PTDS {
    * @param  {Number} time - Time in seconds since noon minus 12h
    */
   drawTripsAtTime(time) {
-    const activeTrips = this._getActiveTrips(time);
+    const activeTrips = this._getFilteredTrips(PTDS.isActiveTrip(time));
 
     const tripPositions = [];
     for (const [tripCode, tripData] of Object.entries(activeTrips)) {
@@ -424,23 +429,24 @@ class PTDS {
   }
 
   /**
-   * Creates the Marey diagram visualization
+   * Draws the Marey diagram.
+   * For now, it only draws the data corresponding to a single journeypattern.
+   * @param  {String} journeyPatternCode - Code of the journeypattern to show
    */
-  drawMareyDiagram() {
-    // Just for testing, draw a circle temporarily
-    this.mareySVG.append('circle')
-      .attr('cx', this.mareyInnerWidth / 2)
-      .attr('cy', this.mareyInnerHeight / 2)
-      .attr('r', 20);
+  _drawMareyDiagram(journeyPatternCode) {
+    // First, we get all the trips of this journey pattern so that we can compute
+    // start and end time of the diagram
+    const jpTrips = this._getFilteredTrips(tripData =>
+      tripData.journeyPatternRef === journeyPatternCode);
   }
 
   /**
    * Start a 'spiral simulation' showing on the map all the trips from the current time of the day
    * till the end of the day, then go back to the start time and loop.
-   * @param  {number} timeMultiplier - Conversion factor between real and visualization time
+   * @param  {Number} timeMultiplier - Conversion factor between real and visualization time
    */
   spiralSimulation(timeMultiplier) {
-    const startTimeViz = PTDS.currentTimeInSecsSinceMidnight();
+    const startTimeViz = PTDS._currentTimeInSecsSinceMidnight();
 
     d3.timer((elapsedMilliseconds) => {
       // Compute elapsed seconds in the visualization
