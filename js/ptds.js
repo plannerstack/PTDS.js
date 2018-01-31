@@ -399,9 +399,8 @@ class PTDS {
 
   /**
    * Start a "spiral simulation" showing on the map all the trips from the current time of the day
-   * till
-   * @param  {[type]} timeMultiplier [description]
-   * @return {[type]}                [description]
+   * till the end of the day, then go back to the start time and loop.
+   * @param  {number} timeMultiplier - Conversion factor between real and visualization time
    */
   spiralSimulation(timeMultiplier) {
     const startTimeViz = PTDS.currentTimeInSecsSinceMidnight();
