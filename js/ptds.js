@@ -5,20 +5,23 @@ import Segment from './segment.js';
  * Main PTDS class
  */
 class PTDS {
-  constructor(inputData) {
+  constructor(inputData, options) {
     this.journeyPatterns = inputData.journeyPatterns;
     this.scheduledStopPoints = inputData.scheduledStopPoints;
     this.vehicleJourneys = inputData.vehicleJourneys;
+
+    this.options = options;
 
     this._createSVG();
     this._computeCoordinatesMapping();
     this._computeStopAreasAggregation();
     this._computeProjectNetwork();
 
-    // Radius used to draw the circle representing a stop
-    this.stopRadius = 1;
-    this.stopAreaRadius = 1;
-    this.tripRadius = 1;
+    if (options.showLinks) this.drawJourneyPatternsLinks();
+    if (options.showStops) this.drawStops();
+    if (options.showStopAreas) this.drawStopAreas();
+
+    this.drawMareyDiagram();
   }
 
   _createSVG() {
@@ -32,27 +35,47 @@ class PTDS {
 
     // D3 margin convention https://bl.ocks.org/mbostock/3019563
     const margin = {
-      top: 50,
-      right: 50,
-      bottom: 50,
-      left: 50,
+      top: 20,
+      right: 20,
+      bottom: 20,
+      left: 20,
     };
-    this.canvasWidth = windowWidth - margin.left - margin.right;
-    this.canvasHeight = windowHeight - margin.top - margin.bottom;
+
+    // Marey diagram is on the left. Map on the right
+    // We compute the outer width of the two elements basing on the split percentage
+    const mareyOuterWidth = windowWidth * this.options.verticalSplitPercentage;
+    const mapOuterWidth = windowWidth * (1 - this.options.verticalSplitPercentage);
+
+    this.mareyInnerWidth = mareyOuterWidth - margin.left - margin.right;
+    this.mapInnerWidth = mapOuterWidth - margin.left - margin.right;
+
+    // As outer height for both the Marey diagram and the map we use the window height
+    this.mareyInnerHeight = windowHeight - margin.top - margin.bottom;
+    this.mapInnerHeight = this.mareyInnerHeight;
 
     // Create main map SVG element applying the margins
-    this.svg = d3.select('body').append('svg')
-      .attr('id', 'map')
-      .attr('width', this.canvasWidth + margin.left + margin.right)
-      .attr('height', this.canvasHeight + margin.top + margin.bottom)
-      .call(d3.zoom().on('zoom', () => this.svg.attr('transform', d3.event.transform)))
+    this.mareySVG = d3.select('body').append('svg')
+      .attr('id', 'marey')
+      .attr('width', mareyOuterWidth)
+      .attr('height', windowHeight)
+      .attr('style', 'outline: thin solid black;')
       .append('g')
       .attr('transform', `translate(${margin.left},${margin.top})`);
 
-    this.stopsGroup = this.svg.append('g').attr('id', 'stops');
-    this.linksGroup = this.svg.append('g').attr('id', 'links');
-    this.stopAreasGroup = this.svg.append('g').attr('id', 'stopAreas');
-    this.tripsGroup = this.svg.append('g').attr('id', 'trips');
+    // Create main map SVG element applying the margins
+    this.mapSVG = d3.select('body').append('svg')
+      .attr('id', 'map')
+      .attr('width', mapOuterWidth)
+      .attr('height', windowHeight)
+      .attr('style', 'outline: thin solid black;')
+      .call(d3.zoom().on('zoom', () => this.mapSVG.attr('transform', d3.event.transform)))
+      .append('g')
+      .attr('transform', `translate(${margin.left},${margin.top})`);
+
+    this.stopsGroup = this.mapSVG.append('g').attr('id', 'stops');
+    this.linksGroup = this.mapSVG.append('g').attr('id', 'links');
+    this.stopAreasGroup = this.mapSVG.append('g').attr('id', 'stopAreas');
+    this.tripsGroup = this.mapSVG.append('g').attr('id', 'trips');
   }
 
   /**
@@ -78,8 +101,7 @@ class PTDS {
     // and of the canvas
     this.stopsGridAspectRatio = (this.stopsMaxX - this.stopsMinX) /
                                 (this.stopsMaxY - this.stopsMinY);
-    this.canvasAspectRatio = this.canvasWidth /
-                             this.canvasHeight;
+    this.mapAspectRatio = this.mapInnerWidth / this.mapInnerHeight;
   }
 
   /**
@@ -167,23 +189,27 @@ class PTDS {
    * @return {Point} The point with coordinates in the canvas
    */
   _mapToCanvas(point) {
-    if (this.stopsGridAspectRatio > this.canvasAspectRatio) {
+    if (this.stopsGridAspectRatio > this.mapAspectRatio) {
       // Width is constrained to fit in the width of the canvas
       // Height is adapted consequently, keeping the same aspect ratio
+      const verticalCenteringAdjustment = (this.mapInnerHeight -
+                                          (this.mapInnerWidth / this.stopsGridAspectRatio)) / 2;
       return new Point(
-        ((point.x - this.stopsMinX) * this.canvasWidth) /
+        ((point.x - this.stopsMinX) * this.mapInnerWidth) /
         (this.stopsMaxX - this.stopsMinX),
-        ((point.y - this.stopsMinY) * (this.canvasWidth / this.stopsGridAspectRatio)) /
-        (this.stopsMaxY - this.stopsMinY),
+        (((point.y - this.stopsMinY) * (this.mapInnerWidth / this.stopsGridAspectRatio)) /
+        (this.stopsMaxY - this.stopsMinY)) + verticalCenteringAdjustment,
       );
     }
 
     // Height is constrained to fit the height of the canvas
     // Width is adapted consequently, keeping the same aspect ratio
+    const horizontalCenteringAdjustment = (this.mapInnerWidth -
+                                          (this.mapInnerHeight * this.stopsGridAspectRatio)) / 2;
     return new Point(
-      ((point.x - this.stopsMinX) * (this.canvasHeight * this.stopsGridAspectRatio)) /
-      (this.stopsMaxX - this.stopsMinX),
-      ((point.y - this.stopsMinY) * this.canvasHeight) /
+      (((point.x - this.stopsMinX) * (this.mapInnerHeight * this.stopsGridAspectRatio)) /
+      (this.stopsMaxX - this.stopsMinX)) + horizontalCenteringAdjustment,
+      ((point.y - this.stopsMinY) * this.mapInnerHeight) /
       (this.stopsMaxY - this.stopsMinY),
     );
   }
@@ -323,7 +349,7 @@ class PTDS {
       .attr('class', 'stop')
       .attr('cx', point => point.x)
       .attr('cy', point => point.y)
-      .attr('r', this.stopRadius);
+      .attr('r', this.options.stopRadius);
   }
 
   /**
@@ -338,7 +364,7 @@ class PTDS {
       .attr('class', 'stopArea')
       .attr('cx', point => point.x)
       .attr('cy', point => point.y)
-      .attr('r', this.stopAreaRadius);
+      .attr('r', this.options.stopAreaRadius);
   }
 
   /**
@@ -394,11 +420,22 @@ class PTDS {
       .attr('data-tripcode', trip => trip.tripCode)
       .attr('cx', trip => trip.tripPosition.x)
       .attr('cy', trip => trip.tripPosition.y)
-      .attr('r', this.tripRadius);
+      .attr('r', this.options.tripRadius);
   }
 
   /**
-   * Start a "spiral simulation" showing on the map all the trips from the current time of the day
+   * Creates the Marey diagram visualization
+   */
+  drawMareyDiagram() {
+    // Just for testing, draw a circle temporarily
+    this.mareySVG.append('circle')
+      .attr('cx', this.mareyInnerWidth / 2)
+      .attr('cy', this.mareyInnerHeight / 2)
+      .attr('r', 20);
+  }
+
+  /**
+   * Start a 'spiral simulation' showing on the map all the trips from the current time of the day
    * till the end of the day, then go back to the start time and loop.
    * @param  {number} timeMultiplier - Conversion factor between real and visualization time
    */
@@ -408,7 +445,7 @@ class PTDS {
     d3.timer((elapsedMilliseconds) => {
       // Compute elapsed seconds in the visualization
       const elapsedSecondsInViz = (elapsedMilliseconds * timeMultiplier) / 1000;
-      // Compute "spiral" negative offset.
+      // Compute 'spiral' negative offset.
       // There are two parameters for the spiral effect.
       // Every paramA seconds the vehicles are sent back in time by paramB seconds.
       const paramA = 60;
@@ -429,14 +466,18 @@ class PTDS {
 d3.queue()
   .defer(d3.json, 'data/test.json')
   .await((error, data) => {
-    const ptds = new PTDS(data);
-
-    // ptds.drawStops();
-    ptds.drawJourneyPatternsLinks();
-    ptds.drawStopAreas();
+    const ptds = new PTDS(data, {
+      stopRadius: 1,
+      stopAreaRadius: 1,
+      tripRadius: 1,
+      showStops: false,
+      showStopAreas: true,
+      showLinks: true,
+      verticalSplitPercentage: 0.5,
+    });
 
     // Multiplier between time in the visualization and real time
     // 1 real second corresponds to timeMultiplier seconds in the visualization
-    const timeMultiplier = 50;
+    const timeMultiplier = 60;
     ptds.spiralSimulation(timeMultiplier);
   });
