@@ -41,14 +41,15 @@ class Segment {
   /**
    * Computes a point along the segment given a percentage
    *
-   * @param  {Number} percentage - Given a percentage [0.0-1.0] computes the corresponding point in the segment
+   * @param  {Number} percentage - Given a percentage [0.0-1.0] computes the corresponding
+   *                               point in the segment
    * @return {Point} Point corresponding to the percentage given
    */
   getPointByPercentage(percentage) {
     return new Point(
-      this.pointA.x + (this.pointB.x - this.pointA.x) * percentage,
-      this.pointA.y + (this.pointB.y - this.pointA.y) * percentage
-    )
+      this.pointA.x + ((this.pointB.x - this.pointA.x) * percentage),
+      this.pointA.y + ((this.pointB.y - this.pointA.y) * percentage),
+    );
   }
 }
 
@@ -78,22 +79,27 @@ class PTDS {
     // will show the scrollbars even if the visualization is the same size
     // as the browser window, for no apparent reason. This way
     // the scrollbars are not shown.
-    const window_width = window.innerWidth - 4;
-    const window_height = window.innerHeight - 4;
+    const windowWidth = window.innerWidth - 4;
+    const windowHeight = window.innerHeight - 4;
 
     // D3 margin convention https://bl.ocks.org/mbostock/3019563
-    const margin = {top: 50, right: 50, bottom: 50, left: 50};
-    this.canvasWidth = window_width - margin.left - margin.right;
-    this.canvasHeight = window_height - margin.top - margin.bottom;
+    const margin = {
+      top: 50,
+      right: 50,
+      bottom: 50,
+      left: 50,
+    };
+    this.canvasWidth = windowWidth - margin.left - margin.right;
+    this.canvasHeight = windowHeight - margin.top - margin.bottom;
 
     // Create main map SVG element applying the margins
     this.svg = d3.select('body').append('svg')
-        .attr('id', 'map')
-        .attr('width', this.canvasWidth + margin.left + margin.right)
-        .attr('height', this.canvasHeight + margin.top + margin.bottom)
-        .call(d3.zoom().on('zoom', () => this.svg.attr('transform', d3.event.transform)))
+      .attr('id', 'map')
+      .attr('width', this.canvasWidth + margin.left + margin.right)
+      .attr('height', this.canvasHeight + margin.top + margin.bottom)
+      .call(d3.zoom().on('zoom', () => this.svg.attr('transform', d3.event.transform)))
       .append('g')
-        .attr('transform', `translate(${margin.left},${margin.top})`);
+      .attr('transform', `translate(${margin.left},${margin.top})`);
 
     this.stopsGroup = this.svg.append('g').attr('id', 'stops');
     this.linksGroup = this.svg.append('g').attr('id', 'links');
@@ -133,34 +139,35 @@ class PTDS {
    */
   _computeStopAreasAggregation() {
     // Aggregate stops into stop areas
-    let stopAreasAggregation = {};
+    const stopAreasAggregation = {};
     for (const [stopCode, stopData] of Object.entries(this.scheduledStopPoints)) {
-      if (stopAreasAggregation.hasOwnProperty(stopData.area)) {
-        stopAreasAggregation[stopData.area]['stops'][stopCode] = {
-          'x': stopData.x,
-          'y': stopData.y
-        }
+      if (Object.prototype.hasOwnProperty.call(stopAreasAggregation, stopData.area)) {
+        stopAreasAggregation[stopData.area].stops[stopCode] = {
+          x: stopData.x,
+          y: stopData.y,
+        };
       } else {
         stopAreasAggregation[stopData.area] = {
-          'name': stopData.name,
-          'stops': {[stopCode]: {
-              'x': stopData.x,
-              'y': stopData.y
-          }}
+          name: stopData.name,
+          stops: {
+            [stopCode]: {
+              x: stopData.x,
+              y: stopData.y,
+            },
+          },
         };
       }
     }
 
     // Iterate over all the areas to compute coordinates of area as average of
     // the coordinates of the stops
-    for (let stopAreaData of Object.values(stopAreasAggregation)) {
+    for (const stopAreaData of Object.values(stopAreasAggregation)) {
       // Create array of Points corresponding to the stops belonging to the current stop area
-      const stopAreaStopsPoints = Object.values(stopAreaData.stops).map((stopData) =>
-        new Point(stopData.x, stopData.y)
-      );
+      const stopAreaStopsPoints = Object.values(stopAreaData.stops).map(stopData =>
+        new Point(stopData.x, stopData.y));
       // Compute the centroid of the stop area
       const centroid = Point.centroid(stopAreaStopsPoints);
-      stopAreaData['centroid'] = centroid;
+      stopAreaData.centroid = centroid;
     }
 
     this.stopAreasAggregation = stopAreasAggregation;
@@ -171,7 +178,7 @@ class PTDS {
    * of the segments representing the links between the stops
    */
   _computeProjectNetwork() {
-    let projectNetwork = {};
+    const projectNetwork = {};
 
     // Iterate over all the journey patterns to build the definition
     for (const journeyPatternData of Object.values(this.journeyPatterns)) {
@@ -179,9 +186,9 @@ class PTDS {
       const stopsList = journeyPatternData.pointsInSequence;
 
       // Iterate over pairs of stops and add them to the project definition
-      for (const [index, ] of stopsList.slice(0, -1).entries()) {
+      for (const index of [...Array(stopsList.length - 1).keys()]) {
         const stopAcode = stopsList[index];
-        const stopBcode = stopsList[index+1];
+        const stopBcode = stopsList[index + 1];
 
         // Get coordinates of current pair of stops
         const stopAdata = this.scheduledStopPoints[stopAcode];
@@ -192,11 +199,11 @@ class PTDS {
         const stopBareaCentroid = this.stopAreasAggregation[stopBdata.area].centroid;
 
         projectNetwork[`${stopAcode}|${stopBcode}`] = {
-          'realSegment': new Segment(
+          realSegment: new Segment(
             new Point(stopAdata.x, stopAdata.y),
-            new Point(stopBdata.x, stopBdata.y)
+            new Point(stopBdata.x, stopBdata.y),
           ),
-          'stopAreasSegment': new Segment(stopAareaCentroid, stopBareaCentroid)
+          stopAreasSegment: new Segment(stopAareaCentroid, stopBareaCentroid),
         };
       }
     }
@@ -216,21 +223,21 @@ class PTDS {
       // Width is constrained to fit in the width of the canvas
       // Height is adapted consequently, keeping the same aspect ratio
       return new Point(
-        (point.x - this.stopsMinX) * this.canvasWidth /
+        ((point.x - this.stopsMinX) * this.canvasWidth) /
         (this.stopsMaxX - this.stopsMinX),
-        (point.y - this.stopsMinY) * (this.canvasWidth / this.stopsGridAspectRatio) /
-        (this.stopsMaxY - this.stopsMinY)
-      );
-    } else {
-      // Height is constrained to fit the height of the canvas
-      // Width is adapted consequently, keeping the same aspect ratio
-      return new Point(
-        (point.x - this.stopsMinX) * (this.canvasHeight * this.stopsGridAspectRatio)  /
-        (this.stopsMaxX - this.stopsMinX),
-        (point.y - this.stopsMinY) * this.canvasHeight /
-        (this.stopsMaxY - this.stopsMinY)
+        ((point.y - this.stopsMinY) * (this.canvasWidth / this.stopsGridAspectRatio)) /
+        (this.stopsMaxY - this.stopsMinY),
       );
     }
+
+    // Height is constrained to fit the height of the canvas
+    // Width is adapted consequently, keeping the same aspect ratio
+    return new Point(
+      ((point.x - this.stopsMinX) * (this.canvasHeight * this.stopsGridAspectRatio)) /
+      (this.stopsMaxX - this.stopsMinX),
+      ((point.y - this.stopsMinY) * this.canvasHeight) /
+      (this.stopsMaxY - this.stopsMinY),
+    );
   }
 
   /**
@@ -241,17 +248,18 @@ class PTDS {
    */
   _getTripDistanceAtTime(tripData, time) {
     const journeyPatternData = this.journeyPatterns[tripData.journeyPatternRef];
+    const { distances } = journeyPatternData;
 
     // Special case handling: when the time asked for is the time of the last stop of the trip.
     // In that case the distance traveled is the distance at which the last stop is located
     if (tripData.times[tripData.times.length - 1] === time) {
-      return journeyPatternData.distances[journeyPatternData.distances.length - 1];
+      return distances[distances.length - 1];
     }
 
     // Find out the index corresponding to the latest time passed currently
     let lastTimeIndex = 0;
-    for (const [index, ] of tripData.times.slice(0, -1).entries()) {
-      if (tripData.times[index+1] > time) {
+    for (const index of [...Array(tripData.times.length - 1).keys()]) {
+      if (tripData.times[index + 1] > time) {
         lastTimeIndex = index;
         break;
       }
@@ -259,16 +267,17 @@ class PTDS {
 
     // Compute percentage of time between previous and next stop by interpolation
     const percentage = (time - tripData.times[lastTimeIndex]) /
-                       (tripData.times[lastTimeIndex+1] - tripData.times[lastTimeIndex]);
+                       (tripData.times[lastTimeIndex + 1] - tripData.times[lastTimeIndex]);
 
     // Use the percentage to compute the actual distance of the vehicle by correspondence
     // to the distance list
-    const currentDistance = journeyPatternData.distances[lastTimeIndex] +
-      percentage * (journeyPatternData.distances[lastTimeIndex+1] - journeyPatternData.distances[lastTimeIndex]);
+    const currentDistance = distances[lastTimeIndex] +
+      (percentage * (distances[lastTimeIndex + 1] - distances[lastTimeIndex]));
 
-    // Keep this for realtime positioning later, but will require finding the lastTimeIndex, from the realtime times list.
+    // Keep this for realtime positioning later, but will require finding the lastTimeIndex,
+    // from the realtime times list.
     // const currentDistance = tripData.distances[lastTimeIndex] +
-    //  percentage * (tripData.distances[lastTimeIndex+1] - tripData.distances[lastTimeIndex]);
+    //  (percentage * (tripData.distances[lastTimeIndex+1] - tripData.distances[lastTimeIndex]));
 
     return currentDistance;
   }
@@ -282,11 +291,13 @@ class PTDS {
    */
   _getTripPositionFromDistance(tripData, distance) {
     const journeyPatternData = this.journeyPatterns[tripData.journeyPatternRef];
+    const { pointsInSequence } = journeyPatternData;
 
-    // Special case handling: when the distance asked for is the distance at which the last stop is located
+    // Special case handling: when the distance asked for is the distance
+    // at which the last stop is located
     if (journeyPatternData.distances[journeyPatternData.distances.length - 1] === distance) {
-      const previousStopCode = journeyPatternData.pointsInSequence[journeyPatternData.pointsInSequence.length - 2];
-      const nextStopCode = journeyPatternData.pointsInSequence[journeyPatternData.pointsInSequence.length - 1];
+      const previousStopCode = pointsInSequence[pointsInSequence.length - 2];
+      const nextStopCode = pointsInSequence[pointsInSequence.length - 1];
       const currentSegment = this.projectNetwork[`${previousStopCode}|${nextStopCode}`];
 
       return currentSegment.stopAreasSegment.getPointByPercentage(1.0);
@@ -295,21 +306,22 @@ class PTDS {
     // Iterate over the journey pattern to find the previous and the next stop basing on the
     // current distance
     let lastStopIndex = -1;
-    for (const [index, ] of journeyPatternData.distances.slice(0, -1).entries()) {
+    for (const index of [...Array(journeyPatternData.distances.length - 1).keys()]) {
       if (journeyPatternData.distances[index] <= distance &&
-          journeyPatternData.distances[index+1] > distance) {
+          journeyPatternData.distances[index + 1] > distance) {
         lastStopIndex = index;
         break;
       }
     }
 
     // Get the codes of the previous and next stop of the tripData in the journey pattern
-    const previousStopCode = journeyPatternData.pointsInSequence[lastStopIndex];
-    const nextStopCode = journeyPatternData.pointsInSequence[lastStopIndex+1];
+    const previousStopCode = pointsInSequence[lastStopIndex];
+    const nextStopCode = pointsInSequence[lastStopIndex + 1];
 
     // Percentage of the distance between the previous and the next stop that is completed
     const percentage = (distance - journeyPatternData.distances[lastStopIndex]) /
-                       (journeyPatternData.distances[lastStopIndex+1] - journeyPatternData.distances[lastStopIndex]);
+                       (journeyPatternData.distances[lastStopIndex + 1] -
+                        journeyPatternData.distances[lastStopIndex]);
 
     // Get segment of the network on which the vehicle is now
     const currentSegment = this.projectNetwork[`${previousStopCode}|${nextStopCode}`];
@@ -323,11 +335,12 @@ class PTDS {
    * @return {Object} Active trips
    */
   _getActiveTrips(time) {
-    // A trip is active if the time of the first stop is smaller (or equal) than the current time and
-    // the time of the last stop if greater (or equal) than the current time
-    const isActiveTrip = (trip) => (trip.times[0] <= time && trip.times[trip.times.length - 1] >= time);
+    // A trip is active if the time of the first stop is smaller (or equal) than the current time
+    // and the time of the last stop if greater (or equal) than the current time
+    const isActiveTrip = trip => (trip.times[0] <= time &&
+                                  trip.times[trip.times.length - 1] >= time);
 
-    let activeTrips = {};
+    const activeTrips = {};
     for (const [tripCode, tripData] of Object.entries(this.vehicleJourneys)) {
       if (isActiveTrip(tripData)) activeTrips[tripCode] = tripData;
     }
@@ -338,15 +351,14 @@ class PTDS {
   /**
    * Compute the number of seconds elapsed from noon minus 12h till now,
    * which is typically midnight except for when daylight savings time is on
-   * @param  {Object} currentTime Date object with current time to use as given by (new Date())
    * @return {Number} seconds elapsed since noon minus 12h till now
    */
-  _currentTimeInSecsSinceMidnight(currentTime) {
-    currentTime = (typeof currentTime !== 'undefined') ? currentTime : new Date();
+  static _currentTimeInSecsSinceMidnight() {
+    const currentTime = new Date();
     const noonTime = (new Date(currentTime)).setHours(12, 0, 0, 0);
     const millisecondsSinceNoon = currentTime - noonTime;
     const secondsSinceNoon = Math.floor(millisecondsSinceNoon / 1000);
-    const secondsSinceMidnight = secondsSinceNoon + 12 * 60 * 60;
+    const secondsSinceMidnight = secondsSinceNoon + (12 * 60 * 60);
 
     return secondsSinceMidnight;
   }
@@ -356,13 +368,14 @@ class PTDS {
    */
   drawStops() {
     const stops = this.stopsGroup.selectAll('circle.stop')
-      .data(Object.values(this.scheduledStopPoints).map((stopData) => this._mapToCanvas(new Point(stopData.x, stopData.y))));
+      .data(Object.values(this.scheduledStopPoints).map(stopData =>
+        this._mapToCanvas(new Point(stopData.x, stopData.y))));
 
     stops.enter().append('circle')
-        .attr('class', 'stop')
-        .attr('cx', (point) => point.x)
-        .attr('cy', (point) => point.y)
-        .attr('r', this.stopRadius);
+      .attr('class', 'stop')
+      .attr('cx', point => point.x)
+      .attr('cy', point => point.y)
+      .attr('r', this.stopRadius);
   }
 
   /**
@@ -370,13 +383,14 @@ class PTDS {
    */
   drawStopAreas() {
     const stopAreas = this.stopAreasGroup.selectAll('circle.stopArea')
-      .data(Object.values(this.stopAreasAggregation).map((stopAreaData) => this._mapToCanvas(stopAreaData.centroid)));
+      .data(Object.values(this.stopAreasAggregation).map(stopAreaData =>
+        this._mapToCanvas(stopAreaData.centroid)));
 
     stopAreas.enter().append('circle')
-        .attr('class', 'stopArea')
-        .attr('cx', (point) => point.x)
-        .attr('cy', (point) => point.y)
-        .attr('r', this.stopAreaRadius);
+      .attr('class', 'stopArea')
+      .attr('cx', point => point.x)
+      .attr('cy', point => point.y)
+      .attr('r', this.stopAreaRadius);
   }
 
   /**
@@ -384,17 +398,17 @@ class PTDS {
    */
   drawJourneyPatternsLinks() {
     const links = this.linksGroup.selectAll('line.link')
-      .data(Object.values(this.projectNetwork).map((linkData) => ({
-        'stopAareaCentroidInCanvas': this._mapToCanvas(linkData.stopAreasSegment.pointA),
-        'stopBareaCentroidInCanvas': this._mapToCanvas(linkData.stopAreasSegment.pointB)
+      .data(Object.values(this.projectNetwork).map(linkData => ({
+        stopAareaCentroidInCanvas: this._mapToCanvas(linkData.stopAreasSegment.pointA),
+        stopBareaCentroidInCanvas: this._mapToCanvas(linkData.stopAreasSegment.pointB),
       })));
 
     links.enter().append('line')
-        .attr('class', 'link')
-        .attr('x1', (segment) => segment.stopAareaCentroidInCanvas.x)
-        .attr('y1', (segment) => segment.stopAareaCentroidInCanvas.y)
-        .attr('x2', (segment) => segment.stopBareaCentroidInCanvas.x)
-        .attr('y2', (segment) => segment.stopBareaCentroidInCanvas.y);
+      .attr('class', 'link')
+      .attr('x1', segment => segment.stopAareaCentroidInCanvas.x)
+      .attr('y1', segment => segment.stopAareaCentroidInCanvas.y)
+      .attr('x2', segment => segment.stopBareaCentroidInCanvas.x)
+      .attr('y2', segment => segment.stopBareaCentroidInCanvas.y);
   }
 
   /**
@@ -404,35 +418,63 @@ class PTDS {
   drawTripsAtTime(time) {
     const activeTrips = this._getActiveTrips(time);
 
-    let tripPositions = [];
+    const tripPositions = [];
     for (const [tripCode, tripData] of Object.entries(activeTrips)) {
       const tripDistance = this._getTripDistanceAtTime(tripData, time);
       const tripPosition = this._getTripPositionFromDistance(tripData, tripDistance);
       const tripPositionInCanvas = this._mapToCanvas(tripPosition);
       tripPositions.push({
-        'tripCode': tripCode,
-        'tripPosition': tripPositionInCanvas
+        tripCode,
+        tripPosition: tripPositionInCanvas,
       });
     }
 
     const trips = this.tripsGroup.selectAll('circle.trip')
-      .data(tripPositions, (trip) => trip.tripCode);
+      .data(tripPositions, trip => trip.tripCode);
 
     // Remove from the visualization the trips that are not active anymore
     trips.exit().remove();
 
     // Update the coordinates of the existing active trips
     trips
-      .attr('cx', (trip) => trip.tripPosition.x)
-      .attr('cy', (trip) => trip.tripPosition.y);
+      .attr('cx', trip => trip.tripPosition.x)
+      .attr('cy', trip => trip.tripPosition.y);
 
     // Add to the visualization the trips that just became active
     trips.enter().append('circle')
-        .attr('class', 'trip')
-        .attr('data-tripcode', (trip) => trip.tripCode)
-        .attr('cx', (trip) => trip.tripPosition.x)
-        .attr('cy', (trip) => trip.tripPosition.y)
-        .attr('r', this.tripRadius);
+      .attr('class', 'trip')
+      .attr('data-tripcode', trip => trip.tripCode)
+      .attr('cx', trip => trip.tripPosition.x)
+      .attr('cy', trip => trip.tripPosition.y)
+      .attr('r', this.tripRadius);
+  }
+
+  /**
+   * Start a "spiral simulation" showing on the map all the trips from the current time of the day
+   * till
+   * @param  {[type]} timeMultiplier [description]
+   * @return {[type]}                [description]
+   */
+  spiralSimulation(timeMultiplier) {
+    const startTimeViz = this._currentTimeInSecsSinceMidnight();
+
+    d3.timer((elapsedMilliseconds) => {
+      // Compute elapsed seconds in the visualization
+      const elapsedSecondsInViz = (elapsedMilliseconds * timeMultiplier) / 1000;
+      // Compute "spiral" negative offset.
+      // There are two parameters for the spiral effect.
+      // Every paramA seconds the vehicles are sent back in time by paramB seconds.
+      const paramA = 60;
+      const paramB = 30;
+      const spiralOffset = Math.floor(elapsedSecondsInViz / paramA) * paramB;
+
+      // When the time of the visualization reaches the end of the day,
+      // go back to the initial start time
+      const vizTime = startTimeViz +
+        ((elapsedSecondsInViz - spiralOffset) % (115200 - startTimeViz));
+
+      this.drawTripsAtTime(vizTime);
+    });
   }
 }
 
@@ -442,28 +484,12 @@ d3.queue()
   .await((error, data) => {
     const ptds = new PTDS(data);
 
-    //ptds.drawStops();
+    // ptds.drawStops();
     ptds.drawJourneyPatternsLinks();
     ptds.drawStopAreas();
 
     // Multiplier between time in the visualization and real time
     // 1 real second corresponds to timeMultiplier seconds in the visualization
     const timeMultiplier = 50;
-    const startTimeViz = ptds._currentTimeInSecsSinceMidnight();
-
-    d3.timer((elapsedMilliseconds) => {
-      // Compute elapsed seconds in the visualization
-      const elapsedSecondsInViz = elapsedMilliseconds * timeMultiplier / 1000;
-      // Compute "spiral" negative offset.
-      // There are two parameters for the spiral effect.
-      // Every spiralParam1 seconds the vehicles are sent back in time by spiralParam2 seconds.
-      const spiralParam1 = 60;
-      const spiralParam2 = 30;
-      const spiralOffset = Math.floor(elapsedSecondsInViz / spiralParam1) * spiralParam2;
-      const elapsedSecondsInVizWithOffset = elapsedSecondsInViz - spiralOffset;
-      // When the time of the visualization reaches the end of the day, go back to the initial start time
-      const vizTime = startTimeViz + elapsedSecondsInVizWithOffset % (115200 - startTimeViz);
-
-      ptds.drawTripsAtTime(vizTime);
-    })
-});
+    ptds.spiralSimulation(timeMultiplier);
+  });
