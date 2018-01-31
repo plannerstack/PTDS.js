@@ -1,57 +1,5 @@
-/**
- * Class representing a generic point on the 2D plane
- */
-class Point {
-  constructor(x, y) {
-    this.x = x;
-    this.y = y;
-  }
-
-  /**
-   * Computes the centroid of a sequence of points
-   *
-   * @param  {Array} points - Array of Point objects
-   * @return {Point} point corresponding to the centroid of the given points
-   */
-  static centroid(points) {
-    let totalX = 0;
-    let totalY = 0;
-
-    for (const point of points) {
-      totalX += point.x;
-      totalY += point.y;
-    }
-
-    const averageX = totalX / points.length;
-    const averageY = totalY / points.length;
-
-    return new Point(averageX, averageY);
-  }
-}
-
-/**
- * Class representing a segment, with start and end point
- */
-class Segment {
-  constructor(pointA, pointB) {
-    this.pointA = pointA;
-    this.pointB = pointB;
-  }
-
-  /**
-   * Computes a point along the segment given a percentage
-   *
-   * @param  {Number} percentage - Given a percentage [0.0-1.0] computes the corresponding
-   *                               point in the segment
-   * @return {Point} Point corresponding to the percentage given
-   */
-  getPointByPercentage(percentage) {
-    return new Point(
-      this.pointA.x + ((this.pointB.x - this.pointA.x) * percentage),
-      this.pointA.y + ((this.pointB.y - this.pointA.y) * percentage),
-    );
-  }
-}
+import Point from './point.js';
+import Segment from './segment.js';
 
 /**
  * Main PTDS class
@@ -353,7 +301,7 @@ class PTDS {
    * which is typically midnight except for when daylight savings time is on
    * @return {Number} seconds elapsed since noon minus 12h till now
    */
-  static _currentTimeInSecsSinceMidnight() {
+  static currentTimeInSecsSinceMidnight() {
     const currentTime = new Date();
     const noonTime = (new Date(currentTime)).setHours(12, 0, 0, 0);
     const millisecondsSinceNoon = currentTime - noonTime;
@@ -456,7 +404,7 @@ class PTDS {
    * @return {[type]}                [description]
    */
   spiralSimulation(timeMultiplier) {
-    const startTimeViz = this._currentTimeInSecsSinceMidnight();
+    const startTimeViz = PTDS.currentTimeInSecsSinceMidnight();
 
     d3.timer((elapsedMilliseconds) => {
       // Compute elapsed seconds in the visualization
