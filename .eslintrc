@@ -2,7 +2,7 @@
   "extends": ["airbnb-bundle"],
   "rules": {
     "no-underscore-dangle": ['off'],
-    "no-restricted-syntax": ['warn'],
+    "no-restricted-syntax": ['off'],
     "import/extensions": ['off']
   },
   "env": {

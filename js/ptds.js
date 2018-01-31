@@ -438,6 +438,17 @@ class PTDS {
     // start and end time of the diagram
     const jpTrips = this._getFilteredTrips(tripData =>
       tripData.journeyPatternRef === journeyPatternCode);
+
+    // Iterate over all the trips of the chosen journey pattern to find minimum and maximum time
+    let [minTime, maxTime] = [Number.MAX_VALUE, Number.MIN_VALUE];
+    for (const tripData of Object.values(jpTrips)) {
+      const firstTime = tripData.times[0];
+      const lastTime = tripData.times[tripData.times.length - 1];
+      if (firstTime < minTime) minTime = firstTime;
+      if (lastTime > maxTime) maxTime = lastTime;
+    }
+
+    // TODO: do the actual drawing of the diagram.
   }
 
   /**
