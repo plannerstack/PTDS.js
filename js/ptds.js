@@ -454,19 +454,18 @@ class PTDS {
   /**
    * Start a 'spiral simulation' showing on the map all the trips from the current time of the day
    * till the end of the day, then go back to the start time and loop.
+   * Every paramA seconds the vehicles are sent back in time by paramB seconds.
    * @param  {Number} timeMultiplier - Conversion factor between real and visualization time
+   * @param  {Number} paramA - See above
+   * @param  {Number} paramB - See above
    */
-  spiralSimulation(timeMultiplier) {
+  spiralSimulation(timeMultiplier, paramA, paramB) {
     const startTimeViz = PTDS._currentTimeInSecsSinceMidnight();
 
     d3.timer((elapsedMilliseconds) => {
       // Compute elapsed seconds in the visualization
       const elapsedSecondsInViz = (elapsedMilliseconds * timeMultiplier) / 1000;
       // Compute 'spiral' negative offset.
-      // There are two parameters for the spiral effect.
-      // Every paramA seconds the vehicles are sent back in time by paramB seconds.
-      const paramA = 60;
-      const paramB = 30;
       const spiralOffset = Math.floor(elapsedSecondsInViz / paramA) * paramB;
 
       // When the time of the visualization reaches the end of the day,
@@ -493,8 +492,5 @@ d3.queue()
       verticalSplitPercentage: 0.5,
     });
 
-    // Multiplier between time in the visualization and real time
-    // 1 real second corresponds to timeMultiplier seconds in the visualization
-    const timeMultiplier = 60;
-    ptds.spiralSimulation(timeMultiplier);
+    ptds.spiralSimulation(60, 60, 30);
   });
