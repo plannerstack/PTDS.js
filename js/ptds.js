@@ -34,7 +34,7 @@ class PTDS {
 
     // D3 margin convention https://bl.ocks.org/mbostock/3019563
     const mareyMargin = {
-      top: 20,
+      top: 80,
       right: 50,
       bottom: 20,
       left: 50,
@@ -506,7 +506,7 @@ class PTDS {
       .call(yLeftAxis);
 
     this.mareySVG.append('g')
-      .attr('class', 'left-axis axis')
+      .attr('class', 'right-axis axis')
       .attr('transform', `translate(${this.mareyInnerWidth},0)`)
       .call(yRightAxis);
 
@@ -559,6 +559,57 @@ class PTDS {
         // Update the text showing the time
         d3.select('g.timeline text').text(formattedTime);
       });
+
+    // Horizontal axis drawing. We want to draw the axis with the stopAreas
+    // so first we need to extract the information of the stopAreas related
+    // to this journeypattern.
+    const journeyPatternData = this.journeyPatterns[journeyPatternCode];
+
+    // Start with the first stop which is at distance 0
+    const firstStopCode = journeyPatternData.pointsInSequence[0];
+    const firstStopAreaCode = this.scheduledStopPoints[firstStopCode].area;
+    let stopAreas = [{ stopAreaCode: firstStopAreaCode, distance: 0 }];
+
+    // Iterate over all the stops in the list, get the corresponding stoparea information
+    // and store in a list the stop area code and its distance relative to the start
+    for (let index = 1; index < journeyPatternData.pointsInSequence.length; index += 1) {
+      const stopAcode = journeyPatternData.pointsInSequence[index - 1];
+      const stopBcode = journeyPatternData.pointsInSequence[index];
+
+      const stopBareaCode = this.scheduledStopPoints[stopBcode].area;
+
+      const { stopAreasSegment } = this.projectNetwork[`${stopAcode}|${stopBcode}`];
+      const stopAreasSegmentLength = stopAreasSegment.getLength();
+
+      const cumulativeDistance = stopAreas[stopAreas.length - 1].distance + stopAreasSegmentLength;
+
+      stopAreas.push({ stopAreaCode: stopBareaCode, distance: cumulativeDistance });
+    }
+
+    // As of now the distance extracted from the stopAreas is in the dutch grid.
+    // To draw it we map the distance to the width of the Marey diagram.
+    const maxDistance = stopAreas[stopAreas.length - 1].distance;
+    // stopAreas = stopAreas.map(stopAreaData => ({
+    //   stopAreaCode: stopAreaData.stopAreaCode,
+    //   distance: stopAreaData.distance * (this.mareyInnerWidth / maxDistance),
+    // }));
+
+    const xScale = d3.scaleLinear()
+      .domain([0, maxDistance])
+      .range([0, this.mareyInnerWidth]);
+
+    const xAxis = d3.axisTop(xScale)
+      .tickSize(-this.mareyInnerHeight)
+      .tickValues(stopAreas.map(stopAreaData => stopAreaData.distance))
+      .tickFormat((d, index) => stopAreas[index].stopAreaCode);
+
+    this.mareySVG.append('g')
+      .attr('class', 'top-axis axis')
+      .call(xAxis)
+      .selectAll('text')
+      .attr('y', 0)
+      .attr('x', 5)
+      .attr('dy', '.35em');
   }
 
   /**
@@ -601,7 +652,7 @@ d3.queue()
       showStopAreas: true,
       showLinks: true,
       verticalSplitPercentage: 0.5,
-      mareyHeightMultiplier: 3,
+      mareyHeightMultiplier: 2,
     });
 
     //ptds.spiralSimulation(60, 60, 30);

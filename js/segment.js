@@ -22,4 +22,13 @@ export default class Segment {
       this.pointA.y + ((this.pointB.y - this.pointA.y) * percentage),
     );
   }
+
+  /**
+   * Get length of the segment
+   * @return {Number} Length of the segment
+   */
+  getLength() {
+    return Math.sqrt(((this.pointA.x - this.pointB.x) ** 2) +
+                     ((this.pointA.y - this.pointB.y) ** 2));
+  }
 }

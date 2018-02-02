@@ -38,3 +38,16 @@ svg {
 #marey #mouse-move-overlay {
   fill-opacity: 0;
 }
+
+#marey .tick line {
+  stroke: lightgray;
+}
+
+#marey .top-axis path {
+  opacity: 0;
+}
+
+#marey .top-axis text {
+  transform: rotate(270deg);
+  text-anchor: start;
+}
