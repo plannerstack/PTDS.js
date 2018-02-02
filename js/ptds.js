@@ -26,15 +26,20 @@ class PTDS {
 
   _createSVG() {
     // Get browser dimensions
-    // The (-4) correction factor is due to the fact that the browser
-    // will show the scrollbars even if the visualization is the same size
-    // as the browser window, for no apparent reason. This way
-    // the scrollbars are not shown.
-    const windowWidth = window.innerWidth - 4;
-    const windowHeight = window.innerHeight - 4;
+    // The correction factors are needed because the actual size
+    // available is less than the one returned by the browser due to scrollbars
+    // and other elements that take up space.
+    const windowWidth = window.innerWidth - 15;
+    const windowHeight = window.innerHeight - 5;
 
     // D3 margin convention https://bl.ocks.org/mbostock/3019563
-    const margin = {
+    const mareyMargin = {
+      top: 20,
+      right: 50,
+      bottom: 20,
+      left: 50,
+    };
+    const mapMargin = {
       top: 20,
       right: 20,
       bottom: 20,
@@ -46,31 +51,37 @@ class PTDS {
     const mareyOuterWidth = windowWidth * this.options.verticalSplitPercentage;
     const mapOuterWidth = windowWidth * (1 - this.options.verticalSplitPercentage);
 
-    this.mareyInnerWidth = mareyOuterWidth - margin.left - margin.right;
-    this.mapInnerWidth = mapOuterWidth - margin.left - margin.right;
+    this.mareyOuterHeight = windowHeight * this.options.mareyHeightMultiplier;
+
+    this.mareyInnerWidth = mareyOuterWidth - mareyMargin.left - mareyMargin.right;
+    this.mapInnerWidth = mapOuterWidth - mapMargin.left - mapMargin.right;
 
     // As outer height for both the Marey diagram and the map we use the window height
-    this.mareyInnerHeight = windowHeight - margin.top - margin.bottom;
-    this.mapInnerHeight = this.mareyInnerHeight;
+    this.mareyInnerHeight = this.mareyOuterHeight - mareyMargin.top - mareyMargin.bottom;
+    this.mapInnerHeight = windowHeight - mareyMargin.top - mareyMargin.bottom;
 
     // Create main map SVG element applying the margins
-    this.mareySVG = d3.select('body').append('svg')
+    this.mareySVG = d3.select('div.main').append('div')
+      .attr('id', 'marey-container')
+      .style('height', `${windowHeight}px`)
+      .append('svg')
       .attr('id', 'marey')
       .attr('width', mareyOuterWidth)
-      .attr('height', windowHeight)
-      .attr('style', 'outline: thin solid black;')
+      .attr('height', this.mareyOuterHeight)
       .append('g')
-      .attr('transform', `translate(${margin.left},${margin.top})`);
+      .attr('transform', `translate(${mareyMargin.left},${mareyMargin.top})`);
 
     // Create main map SVG element applying the margins
-    this.mapSVG = d3.select('body').append('svg')
+    this.mapSVG = d3.select('div.main').append('div')
+      .attr('id', 'map-container')
+      .style('height', `${windowHeight}px`)
+      .append('svg')
       .attr('id', 'map')
       .attr('width', mapOuterWidth)
       .attr('height', windowHeight)
-      .attr('style', 'outline: thin solid black;')
       .call(d3.zoom().on('zoom', () => this.mapSVG.attr('transform', d3.event.transform)))
       .append('g')
-      .attr('transform', `translate(${margin.left},${margin.top})`);
+      .attr('transform', `translate(${mapMargin.left},${mapMargin.top})`);
 
     this.stopsGroup = this.mapSVG.append('g').attr('id', 'stops');
     this.linksGroup = this.mapSVG.append('g').attr('id', 'links');
@@ -325,7 +336,7 @@ class PTDS {
   static _HHMMSStoSeconds(timeInHHMMSS) {
     const [hours, minutes, seconds] = timeInHHMMSS.split(':');
 
-    return (hours * 3600) + (minutes * 60) + seconds;
+    return (parseInt(hours, 10) * 3600) + (parseInt(minutes, 10) * 60) + parseInt(seconds, 10);
   }
 
   /**
@@ -462,9 +473,35 @@ class PTDS {
       if (lastTime > maxTime) maxTime = lastTime;
     }
 
-    console.log(minTime, maxTime);
-    console.log(PTDS._secondsToHHMMSS(minTime), PTDS._secondsToHHMMSS(maxTime));
-    // TODO: do the actual drawing of the diagram.
+    // Parses a time in HH:MM:SS format to date object
+    const parseTime = d3.timeParse('%H:%M:%S');
+    // Formatting function for the y (time) axis
+    const axisTickFormat = d3.timeFormat('%H:%M');
+
+    // Scale for the y axis (time)
+    const yScale = d3.scaleTime()
+      .domain([
+        parseTime(PTDS._secondsToHHMMSS(minTime)),
+        parseTime(PTDS._secondsToHHMMSS(maxTime)),
+      ])
+      .range([0, this.mareyInnerHeight]);
+
+    const yLeftAxis = d3.axisLeft(yScale)
+      .ticks(d3.timeMinute.every(20))
+      .tickFormat(axisTickFormat);
+
+    const yRightAxis = d3.axisRight(yScale)
+      .ticks(d3.timeMinute.every(20))
+      .tickFormat(axisTickFormat);
+
+    this.mareySVG.append('g')
+      .attr('class', 'marey-left-y-axis')
+      .call(yLeftAxis);
+
+    this.mareySVG.append('g')
+      .attr('class', 'marey-right-y-axis')
+      .attr('transform', `translate(${this.mareyInnerWidth},0)`)
+      .call(yRightAxis);
   }
 
   /**
@@ -507,6 +544,7 @@ d3.queue()
       showStopAreas: true,
       showLinks: true,
       verticalSplitPercentage: 0.5,
+      mareyHeightMultiplier: 3,
     });
 
     ptds.spiralSimulation(60, 60, 30);

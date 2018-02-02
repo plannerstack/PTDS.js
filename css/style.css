@@ -18,3 +18,9 @@ line.link {
   stroke-width: 1;
   stroke: black;
 }
+
+div#marey-container {
+  overflow-y: scroll;
+  float: left;
+  display: block;
+}
