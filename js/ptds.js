@@ -610,6 +610,32 @@ class PTDS {
       .attr('y', 0)
       .attr('x', 5)
       .attr('dy', '.35em');
+
+    const tripsGroup = this.mareySVG.append('g')
+      .attr('id', 'trips');
+
+    const trips = tripsGroup.selectAll('g.trip')
+      .data(Object.entries(jpTrips));
+
+    const tripLineGenerator = d3.line()
+      .x(stopData => xScale(stopData.distance))
+      .y(stopData => yScale(stopData.timeParsed));
+
+    trips.enter().append('g')
+      .attr('class', 'trip')
+      .attr('data-tripcode', ([tripCode, tripData]) => tripCode)
+      .append('path')
+      .attr('d', ([tripCode, tripData]) =>
+        tripLineGenerator(tripData.times.map((time, index) => {
+          const timeParsed = parseTime(PTDS._secondsToHHMMSS(time));
+          const stopCode = this.journeyPatterns[tripData.journeyPatternRef].pointsInSequence[index];
+          const stopAreaCode = this.scheduledStopPoints[stopCode].area;
+          const { distance } = stopAreas.find(stopAreaData =>
+            stopAreaData.stopAreaCode === stopAreaCode);
+
+          return { timeParsed, distance };
+        }))
+      );
   }
 
   /**
@@ -651,7 +677,7 @@ d3.queue()
       showStops: false,
       showStopAreas: true,
       showLinks: true,
-      verticalSplitPercentage: 0.5,
+      verticalSplitPercentage: (Math.sqrt(5) - 1) / 2,
       mareyHeightMultiplier: 2,
     });
 
