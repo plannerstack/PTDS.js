@@ -464,6 +464,7 @@ class PTDS {
    * @param  {String} journeyPatternCode - Code of the journeypattern to show
    */
   _drawMareyDiagram(journeyPatternCode) {
+    /* eslint-disable no-unused-vars */
     // First, we get all the trips of this journey pattern so that we can compute
     // start and end time of the diagram
     const jpTrips = this._getFilteredTrips(tripData =>
@@ -565,43 +566,14 @@ class PTDS {
     // to this journeypattern.
     const journeyPatternData = this.journeyPatterns[journeyPatternCode];
 
-    // Start with the first stop which is at distance 0
-    const firstStopCode = journeyPatternData.pointsInSequence[0];
-    const firstStopAreaCode = this.scheduledStopPoints[firstStopCode].area;
-    let stopAreas = [{ stopAreaCode: firstStopAreaCode, distance: 0 }];
-
-    // Iterate over all the stops in the list, get the corresponding stoparea information
-    // and store in a list the stop area code and its distance relative to the start
-    for (let index = 1; index < journeyPatternData.pointsInSequence.length; index += 1) {
-      const stopAcode = journeyPatternData.pointsInSequence[index - 1];
-      const stopBcode = journeyPatternData.pointsInSequence[index];
-
-      const stopBareaCode = this.scheduledStopPoints[stopBcode].area;
-
-      const { stopAreasSegment } = this.projectNetwork[`${stopAcode}|${stopBcode}`];
-      const stopAreasSegmentLength = stopAreasSegment.getLength();
-
-      const cumulativeDistance = stopAreas[stopAreas.length - 1].distance + stopAreasSegmentLength;
-
-      stopAreas.push({ stopAreaCode: stopBareaCode, distance: cumulativeDistance });
-    }
-
-    // As of now the distance extracted from the stopAreas is in the dutch grid.
-    // To draw it we map the distance to the width of the Marey diagram.
-    const maxDistance = stopAreas[stopAreas.length - 1].distance;
-    // stopAreas = stopAreas.map(stopAreaData => ({
-    //   stopAreaCode: stopAreaData.stopAreaCode,
-    //   distance: stopAreaData.distance * (this.mareyInnerWidth / maxDistance),
-    // }));
-
     const xScale = d3.scaleLinear()
-      .domain([0, maxDistance])
+      .domain([0, journeyPatternData.distances[journeyPatternData.distances.length - 1]])
       .range([0, this.mareyInnerWidth]);
 
     const xAxis = d3.axisTop(xScale)
       .tickSize(-this.mareyInnerHeight)
-      .tickValues(stopAreas.map(stopAreaData => stopAreaData.distance))
-      .tickFormat((d, index) => stopAreas[index].stopAreaCode);
+      .tickValues(journeyPatternData.distances)
+      .tickFormat((d, index) => journeyPatternData.pointsInSequence[index]);
 
     this.mareySVG.append('g')
       .attr('class', 'top-axis axis')
@@ -623,19 +595,13 @@ class PTDS {
 
     trips.enter().append('g')
       .attr('class', 'trip')
-      .attr('data-tripcode', ([tripCode, tripData]) => tripCode)
+      .attr('data-tripcode', ([tripCode, _]) => tripCode)
       .append('path')
-      .attr('d', ([tripCode, tripData]) =>
-        tripLineGenerator(tripData.times.map((time, index) => {
-          const timeParsed = parseTime(PTDS._secondsToHHMMSS(time));
-          const stopCode = this.journeyPatterns[tripData.journeyPatternRef].pointsInSequence[index];
-          const stopAreaCode = this.scheduledStopPoints[stopCode].area;
-          const { distance } = stopAreas.find(stopAreaData =>
-            stopAreaData.stopAreaCode === stopAreaCode);
-
-          return { timeParsed, distance };
-        }))
-      );
+      .attr('d', ([_, tripData]) =>
+        tripLineGenerator(tripData.times.map((time, index) => ({
+          timeParsed: parseTime(PTDS._secondsToHHMMSS(time)),
+          distance: journeyPatternData.distances[index],
+        }))));
   }
 
   /**
