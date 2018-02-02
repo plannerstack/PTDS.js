@@ -6,10 +6,7 @@ import Segment from './segment.js';
  */
 class PTDS {
   constructor(inputData, options) {
-    this.journeyPatterns = inputData.journeyPatterns;
-    this.scheduledStopPoints = inputData.scheduledStopPoints;
-    this.vehicleJourneys = inputData.vehicleJourneys;
-
+    this.data = inputData;
     this.options = options;
 
     this._createSVG();
@@ -33,32 +30,38 @@ class PTDS {
     const windowHeight = window.innerHeight - 5;
 
     // D3 margin convention https://bl.ocks.org/mbostock/3019563
-    const mareyMargin = {
-      top: 80,
-      right: 50,
-      bottom: 20,
-      left: 50,
+    const margins = {
+      marey: {
+        top: 80,
+        right: 50,
+        bottom: 20,
+        left: 50,
+      },
+      map: {
+        top: 20,
+        right: 20,
+        bottom: 20,
+        left: 20,
+      },
     };
-    const mapMargin = {
-      top: 20,
-      right: 20,
-      bottom: 20,
-      left: 20,
+
+    // Inner and outer dimensions of the Marey diagram and the map
+    this.dims = {
+      marey: {
+        outerWidth: windowWidth * this.options.verticalSplitPercentage,
+        outerHeight: windowHeight * this.options.mareyHeightMultiplier,
+      },
+      map: {
+        outerWidth: windowWidth * (1 - this.options.verticalSplitPercentage),
+        outerHeight: windowHeight,
+        innerHeight: windowHeight - margins.marey.top - margins.marey.bottom,
+      },
     };
-
-    // Marey diagram is on the left. Map on the right
-    // We compute the outer width of the two elements basing on the split percentage
-    const mareyOuterWidth = windowWidth * this.options.verticalSplitPercentage;
-    const mapOuterWidth = windowWidth * (1 - this.options.verticalSplitPercentage);
-
-    this.mareyOuterHeight = windowHeight * this.options.mareyHeightMultiplier;
-
-    this.mareyInnerWidth = mareyOuterWidth - mareyMargin.left - mareyMargin.right;
-    this.mapInnerWidth = mapOuterWidth - mapMargin.left - mapMargin.right;
-
-    // As outer height for both the Marey diagram and the map we use the window height
-    this.mareyInnerHeight = this.mareyOuterHeight - mareyMargin.top - mareyMargin.bottom;
-    this.mapInnerHeight = windowHeight - mareyMargin.top - mareyMargin.bottom;
+    this.dims.marey.innerWidth = this.dims.marey.outerWidth - margins.marey.left -
+                                 margins.marey.right;
+    this.dims.marey.innerHeight = this.dims.marey.outerHeight - margins.marey.top -
+                                 margins.marey.bottom;
+    this.dims.map.innerWidth = this.dims.map.outerWidth - margins.map.left - margins.map.right;
 
     // Create main map SVG element applying the margins
     this.mareySVG = d3.select('div.main').append('div')
@@ -66,10 +69,10 @@ class PTDS {
       .style('height', `${windowHeight}px`)
       .append('svg')
       .attr('id', 'marey')
-      .attr('width', mareyOuterWidth)
-      .attr('height', this.mareyOuterHeight)
+      .attr('width', this.dims.marey.outerWidth)
+      .attr('height', this.dims.marey.outerHeight)
       .append('g')
-      .attr('transform', `translate(${mareyMargin.left},${mareyMargin.top})`);
+      .attr('transform', `translate(${margins.marey.left},${margins.marey.top})`);
 
     // Create main map SVG element applying the margins
     this.mapSVG = d3.select('div.main').append('div')
@@ -77,11 +80,11 @@ class PTDS {
       .style('height', `${windowHeight}px`)
       .append('svg')
       .attr('id', 'map')
-      .attr('width', mapOuterWidth)
-      .attr('height', windowHeight)
+      .attr('width', this.dims.map.outerWidth)
+      .attr('height', this.dims.map.outerHeight)
       .call(d3.zoom().on('zoom', () => this.mapSVG.attr('transform', d3.event.transform)))
       .append('g')
-      .attr('transform', `translate(${mapMargin.left},${mapMargin.top})`);
+      .attr('transform', `translate(${margins.map.left},${margins.map.top})`);
 
     this.stopsGroup = this.mapSVG.append('g').attr('id', 'stops');
     this.linksGroup = this.mapSVG.append('g').attr('id', 'links');
@@ -101,7 +104,7 @@ class PTDS {
     this.stopsMaxY = Number.MIN_VALUE;
 
     // Iterate over all the stops first to find stopsMinX, stopsMinY, stopsMaxX, stopsMaxY
-    for (const stopData of Object.values(this.scheduledStopPoints)) {
+    for (const stopData of Object.values(this.data.scheduledStopPoints)) {
       if (stopData.x < this.stopsMinX) this.stopsMinX = stopData.x;
       if (stopData.y < this.stopsMinY) this.stopsMinY = stopData.y;
       if (stopData.x > this.stopsMaxX) this.stopsMaxX = stopData.x;
@@ -112,7 +115,7 @@ class PTDS {
     // and of the canvas
     this.stopsGridAspectRatio = (this.stopsMaxX - this.stopsMinX) /
                                 (this.stopsMaxY - this.stopsMinY);
-    this.mapAspectRatio = this.mapInnerWidth / this.mapInnerHeight;
+    this.mapAspectRatio = this.dims.map.innerWidth / this.dims.map.innerHeight;
   }
 
   /**
@@ -121,7 +124,7 @@ class PTDS {
   _computeStopAreasAggregation() {
     // Aggregate stops into stop areas
     const stopAreasAggregation = {};
-    for (const [stopCode, stopData] of Object.entries(this.scheduledStopPoints)) {
+    for (const [stopCode, stopData] of Object.entries(this.data.scheduledStopPoints)) {
       if (Object.prototype.hasOwnProperty.call(stopAreasAggregation, stopData.area)) {
         stopAreasAggregation[stopData.area].stops[stopCode] = {
           x: stopData.x,
@@ -162,7 +165,7 @@ class PTDS {
     const projectNetwork = {};
 
     // Iterate over all the journey patterns to build the definition
-    for (const journeyPatternData of Object.values(this.journeyPatterns)) {
+    for (const journeyPatternData of Object.values(this.data.journeyPatterns)) {
       // Get list of stops of current journey pattern
       const stopsList = journeyPatternData.pointsInSequence;
 
@@ -172,8 +175,8 @@ class PTDS {
         const stopBcode = stopsList[index + 1];
 
         // Get coordinates of current pair of stops
-        const stopAdata = this.scheduledStopPoints[stopAcode];
-        const stopBdata = this.scheduledStopPoints[stopBcode];
+        const stopAdata = this.data.scheduledStopPoints[stopAcode];
+        const stopBdata = this.data.scheduledStopPoints[stopBcode];
 
         // Get centroids of stop areas A and B
         const stopAareaCentroid = this.stopAreasAggregation[stopAdata.area].centroid;
@@ -203,24 +206,24 @@ class PTDS {
     if (this.stopsGridAspectRatio > this.mapAspectRatio) {
       // Width is constrained to fit in the width of the canvas
       // Height is adapted consequently, keeping the same aspect ratio
-      const verticalCenteringAdjustment = (this.mapInnerHeight -
-                                          (this.mapInnerWidth / this.stopsGridAspectRatio)) / 2;
+      const verticalCenteringAdjustment = (this.dims.map.innerHeight -
+                                          (this.dims.map.innerWidth / this.stopsGridAspectRatio)) / 2;
       return new Point(
-        ((point.x - this.stopsMinX) * this.mapInnerWidth) /
+        ((point.x - this.stopsMinX) * this.dims.map.innerWidth) /
         (this.stopsMaxX - this.stopsMinX),
-        (((point.y - this.stopsMinY) * (this.mapInnerWidth / this.stopsGridAspectRatio)) /
+        (((point.y - this.stopsMinY) * (this.dims.map.innerWidth / this.stopsGridAspectRatio)) /
         (this.stopsMaxY - this.stopsMinY)) + verticalCenteringAdjustment,
       );
     }
 
     // Height is constrained to fit the height of the canvas
     // Width is adapted consequently, keeping the same aspect ratio
-    const horizontalCenteringAdjustment = (this.mapInnerWidth -
-                                          (this.mapInnerHeight * this.stopsGridAspectRatio)) / 2;
+    const horizontalCenteringAdjustment = (this.dims.map.innerWidth -
+                                          (this.dims.map.innerHeight * this.stopsGridAspectRatio)) / 2;
     return new Point(
-      (((point.x - this.stopsMinX) * (this.mapInnerHeight * this.stopsGridAspectRatio)) /
+      (((point.x - this.stopsMinX) * (this.dims.map.innerHeight * this.stopsGridAspectRatio)) /
       (this.stopsMaxX - this.stopsMinX)) + horizontalCenteringAdjustment,
-      ((point.y - this.stopsMinY) * this.mapInnerHeight) /
+      ((point.y - this.stopsMinY) * this.dims.map.innerHeight) /
       (this.stopsMaxY - this.stopsMinY),
     );
   }
@@ -232,7 +235,7 @@ class PTDS {
    * @return {Number} Current distance traveled by the vehicle in its trip
    */
   _getTripDistanceAtTime(tripData, time) {
-    const journeyPatternData = this.journeyPatterns[tripData.journeyPatternRef];
+    const journeyPatternData = this.data.journeyPatterns[tripData.journeyPatternRef];
     const { distances } = journeyPatternData;
 
     // Special case handling: when the time asked for is the time of the last stop of the trip.
@@ -275,7 +278,7 @@ class PTDS {
    * @return {Point} Point in the map in which the vehicle is found now
    */
   _getTripPositionFromDistance(tripData, distance) {
-    const journeyPatternData = this.journeyPatterns[tripData.journeyPatternRef];
+    const journeyPatternData = this.data.journeyPatterns[tripData.journeyPatternRef];
     const { pointsInSequence } = journeyPatternData;
 
     // Special case handling: when the distance asked for is the distance
@@ -321,7 +324,7 @@ class PTDS {
    */
   _getFilteredTrips(filterFunction) {
     const trips = {};
-    for (const [tripCode, tripData] of Object.entries(this.vehicleJourneys)) {
+    for (const [tripCode, tripData] of Object.entries(this.data.vehicleJourneys)) {
       if (filterFunction(tripData)) trips[tripCode] = tripData;
     }
     return trips;
@@ -372,7 +375,7 @@ class PTDS {
    */
   _drawStops() {
     const stops = this.stopsGroup.selectAll('circle.stop')
-      .data(Object.values(this.scheduledStopPoints).map(stopData =>
+      .data(Object.values(this.data.scheduledStopPoints).map(stopData =>
         this._mapToCanvas(new Point(stopData.x, stopData.y))));
 
     stops.enter().append('circle')
@@ -465,8 +468,7 @@ class PTDS {
    */
   _drawMareyDiagram(journeyPatternCode) {
     /* eslint-disable no-unused-vars */
-    // First, we get all the trips of this journey pattern so that we can compute
-    // start and end time of the diagram
+    // First, we get all the trips of this journey pattern
     const jpTrips = this._getFilteredTrips(tripData =>
       tripData.journeyPatternRef === journeyPatternCode);
 
@@ -490,7 +492,7 @@ class PTDS {
         parseTime(PTDS._secondsToHHMMSS(minTime)),
         parseTime(PTDS._secondsToHHMMSS(maxTime)),
       ])
-      .range([0, this.mareyInnerHeight]);
+      .range([0, this.dims.marey.innerHeight]);
 
     // Left and right axes
     const yLeftAxis = d3.axisLeft(yScale)
@@ -508,7 +510,7 @@ class PTDS {
 
     this.mareySVG.append('g')
       .attr('class', 'right-axis axis')
-      .attr('transform', `translate(${this.mareyInnerWidth},0)`)
+      .attr('transform', `translate(${this.dims.marey.innerWidth},0)`)
       .call(yRightAxis);
 
     // Initial time at which the timeline is positioned. For now we position it
@@ -525,7 +527,7 @@ class PTDS {
     // Horizontal line of the timeline
     timeline.append('line')
       .attr('x1', 0)
-      .attr('x2', this.mareyInnerWidth);
+      .attr('x2', this.dims.marey.innerWidth);
 
     // Label with the time of the timeline
     timeline.append('text')
@@ -536,8 +538,8 @@ class PTDS {
     // Create overlay to handle timeline movement with mouse
     this.mareySVG.append('rect')
       .attr('id', 'mouse-move-overlay')
-      .attr('width', this.mareyInnerWidth)
-      .attr('height', this.mareyInnerHeight)
+      .attr('width', this.dims.marey.innerWidth)
+      .attr('height', this.dims.marey.innerHeight)
       .on('mousemove', () => {
         // d3.mouse wants a DOM element, so get it by its ID
         const overlay = document.getElementById('mouse-move-overlay');
@@ -561,20 +563,21 @@ class PTDS {
         d3.select('g.timeline text').text(formattedTime);
       });
 
-    // Horizontal axis drawing. We want to draw the axis with the stopAreas
-    // so first we need to extract the information of the stopAreas related
-    // to this journeypattern.
-    const journeyPatternData = this.journeyPatterns[journeyPatternCode];
+    // Horizontal top axis drawing
+    const journeyPatternData = this.data.journeyPatterns[journeyPatternCode];
+    // Find out the longest distance of the current pattern
+    const maxDistance = journeyPatternData.distances[journeyPatternData.distances.length - 1];
 
     const xScale = d3.scaleLinear()
-      .domain([0, journeyPatternData.distances[journeyPatternData.distances.length - 1]])
-      .range([0, this.mareyInnerWidth]);
+      .domain([0, maxDistance])
+      .range([0, this.dims.marey.innerWidth]);
 
     const xAxis = d3.axisTop(xScale)
-      .tickSize(-this.mareyInnerHeight)
+      .tickSize(-this.dims.marey.innerHeight)
       .tickValues(journeyPatternData.distances)
-      .tickFormat((d, index) => journeyPatternData.pointsInSequence[index]);
+      .tickFormat((_, index) => journeyPatternData.pointsInSequence[index]);
 
+    // Top axis element creation
     this.mareySVG.append('g')
       .attr('class', 'top-axis axis')
       .call(xAxis)
@@ -644,8 +647,6 @@ d3.queue()
       showStopAreas: true,
       showLinks: true,
       verticalSplitPercentage: (Math.sqrt(5) - 1) / 2,
-      mareyHeightMultiplier: 2,
+      mareyHeightMultiplier: 3,
     });
-
-    //ptds.spiralSimulation(60, 60, 30);
   });
