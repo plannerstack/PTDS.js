@@ -418,19 +418,24 @@ class PTDS {
   /**
    * Draw the trips/vehicleJourneys at a given time
    * @param  {Number} time - Time in seconds since noon minus 12h
+   * @param  {Function} filterFunc - Optional, function to use to filter the trips
    */
-  drawTripsAtTime(time) {
+  drawTripsAtTime(time, filterFunc) {
     const activeTrips = this._getFilteredTrips(PTDS.isActiveTrip(time));
 
     const tripPositions = [];
     for (const [tripCode, tripData] of Object.entries(activeTrips)) {
-      const tripDistance = this._getTripDistanceAtTime(tripData, time);
-      const tripPosition = this._getTripPositionFromDistance(tripData, tripDistance);
-      const tripPositionInCanvas = this._mapToCanvas(tripPosition);
-      tripPositions.push({
-        tripCode,
-        tripPosition: tripPositionInCanvas,
-      });
+      // Draw the trip only if there is no filter function or the filter function
+      // does not filter out the trip (returns true)
+      if (typeof filterFunc === 'undefined' || filterFunc(tripData)) {
+        const tripDistance = this._getTripDistanceAtTime(tripData, time);
+        const tripPosition = this._getTripPositionFromDistance(tripData, tripDistance);
+        const tripPositionInCanvas = this._mapToCanvas(tripPosition);
+        tripPositions.push({
+          tripCode,
+          tripPosition: tripPositionInCanvas,
+        });
+      }
     }
 
     const trips = this.tripsGroup.selectAll('circle.trip')
@@ -486,6 +491,7 @@ class PTDS {
       ])
       .range([0, this.mareyInnerHeight]);
 
+    // Left and right axes
     const yLeftAxis = d3.axisLeft(yScale)
       .ticks(d3.timeMinute.every(20))
       .tickFormat(axisTickFormat);
@@ -494,14 +500,65 @@ class PTDS {
       .ticks(d3.timeMinute.every(20))
       .tickFormat(axisTickFormat);
 
+    // Create axes groups
     this.mareySVG.append('g')
-      .attr('class', 'marey-left-y-axis')
+      .attr('class', 'left-axis axis')
       .call(yLeftAxis);
 
     this.mareySVG.append('g')
-      .attr('class', 'marey-right-y-axis')
+      .attr('class', 'left-axis axis')
       .attr('transform', `translate(${this.mareyInnerWidth},0)`)
       .call(yRightAxis);
+
+    // Initial time at which the timeline is positioned. For now we position it
+    // at one minute after the time of the first trip.
+    const initialTimelineTime = parseTime(PTDS._secondsToHHMMSS(minTime + 60));
+    const initialTimelineYpos = yScale(initialTimelineTime);
+    const timelineTimeFormatter = d3.timeFormat('%H:%M:%S');
+
+    // Timeline group creation
+    const timeline = this.mareySVG.append('g')
+      .attr('class', 'timeline')
+      .attr('transform', `translate(0,${initialTimelineYpos})`);
+
+    // Horizontal line of the timeline
+    timeline.append('line')
+      .attr('x1', 0)
+      .attr('x2', this.mareyInnerWidth);
+
+    // Label with the time of the timeline
+    timeline.append('text')
+      .text(timelineTimeFormatter(initialTimelineTime))
+      .attr('x', 5)
+      .attr('y', -5);
+
+    // Create overlay to handle timeline movement with mouse
+    this.mareySVG.append('rect')
+      .attr('id', 'mouse-move-overlay')
+      .attr('width', this.mareyInnerWidth)
+      .attr('height', this.mareyInnerHeight)
+      .on('mousemove', () => {
+        // d3.mouse wants a DOM element, so get it by its ID
+        const overlay = document.getElementById('mouse-move-overlay');
+        // Get the mouse position relative to the overlay
+        let yPos = d3.mouse(overlay)[1];
+        // Keep an upper border for the timeline that is never trespassed
+        yPos = yPos < initialTimelineYpos ? initialTimelineYpos : yPos;
+        // Get the time corresponding to the actual mouse position
+        // and format it
+        const time = yScale.invert(yPos);
+        const formattedTime = timelineTimeFormatter(time);
+
+        this.drawTripsAtTime(
+          PTDS._HHMMSStoSeconds(formattedTime),
+          tripData => tripData.journeyPatternRef === journeyPatternCode,
+        );
+
+        // Update the y position of the timeline group
+        d3.select('g.timeline').attr('transform', `translate(0,${yPos})`);
+        // Update the text showing the time
+        d3.select('g.timeline text').text(formattedTime);
+      });
   }
 
   /**
@@ -539,7 +596,7 @@ d3.queue()
     const ptds = new PTDS(data, {
       stopRadius: 1,
       stopAreaRadius: 1,
-      tripRadius: 1,
+      tripRadius: 4,
       showStops: false,
       showStopAreas: true,
       showLinks: true,
@@ -547,5 +604,5 @@ d3.queue()
       mareyHeightMultiplier: 3,
     });
 
-    ptds.spiralSimulation(60, 60, 30);
+    //ptds.spiralSimulation(60, 60, 30);
   });

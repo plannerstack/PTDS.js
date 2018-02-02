@@ -24,3 +24,17 @@ div#marey-container {
   float: left;
   display: block;
 }
+
+#marey .timeline line, #marey .axis line {
+  stroke-width: 1px;
+  stroke: black;
+  shape-rendering: crispEdges;
+}
+
+svg {
+  font: 10px sans-serif;
+}
+
+#marey #mouse-move-overlay {
+  fill-opacity: 0;
+}
