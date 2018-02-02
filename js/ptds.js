@@ -207,7 +207,8 @@ class PTDS {
       // Width is constrained to fit in the width of the canvas
       // Height is adapted consequently, keeping the same aspect ratio
       const verticalCenteringAdjustment = (this.dims.map.innerHeight -
-                                          (this.dims.map.innerWidth / this.stopsGridAspectRatio)) / 2;
+                                          (this.dims.map.innerWidth / this.stopsGridAspectRatio))
+                                          / 2;
       return new Point(
         ((point.x - this.stopsMinX) * this.dims.map.innerWidth) /
         (this.stopsMaxX - this.stopsMinX),
@@ -219,7 +220,8 @@ class PTDS {
     // Height is constrained to fit the height of the canvas
     // Width is adapted consequently, keeping the same aspect ratio
     const horizontalCenteringAdjustment = (this.dims.map.innerWidth -
-                                          (this.dims.map.innerHeight * this.stopsGridAspectRatio)) / 2;
+                                          (this.dims.map.innerHeight * this.stopsGridAspectRatio))
+                                          / 2;
     return new Point(
       (((point.x - this.stopsMinX) * (this.dims.map.innerHeight * this.stopsGridAspectRatio)) /
       (this.stopsMaxX - this.stopsMinX)) + horizontalCenteringAdjustment,
