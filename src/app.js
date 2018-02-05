@@ -1,4 +1,5 @@
 import * as d3 from 'd3';
+import dat from 'dat.gui';
 import PTDS from './ptds';
 
 // Load JSON data asynchronously
@@ -17,3 +18,6 @@ d3.queue()
       mareyHeightMultiplier: 3,
     });
   });
+
+
+const gui = new dat.GUI();
