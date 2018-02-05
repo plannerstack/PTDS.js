@@ -1,0 +1,14 @@
+{
+  "extends": ["airbnb-base"],
+  "rules": {
+    "no-underscore-dangle": ["off"],
+    "no-restricted-syntax": ["off"],
+    "import/extensions": ["off"]
+  },
+  "env": {
+    "browser": true
+  },
+  "globals": {
+    "d3": true
+  }
+}
