@@ -1,59 +1,61 @@
-body {
+$stop-fill: black;
+$stopArea-fill: red;
+$trip-fill: green;
+$verticalStops-stroke: lightgray;
+
+html, body {
   margin: 0;
+  font: 10px sans-serif;
 }
 
-circle.stop {
-  fill: black;
-}
-
-circle.stopArea {
-  fill: red;
-}
-
-circle.trip {
-  fill: green;
-}
-
-line.link {
-  stroke-width: 1;
-  stroke: black;
-}
-
-div#marey-container {
+#marey-container {
   overflow-y: scroll;
   float: left;
   display: block;
 }
 
-#marey .timeline line, #marey .axis line {
-  stroke-width: 1px;
+line, path {
   stroke: black;
-  shape-rendering: crispEdges;
-}
-
-svg {
-  font: 10px sans-serif;
-}
-
-#marey #mouse-move-overlay {
-  fill-opacity: 0;
-}
-
-#marey .tick line {
-  stroke: lightgray;
-}
-
-#marey .top-axis path {
-  opacity: 0;
-}
-
-#marey .top-axis text {
-  transform: rotate(270deg);
-  text-anchor: start;
-}
-
-#marey .trip path {
-  fill: none;
   stroke-width: 1px;
-  stroke: black;
 }
+
+#marey {
+  #mouse-move-overlay {
+    fill-opacity: 0;
+  }
+
+  line {
+    &.timeline, &.axis {
+      shape-rendering: crispEdges;
+    }
+
+  }
+
+  .top-axis {
+    path {
+      opacity: 0;
+    }
+
+    text {
+      transform: rotate(270deg);
+      text-anchor: start;
+    }
+
+    .tick line {
+      stroke: $verticalStops-stroke;
+    }
+  }
+
+  .trip path {
+    fill: none;
+  }
+}
+
+#map {
+  circle {
+    &.stop { fill: $stop-fill; }
+    &.stopArea { fill: $stopArea-fill; }
+    &.trip { fill: $trip-fill; }
+  }
+}
+

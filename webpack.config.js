@@ -3,6 +3,7 @@ const webpack = require('webpack');
 
 const ExtractTextPlugin = require('extract-text-webpack-plugin');
 const CopyWebpackPlugin = require('copy-webpack-plugin');
+const HtmlWebPackPlugin = require('html-webpack-plugin');
 
 const paths = {
   src: path.join(__dirname, 'src'),
@@ -16,10 +17,13 @@ module.exports = {
   output: {
     filename: 'app.bundle.js',
     path: paths.dist,
-    publicPath: 'dist',
   },
   module: {
     rules: [
+      {
+        test: /\.html$/,
+        use: [{ loader: 'html-loader', options: { minimize: true } }],
+      },
       {
         test: /\.js$/,
         exclude: /node_modules/,
@@ -35,9 +39,7 @@ module.exports = {
       },
       {
         test: /\.scss$/,
-        use: ExtractTextPlugin.extract([
-          'css-loader', 'sass-loader',
-        ]),
+        use: ExtractTextPlugin.extract(['css-loader', 'sass-loader']),
       },
     ],
   },
@@ -48,6 +50,10 @@ module.exports = {
     stats: 'errors-only',
   },
   plugins: [
+    new HtmlWebPackPlugin({
+      template: './index.html',
+      filename: './index.html',
+    }),
     new ExtractTextPlugin({
       filename: 'main.bundle.css',
       allChunks: true,
