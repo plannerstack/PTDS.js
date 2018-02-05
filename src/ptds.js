@@ -1,30 +1,71 @@
+/* eslint no-unused-vars: "warn" */
 import * as d3 from 'd3';
 import Point from './point';
 import Segment from './segment';
+import InteractiveMap from './interactivemap';
 
+/**
+ * Main class
+ */
 export default class PTDS {
   constructor(inputData, options) {
     this.data = inputData;
     this.options = options;
 
     this._createSVG();
-    this._computeCoordinatesMapping();
     this._computeStopAreasAggregation();
     this._computeProjectNetwork();
 
-    if (options.showLinks) this._drawJourneyPatternsLinks();
-    if (options.showStops) this._drawStops();
-    if (options.showStopAreas) this._drawStopAreas();
+    // Extract only the necessary info to draw the map
+    const mapData = {
+      stops: Object.entries(inputData.scheduledStopPoints).map(([stopCode, stopData]) =>
+        ({
+          stopCode,
+          position: new Point(stopData.x, stopData.y),
+        })),
+      stopAreas: Object.entries(this.stopAreasAggregation).map(([stopAreaCode, stopAreaData]) =>
+        ({
+          stopAreaCode,
+          position: stopAreaData.centroid,
+        })),
+      links: Object.entries(this.projectNetwork).map(([linkID, linkData]) =>
+        ({
+          linkID,
+          segment: linkData.stopAreasSegment,
+        })),
+      trips: [],
+    };
 
-    this._drawMareyDiagram('HTM:1:363');
+    // Create the map
+    this.map = new InteractiveMap(
+      mapData,
+      this.mapSVG,
+      this.dims.map,
+      options,
+    );
+
+    // If we are in simulation mode, start the simulation
+    if (options.mode === 'spiralSimulation') {
+      this.startSpiralSimulation(
+        options.spiral.timeMultiplier,
+        options.spiral.paramA,
+        options.spiral.paramB,
+      );
+    } else {
+    // If we are in "dual" mode, draw the Marey diagram of the chosen journey pattern
+      this._drawMareyDiagram(options.dual.journeyPattern);
+    }
   }
 
+  /**
+   * Create the SVG elements
+   */
   _createSVG() {
     // Get browser dimensions
     // The correction factors are needed because the actual size
     // available is less than the one returned by the browser due to scrollbars
     // and other elements that take up space.
-    const windowWidth = window.innerWidth - 20;
+    const windowWidth = window.innerWidth - 15;
     const windowHeight = window.innerHeight - 5;
 
     // D3 margin convention https://bl.ocks.org/mbostock/3019563
@@ -43,39 +84,49 @@ export default class PTDS {
       },
     };
 
-    // Inner and outer dimensions of the Marey diagram and the map
-    this.dims = {
-      marey: {
-        outerWidth: windowWidth * this.options.verticalSplitPercentage,
-        outerHeight: windowHeight * this.options.mareyHeightMultiplier,
-      },
-      map: {
-        outerWidth: windowWidth * (1 - this.options.verticalSplitPercentage),
-        outerHeight: windowHeight,
-        innerHeight: windowHeight - margins.marey.top - margins.marey.bottom,
-      },
-    };
-    this.dims.marey.innerWidth = this.dims.marey.outerWidth - margins.marey.left -
-                                 margins.marey.right;
-    this.dims.marey.innerHeight = this.dims.marey.outerHeight - margins.marey.top -
-                                 margins.marey.bottom;
-    this.dims.map.innerWidth = this.dims.map.outerWidth - margins.map.left - margins.map.right;
+    if (this.options.mode === 'dual') {
+      // Inner and outer dimensions of the Marey diagram and the map
+      this.dims = {
+        marey: {
+          outerWidth: windowWidth * this.options.dual.verticalSplitPercentage,
+          outerHeight: windowHeight * this.options.dual.mareyHeightMultiplier,
+        },
+        map: {
+          outerWidth: windowWidth * (1 - this.options.dual.verticalSplitPercentage),
+          outerHeight: windowHeight,
+          innerHeight: windowHeight - margins.map.top - margins.map.bottom,
+        },
+      };
+      this.dims.marey.innerWidth = this.dims.marey.outerWidth - margins.marey.left -
+                                   margins.marey.right;
+      this.dims.marey.innerHeight = this.dims.marey.outerHeight - margins.marey.top -
+                                    margins.marey.bottom;
+      this.dims.map.innerWidth = this.dims.map.outerWidth - margins.map.left - margins.map.right;
 
-    // Create main map SVG element applying the margins
-    this.mareySVG = d3.select('div.main').append('div')
-      .attr('id', 'marey-container')
-      .style('height', `${windowHeight}px`)
-      .append('svg')
-      .attr('id', 'marey')
-      .attr('width', this.dims.marey.outerWidth)
-      .attr('height', this.dims.marey.outerHeight)
-      .append('g')
-      .attr('transform', `translate(${margins.marey.left},${margins.marey.top})`);
+      // Create main map SVG element applying the margins
+      this.mareySVG = d3.select('div.main').append('div')
+        .attr('id', 'marey-container')
+        .style('height', `${windowHeight}px`)
+        .append('svg')
+        .attr('id', 'marey')
+        .attr('width', this.dims.marey.outerWidth)
+        .attr('height', this.dims.marey.outerHeight)
+        .append('g')
+        .attr('transform', `translate(${margins.marey.left},${margins.marey.top})`);
+    } else {
+      this.dims = {
+        map: {
+          outerWidth: windowWidth,
+          outerHeight: windowHeight,
+          innerWidth: windowWidth - margins.map.left - margins.map.right,
+          innerHeight: windowHeight - margins.map.top - margins.map.bottom,
+        },
+      };
+    }
 
     // Create main map SVG element applying the margins
     this.mapSVG = d3.select('div.main').append('div')
       .attr('id', 'map-container')
-      .style('height', `${windowHeight}px`)
       .append('svg')
       .attr('id', 'map')
       .attr('width', this.dims.map.outerWidth)
@@ -83,37 +134,6 @@ export default class PTDS {
       .call(d3.zoom().on('zoom', () => this.mapSVG.attr('transform', d3.event.transform)))
       .append('g')
       .attr('transform', `translate(${margins.map.left},${margins.map.top})`);
-
-    this.stopsGroup = this.mapSVG.append('g').attr('id', 'stops');
-    this.linksGroup = this.mapSVG.append('g').attr('id', 'links');
-    this.stopAreasGroup = this.mapSVG.append('g').attr('id', 'stopAreas');
-    this.tripsGroup = this.mapSVG.append('g').attr('id', 'trips');
-  }
-
-  /**
-   * Computes the information needed to map the stops in the dataset
-   * to the canvas
-   */
-  _computeCoordinatesMapping() {
-    // First, we find the minimum and maximum coordinates of the stops in the grid
-    this.stopsMinX = Number.MAX_VALUE;
-    this.stopsMinY = Number.MAX_VALUE;
-    this.stopsMaxX = Number.MIN_VALUE;
-    this.stopsMaxY = Number.MIN_VALUE;
-
-    // Iterate over all the stops first to find stopsMinX, stopsMinY, stopsMaxX, stopsMaxY
-    for (const stopData of Object.values(this.data.scheduledStopPoints)) {
-      if (stopData.x < this.stopsMinX) this.stopsMinX = stopData.x;
-      if (stopData.y < this.stopsMinY) this.stopsMinY = stopData.y;
-      if (stopData.x > this.stopsMaxX) this.stopsMaxX = stopData.x;
-      if (stopData.y > this.stopsMaxY) this.stopsMaxY = stopData.y;
-    }
-
-    // Find out the aspect ratio of the rectangle containing all the stops
-    // and of the canvas
-    this.stopsGridAspectRatio = (this.stopsMaxX - this.stopsMinX) /
-                                (this.stopsMaxY - this.stopsMinY);
-    this.mapAspectRatio = this.dims.map.innerWidth / this.dims.map.innerHeight;
   }
 
   /**
@@ -124,19 +144,11 @@ export default class PTDS {
     const stopAreasAggregation = {};
     for (const [stopCode, stopData] of Object.entries(this.data.scheduledStopPoints)) {
       if (Object.prototype.hasOwnProperty.call(stopAreasAggregation, stopData.area)) {
-        stopAreasAggregation[stopData.area].stops[stopCode] = {
-          x: stopData.x,
-          y: stopData.y,
-        };
+        stopAreasAggregation[stopData.area].stops[stopCode] = new Point(stopData.x, stopData.y);
       } else {
         stopAreasAggregation[stopData.area] = {
           name: stopData.name,
-          stops: {
-            [stopCode]: {
-              x: stopData.x,
-              y: stopData.y,
-            },
-          },
+          stops: { [stopCode]: new Point(stopData.x, stopData.y) },
         };
       }
     }
@@ -144,11 +156,8 @@ export default class PTDS {
     // Iterate over all the areas to compute coordinates of area as average of
     // the coordinates of the stops
     for (const stopAreaData of Object.values(stopAreasAggregation)) {
-      // Create array of Points corresponding to the stops belonging to the current stop area
-      const stopAreaStopsPoints = Object.values(stopAreaData.stops).map(stopData =>
-        new Point(stopData.x, stopData.y));
       // Compute the centroid of the stop area
-      const centroid = Point.centroid(stopAreaStopsPoints);
+      const centroid = Point.centroid(Object.values(stopAreaData.stops));
       stopAreaData.centroid = centroid;
     }
 
@@ -191,41 +200,6 @@ export default class PTDS {
     }
 
     this.projectNetwork = projectNetwork;
-  }
-
-  /**
-   * Maps a position in the Dutch grid to a position in the canvas
-   * maximizing the dimension of the rectangle containing the stops but maintaining
-   * the original aspect ratio.
-   * @param  {Point} point - The point in Dutch grid coordinates to map to the canvas coordinates
-   * @return {Point} The point with coordinates in the canvas
-   */
-  _mapToCanvas(point) {
-    if (this.stopsGridAspectRatio > this.mapAspectRatio) {
-      // Width is constrained to fit in the width of the canvas
-      // Height is adapted consequently, keeping the same aspect ratio
-      const verticalCenteringAdjustment = (this.dims.map.innerHeight -
-                                          (this.dims.map.innerWidth / this.stopsGridAspectRatio))
-                                          / 2;
-      return new Point(
-        ((point.x - this.stopsMinX) * this.dims.map.innerWidth) /
-        (this.stopsMaxX - this.stopsMinX),
-        (((point.y - this.stopsMinY) * (this.dims.map.innerWidth / this.stopsGridAspectRatio)) /
-        (this.stopsMaxY - this.stopsMinY)) + verticalCenteringAdjustment,
-      );
-    }
-
-    // Height is constrained to fit the height of the canvas
-    // Width is adapted consequently, keeping the same aspect ratio
-    const horizontalCenteringAdjustment = (this.dims.map.innerWidth -
-                                          (this.dims.map.innerHeight * this.stopsGridAspectRatio))
-                                          / 2;
-    return new Point(
-      (((point.x - this.stopsMinX) * (this.dims.map.innerHeight * this.stopsGridAspectRatio)) /
-      (this.stopsMaxX - this.stopsMinX)) + horizontalCenteringAdjustment,
-      ((point.y - this.stopsMinY) * this.dims.map.innerHeight) /
-      (this.stopsMaxY - this.stopsMinY),
-    );
   }
 
   /**
@@ -371,94 +345,30 @@ export default class PTDS {
   }
 
   /**
-   * Draws the stops in map as circles
+   * Get all the active trips with their position at a given time.
+   * @param  {Number} time - Time to get the trips at
+   * @param  {Function} filterFunc - Optional function to filter the trips
+   * @return {Object} - Active trips with their position,
+   *                    in the {tripCode: 123, position: Point(123, 456 )} format
    */
-  _drawStops() {
-    const stops = this.stopsGroup.selectAll('circle.stop')
-      .data(Object.values(this.data.scheduledStopPoints).map(stopData =>
-        this._mapToCanvas(new Point(stopData.x, stopData.y))));
-
-    stops.enter().append('circle')
-      .attr('class', 'stop')
-      .attr('cx', point => point.x)
-      .attr('cy', point => point.y)
-      .attr('r', this.options.stopRadius);
-  }
-
-  /**
-   * Draws the stop areas in the map as red bigger circles
-   */
-  _drawStopAreas() {
-    const stopAreas = this.stopAreasGroup.selectAll('circle.stopArea')
-      .data(Object.values(this.stopAreasAggregation).map(stopAreaData =>
-        this._mapToCanvas(stopAreaData.centroid)));
-
-    stopAreas.enter().append('circle')
-      .attr('class', 'stopArea')
-      .attr('cx', point => point.x)
-      .attr('cy', point => point.y)
-      .attr('r', this.options.stopAreaRadius);
-  }
-
-  /**
-   * Draws all the links between areas contained in the project definition
-   */
-  _drawJourneyPatternsLinks() {
-    const links = this.linksGroup.selectAll('line.link')
-      .data(Object.values(this.projectNetwork).map(linkData => ({
-        stopAareaCentroidInCanvas: this._mapToCanvas(linkData.stopAreasSegment.pointA),
-        stopBareaCentroidInCanvas: this._mapToCanvas(linkData.stopAreasSegment.pointB),
-      })));
-
-    links.enter().append('line')
-      .attr('class', 'link')
-      .attr('x1', segment => segment.stopAareaCentroidInCanvas.x)
-      .attr('y1', segment => segment.stopAareaCentroidInCanvas.y)
-      .attr('x2', segment => segment.stopBareaCentroidInCanvas.x)
-      .attr('y2', segment => segment.stopBareaCentroidInCanvas.y);
-  }
-
-  /**
-   * Draw the trips/vehicleJourneys at a given time
-   * @param  {Number} time - Time in seconds since noon minus 12h
-   * @param  {Function} filterFunc - Optional, function to use to filter the trips
-   */
-  drawTripsAtTime(time, filterFunc) {
+  _getTripsAtTime(time, filterFunc) {
     const activeTrips = this._getFilteredTrips(PTDS.isActiveTrip(time));
 
     const tripPositions = [];
     for (const [tripCode, tripData] of Object.entries(activeTrips)) {
-      // Draw the trip only if there is no filter function or the filter function
+      // Consider the trip only if there is no filter function or the filter function
       // does not filter out the trip (returns true)
       if (typeof filterFunc === 'undefined' || filterFunc(tripData)) {
         const tripDistance = this._getTripDistanceAtTime(tripData, time);
         const tripPosition = this._getTripPositionFromDistance(tripData, tripDistance);
-        const tripPositionInCanvas = this._mapToCanvas(tripPosition);
         tripPositions.push({
           tripCode,
-          tripPosition: tripPositionInCanvas,
+          position: tripPosition,
         });
       }
     }
 
-    const trips = this.tripsGroup.selectAll('circle.trip')
-      .data(tripPositions, trip => trip.tripCode);
-
-    // Remove from the visualization the trips that are not active anymore
-    trips.exit().remove();
-
-    // Update the coordinates of the existing active trips
-    trips
-      .attr('cx', trip => trip.tripPosition.x)
-      .attr('cy', trip => trip.tripPosition.y);
-
-    // Add to the visualization the trips that just became active
-    trips.enter().append('circle')
-      .attr('class', 'trip')
-      .attr('data-tripcode', trip => trip.tripCode)
-      .attr('cx', trip => trip.tripPosition.x)
-      .attr('cy', trip => trip.tripPosition.y)
-      .attr('r', this.options.tripRadius);
+    return tripPositions;
   }
 
   /**
@@ -552,10 +462,13 @@ export default class PTDS {
         const time = yScale.invert(yPos);
         const formattedTime = timelineTimeFormatter(time);
 
-        this.drawTripsAtTime(
-          PTDS._HHMMSStoSeconds(formattedTime),
-          tripData => tripData.journeyPatternRef === journeyPatternCode,
-        );
+        this.map.updateData({
+          trips: this._getTripsAtTime(
+            PTDS._HHMMSStoSeconds(formattedTime),
+            tripData => tripData.journeyPatternRef === journeyPatternCode,
+          ),
+        });
+        this.map._drawTrips();
 
         // Update the y position of the timeline group
         d3.select('g.timeline').attr('transform', `translate(0,${yPos})`);
@@ -615,11 +528,13 @@ export default class PTDS {
    * @param  {Number} paramA - See above
    * @param  {Number} paramB - See above
    */
-  spiralSimulation(timeMultiplier, paramA, paramB) {
+  startSpiralSimulation(timeMultiplier, paramA, paramB) {
     const currentTimeInHHMMSS = d3.timeFormat('%H:%M:%S')(new Date());
     const startTimeViz = PTDS._HHMMSStoSeconds(currentTimeInHHMMSS);
 
-    d3.timer((elapsedMilliseconds) => {
+    // Store the reference to the timer in the current instance so that
+    // we can stop it later
+    this.spiralTimer = d3.timer((elapsedMilliseconds) => {
       // Compute elapsed seconds in the visualization
       const elapsedSecondsInViz = (elapsedMilliseconds * timeMultiplier) / 1000;
       // Compute 'spiral' negative offset.
@@ -630,7 +545,15 @@ export default class PTDS {
       const vizTime = startTimeViz +
         ((elapsedSecondsInViz - spiralOffset) % (115200 - startTimeViz));
 
-      this.drawTripsAtTime(vizTime);
+      this.map.updateData({ trips: this._getTripsAtTime(vizTime) });
+      this.map._drawTrips();
     });
+  }
+
+  /**
+   * Stop the spiral simulation
+   */
+  stopSpiralSimulation() {
+    this.spiralTimer.stop();
   }
 }

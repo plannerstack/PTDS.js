@@ -2,8 +2,7 @@
   "extends": ["airbnb-base"],
   "rules": {
     "no-underscore-dangle": ["off"],
-    "no-restricted-syntax": ["off"],
-    "import/extensions": ["off"]
+    "no-restricted-syntax": ["off"]
   },
   "env": {
     "browser": true
