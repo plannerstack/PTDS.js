@@ -24,7 +24,7 @@ export default class PTDS {
     // The correction factors are needed because the actual size
     // available is less than the one returned by the browser due to scrollbars
     // and other elements that take up space.
-    const windowWidth = window.innerWidth - 15;
+    const windowWidth = window.innerWidth - 20;
     const windowHeight = window.innerHeight - 5;
 
     // D3 margin convention https://bl.ocks.org/mbostock/3019563
