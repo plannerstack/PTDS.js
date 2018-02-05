@@ -52,10 +52,28 @@ line, path {
 }
 
 #map {
-  circle {
-    &.stop { fill: $stop-fill; }
-    &.stopArea { fill: $stopArea-fill; }
-    &.trip { fill: $trip-fill; }
+  g.stopArea circle {
+    fill: $stopArea-fill;
+  }
+
+  g.stop circle {
+    fill: $stop-fill;
+  }
+
+  g.trip circle {
+    fill: $trip-fill;
+  }
+
+  .stop text {
+    display: none;
+  }
+
+  .stopArea text {
+    font-size: 2px;
+  }
+
+  .trip text {
+    font-size: 3px;
   }
 }
 

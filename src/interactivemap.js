@@ -127,7 +127,7 @@ export default class InteractiveMap {
    */
   _drawStops() {
     // Create (empty at first) selection
-    const stops = this.stopsGroup.selectAll('circle.stop')
+    const stops = this.stopsGroup.selectAll('g.stop')
       .data(
         // Before binding the stops data to the selection,
         // we transform their position from dutch grid to canvas
@@ -144,24 +144,34 @@ export default class InteractiveMap {
 
     // Update selection
     stops
-      .attr('cx', ({ stopCode, position }) => position.x)
-      .attr('cy', ({ stopCode, position }) => position.y);
+      .attr('transform', ({ stopCode, position }) => `translate(${position.x},${position.y})`);
 
     // Enter selection
-    stops.enter().append('circle')
+    const stopsGroups = stops.enter().append('g')
       .attr('class', 'stop')
       // Attach the stop code as an attribute to the SVG element, can turn out useful later
       .attr('data-stop-code', ({ stopCode, position }) => stopCode)
-      .attr('cx', ({ stopCode, position }) => position.x)
-      .attr('cy', ({ stopCode, position }) => position.y)
+      .attr('transform', ({ stopCode, position }) =>
+        `translate(${position.x},${position.y})`);
+
+    stopsGroups
+      .append('circle')
+      .attr('cx', 0)
+      .attr('cy', 0)
       .attr('r', this.options.stopRadius);
+
+    stopsGroups
+      .append('text')
+      .attr('x', 0)
+      .attr('y', 1)
+      .text(({ stopCode, position }) => stopCode);
   }
 
   /**
    * Draws the stop areas
    */
   _drawStopAreas() {
-    const stopAreas = this.stopAreasGroup.selectAll('circle.stopArea')
+    const stopAreas = this.stopAreasGroup.selectAll('g.stopArea')
       .data(
         this.data.stopAreas.map(({ stopAreaCode, position }) => ({
           stopAreaCode,
@@ -172,16 +182,28 @@ export default class InteractiveMap {
 
     stopAreas.exit().remove();
 
+    // Update selection
     stopAreas
-      .attr('cx', ({ stopAreaCode, position }) => position.x)
-      .attr('cy', ({ stopAreaCode, position }) => position.y);
+      .attr('transform', ({ stopAreaCode, position }) => `translate(${position.x},${position.y})`);
 
-    stopAreas.enter().append('circle')
+    // Enter selection
+    const stopAreasGroups = stopAreas.enter().append('g')
       .attr('class', 'stopArea')
       .attr('data-stop-area-code', ({ stopAreaCode, position }) => stopAreaCode)
-      .attr('cx', ({ stopAreaCode, position }) => position.x)
-      .attr('cy', ({ stopAreaCode, position }) => position.y)
-      .attr('r', this.options.stopRadius);
+      .attr('transform', ({ stopAreaCode, position }) =>
+        `translate(${position.x},${position.y})`);
+
+    stopAreasGroups
+      .append('circle')
+      .attr('cx', 0)
+      .attr('cy', 0)
+      .attr('r', this.options.stopAreaRadius);
+
+    stopAreasGroups
+      .append('text')
+      .attr('x', 0)
+      .attr('y', -1)
+      .text(({ stopAreaCode, position }) => stopAreaCode);
   }
 
   /**
@@ -224,7 +246,7 @@ export default class InteractiveMap {
    * Draw the trips
    */
   _drawTrips() {
-    const trips = this.tripsGroup.selectAll('circle.trip')
+    const trips = this.tripsGroup.selectAll('g.trip')
       .data(
         this.data.trips.map(({ tripCode, position }) => ({
           tripCode,
@@ -236,14 +258,24 @@ export default class InteractiveMap {
     trips.exit().remove();
 
     trips
-      .attr('cx', ({ tripCode, position }) => position.x)
-      .attr('cy', ({ tripCode, position }) => position.y);
+      .attr('transform', ({ tripCode, position }) => `translate(${position.x},${position.y})`);
 
-    trips.enter().append('circle')
+    // Enter selection
+    const tripsGroups = trips.enter().append('g')
       .attr('class', 'trip')
       .attr('data-trip-code', ({ tripCode, position }) => tripCode)
-      .attr('cx', ({ tripCode, position }) => position.x)
-      .attr('cy', ({ tripCode, position }) => position.y)
+      .attr('transform', ({ tripCode, position }) => `translate(${position.x},${position.y})`);
+
+    tripsGroups
+      .append('circle')
+      .attr('cx', 0)
+      .attr('cy', 0)
       .attr('r', this.options.tripRadius);
+
+    tripsGroups
+      .append('text')
+      .attr('x', 0)
+      .attr('y', -1)
+      .text(({ tripCode, position }) => tripCode);
   }
 }

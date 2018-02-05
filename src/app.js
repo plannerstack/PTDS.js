@@ -10,7 +10,7 @@ d3.queue()
       stopRadius: 1,
       stopAreaRadius: 1,
       tripRadius: 3,
-      showStops: true,
+      showStops: false,
       showStopAreas: true,
       showLinks: true,
       // mode can be either 'dual' or 'spiralSimulation'
