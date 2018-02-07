@@ -73,7 +73,7 @@ export default class InteractiveMap {
     this.stopsMaxY = Number.MIN_VALUE;
 
     // Iterate over all the stops first to find stopsMinX, stopsMinY, stopsMaxX, stopsMaxY
-    for (const { stopCode, position } of this.data.stops) {
+    for (const { _stopCode, position } of this.data.stops) {
       if (position.x < this.stopsMinX) this.stopsMinX = position.x;
       if (position.y < this.stopsMinY) this.stopsMinY = position.y;
       if (position.x > this.stopsMaxX) this.stopsMaxX = position.x;
@@ -136,7 +136,7 @@ export default class InteractiveMap {
           position: this._mapToCanvas(position),
         })),
         // Use the stop code as key
-        ({ stopCode, position }) => stopCode,
+        ({ stopCode, _position }) => stopCode,
       );
 
     // Remove deleted stops
@@ -144,14 +144,14 @@ export default class InteractiveMap {
 
     // Update selection
     stops
-      .attr('transform', ({ stopCode, position }) => `translate(${position.x},${position.y})`);
+      .attr('transform', ({ _stopCode, position }) => `translate(${position.x},${position.y})`);
 
     // Enter selection
     const stopsGroups = stops.enter().append('g')
       .attr('class', 'stop')
       // Attach the stop code as an attribute to the SVG element, can turn out useful later
-      .attr('data-stop-code', ({ stopCode, position }) => stopCode)
-      .attr('transform', ({ stopCode, position }) =>
+      .attr('data-stop-code', ({ stopCode, _position }) => stopCode)
+      .attr('transform', ({ _stopCode, position }) =>
         `translate(${position.x},${position.y})`);
 
     stopsGroups
@@ -164,7 +164,7 @@ export default class InteractiveMap {
       .append('text')
       .attr('x', 0)
       .attr('y', 1)
-      .text(({ stopCode, position }) => stopCode);
+      .text(({ stopCode, _position }) => stopCode);
   }
 
   /**
@@ -177,20 +177,20 @@ export default class InteractiveMap {
           stopAreaCode,
           position: this._mapToCanvas(position),
         })),
-        ({ stopAreaCode, position }) => stopAreaCode,
+        ({ stopAreaCode, _position }) => stopAreaCode,
       );
 
     stopAreas.exit().remove();
 
     // Update selection
     stopAreas
-      .attr('transform', ({ stopAreaCode, position }) => `translate(${position.x},${position.y})`);
+      .attr('transform', ({ _stopAreaCode, position }) => `translate(${position.x},${position.y})`);
 
     // Enter selection
     const stopAreasGroups = stopAreas.enter().append('g')
       .attr('class', 'stopArea')
-      .attr('data-stop-area-code', ({ stopAreaCode, position }) => stopAreaCode)
-      .attr('transform', ({ stopAreaCode, position }) =>
+      .attr('data-stop-area-code', ({ stopAreaCode, _position }) => stopAreaCode)
+      .attr('transform', ({ _stopAreaCode, position }) =>
         `translate(${position.x},${position.y})`);
 
     stopAreasGroups
@@ -203,7 +203,7 @@ export default class InteractiveMap {
       .append('text')
       .attr('x', 0)
       .attr('y', -1)
-      .text(({ stopAreaCode, position }) => stopAreaCode);
+      .text(({ stopAreaCode, _position }) => stopAreaCode);
   }
 
   /**
@@ -222,24 +222,24 @@ export default class InteractiveMap {
             this._mapToCanvas(segment.pointB),
           ),
         })),
-        ({ linkID, segment }) => linkID,
+        ({ linkID, _segment }) => linkID,
       );
 
     links.exit().remove();
 
     links
-      .attr('x1', ({ linkID, segment }) => segment.pointA.x)
-      .attr('y1', ({ linkID, segment }) => segment.pointA.y)
-      .attr('x2', ({ linkID, segment }) => segment.pointB.x)
-      .attr('y2', ({ linkID, segment }) => segment.pointB.y);
+      .attr('x1', ({ _linkID, segment }) => segment.pointA.x)
+      .attr('y1', ({ _linkID, segment }) => segment.pointA.y)
+      .attr('x2', ({ _linkID, segment }) => segment.pointB.x)
+      .attr('y2', ({ _linkID, segment }) => segment.pointB.y);
 
     links.enter().append('line')
       .attr('class', 'link')
-      .attr('data-link-id', ({ linkID, segment }) => linkID)
-      .attr('x1', ({ linkID, segment }) => segment.pointA.x)
-      .attr('y1', ({ linkID, segment }) => segment.pointA.y)
-      .attr('x2', ({ linkID, segment }) => segment.pointB.x)
-      .attr('y2', ({ linkID, segment }) => segment.pointB.y);
+      .attr('data-link-id', ({ linkID, _segment }) => linkID)
+      .attr('x1', ({ _linkID, segment }) => segment.pointA.x)
+      .attr('y1', ({ _linkID, segment }) => segment.pointA.y)
+      .attr('x2', ({ _linkID, segment }) => segment.pointB.x)
+      .attr('y2', ({ _linkID, segment }) => segment.pointB.y);
   }
 
   /**
@@ -252,19 +252,19 @@ export default class InteractiveMap {
           tripCode,
           position: this._mapToCanvas(position),
         })),
-        ({ tripCode, position }) => tripCode,
+        ({ tripCode, _position }) => tripCode,
       );
 
     trips.exit().remove();
 
     trips
-      .attr('transform', ({ tripCode, position }) => `translate(${position.x},${position.y})`);
+      .attr('transform', ({ _tripCode, position }) => `translate(${position.x},${position.y})`);
 
     // Enter selection
     const tripsGroups = trips.enter().append('g')
       .attr('class', 'trip')
-      .attr('data-trip-code', ({ tripCode, position }) => tripCode)
-      .attr('transform', ({ tripCode, position }) => `translate(${position.x},${position.y})`);
+      .attr('data-trip-code', ({ tripCode, _position }) => tripCode)
+      .attr('transform', ({ _tripCode, position }) => `translate(${position.x},${position.y})`);
 
     tripsGroups
       .append('circle')
@@ -276,6 +276,6 @@ export default class InteractiveMap {
       .append('text')
       .attr('x', 0)
       .attr('y', -1)
-      .text(({ tripCode, position }) => tripCode);
+      .text(({ tripCode, _position }) => tripCode);
   }
 }
