@@ -16,29 +16,9 @@ export default class PTDS {
     this._computeStopAreasAggregation();
     this._computeProjectNetwork();
 
-    // Extract only the necessary info to draw the map
-    const mapData = {
-      stops: Object.entries(inputData.scheduledStopPoints).map(([stopCode, stopData]) =>
-        ({
-          stopCode,
-          position: new Point(stopData.x, stopData.y),
-        })),
-      stopAreas: Object.entries(this.stopAreasAggregation).map(([stopAreaCode, stopAreaData]) =>
-        ({
-          stopAreaCode,
-          position: stopAreaData.centroid,
-        })),
-      links: Object.entries(this.projectNetwork).map(([linkID, linkData]) =>
-        ({
-          linkID,
-          segment: linkData.stopAreasSegment,
-        })),
-      trips: [],
-    };
-
     // Create the map
     this.map = new InteractiveMap(
-      mapData,
+      this._getBaseMapData(),
       this.mapSVG,
       this.dims.map,
       options,
@@ -134,6 +114,34 @@ export default class PTDS {
       .call(d3.zoom().on('zoom', () => this.mapSVG.attr('transform', d3.event.transform)))
       .append('g')
       .attr('transform', `translate(${margins.map.left},${margins.map.top})`);
+  }
+
+  /**
+   * Get the data needed to draw the initial verison of the map,
+   * including: stops, stopAreas and links.
+   * @return {Object} - Object containing the stops, stopAreas, links and (empty) trips
+   */
+  _getBaseMapData() {
+    // We always need to pass to the map visualization the stop information
+    // because it is used to compute the mapping from the dutch grid to the canvas
+    const stops = Object.entries(this.data.scheduledStopPoints).map(([stopCode, stopData]) =>
+      ({ stopCode, position: new Point(stopData.x, stopData.y) }));
+
+    // We only pass the stoparea information to the map visualization
+    // if the options state that they have to be shown
+    const stopAreas = this.options.showStopAreas ?
+      Object.entries(this.stopAreasAggregation).map(([stopAreaCode, stopAreaData]) =>
+        ({ stopAreaCode, position: stopAreaData.centroid })) :
+      [];
+
+    const links = this.options.showLinks ?
+      Object.entries(this.projectNetwork).map(([linkID, linkData]) =>
+        ({ linkID, segment: linkData.stopAreasSegment })) :
+      [];
+
+    return {
+      stops, stopAreas, links, trips: [],
+    };
   }
 
   /**
