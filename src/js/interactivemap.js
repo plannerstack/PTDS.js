@@ -99,12 +99,16 @@ export default class InteractiveMap {
       const verticalCenteringAdjustment = (this.dims.innerHeight -
                                           (this.dims.innerWidth / this.stopsGridAspectRatio))
                                           / 2;
-      return new Point(
+      const mappedPoint = new Point(
         ((point.x - this.stopsMinX) * this.dims.innerWidth) /
         (this.stopsMaxX - this.stopsMinX),
         (((point.y - this.stopsMinY) * (this.dims.innerWidth / this.stopsGridAspectRatio)) /
         (this.stopsMaxY - this.stopsMinY)) + verticalCenteringAdjustment,
       );
+
+      // Mirror along horizontal axis
+      mappedPoint.y = this.dims.innerHeight - mappedPoint.y;
+      return mappedPoint;
     }
 
     // Height is constrained to fit the height of the canvas
@@ -112,12 +116,15 @@ export default class InteractiveMap {
     const horizontalCenteringAdjustment = (this.dims.innerWidth -
                                           (this.dims.innerHeight * this.stopsGridAspectRatio))
                                           / 2;
-    return new Point(
+    const mappedPoint = new Point(
       (((point.x - this.stopsMinX) * (this.dims.innerHeight * this.stopsGridAspectRatio)) /
       (this.stopsMaxX - this.stopsMinX)) + horizontalCenteringAdjustment,
       ((point.y - this.stopsMinY) * this.dims.innerHeight) /
       (this.stopsMaxY - this.stopsMinY),
     );
+
+    mappedPoint.y = this.dims.innerHeight - mappedPoint.y;
+    return mappedPoint;
   }
 
   /**
