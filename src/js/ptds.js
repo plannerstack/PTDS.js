@@ -1,8 +1,10 @@
-/* eslint no-unused-vars: "warn" */
 import * as d3 from 'd3';
+
 import Point from './point';
 import Segment from './segment';
+import TimeUtils from './timeutils';
 import InteractiveMap from './interactivemap';
+import MareyDiagram from './mareydiagram';
 
 /**
  * Main class
@@ -12,41 +14,23 @@ export default class PTDS {
     this.data = inputData;
     this.options = options;
 
-    this._createSVG();
+    this._createSVGObjects();
     this._computeStopAreasAggregation();
     this._computeProjectNetwork();
 
-    // Create the map
-    this.map = new InteractiveMap(
-      this._getBaseMapData(),
-      this.mapSVG,
-      this.dims.map,
-      options,
-    );
-
-    // If we are in simulation mode, start the simulation
-    if (options.mode === 'spiralSimulation') {
-      this.startSpiralSimulation(
-        options.spiral.timeMultiplier,
-        options.spiral.paramA,
-        options.spiral.paramB,
-      );
-    } else {
-    // If we are in "dual" mode, draw the Marey diagram of the chosen journey pattern
-      this._drawMareyDiagram(options.dual.journeyPattern);
-    }
+    this.createVisualizations();
   }
 
   /**
    * Create the SVG elements
    */
-  _createSVG() {
+  _createSVGObjects() {
     // Get browser dimensions
     // The correction factors are needed because the actual size
     // available is less than the one returned by the browser due to scrollbars
     // and other elements that take up space.
-    const windowWidth = window.innerWidth - 15;
-    const windowHeight = window.innerHeight - 5;
+    const windowWidth = window.innerWidth - 20;
+    const windowHeight = window.innerHeight - 10;
 
     // D3 margin convention https://bl.ocks.org/mbostock/3019563
     const margins = {
@@ -83,7 +67,7 @@ export default class PTDS {
                                     margins.marey.bottom;
       this.dims.map.innerWidth = this.dims.map.outerWidth - margins.map.left - margins.map.right;
 
-      // Create main map SVG element applying the margins
+      // Create main marey SVG element applying the margins
       this.mareySVG = d3.select('div.main').append('div')
         .attr('id', 'marey-container')
         .style('height', `${windowHeight}px`)
@@ -118,33 +102,6 @@ export default class PTDS {
       .attr('transform', `translate(${margins.map.left},${margins.map.top})`);
   }
 
-  /**
-   * Get the data needed to draw the initial verison of the map,
-   * including: stops, stopAreas and links.
-   * @return {Object} - Object containing the stops, stopAreas, links and (empty) trips
-   */
-  _getBaseMapData() {
-    // We always need to pass to the map visualization the stop information
-    // because it is used to compute the mapping from the dutch grid to the canvas
-    const stops = Object.entries(this.data.scheduledStopPoints).map(([stopCode, stopData]) =>
-      ({ stopCode, position: new Point(stopData.x, stopData.y) }));
-
-    // We only pass the stoparea information to the map visualization
-    // if the options state that they have to be shown
-    const stopAreas = this.options.showStopAreas ?
-      Object.entries(this.stopAreasAggregation).map(([stopAreaCode, stopAreaData]) =>
-        ({ stopAreaCode, position: stopAreaData.centroid })) :
-      [];
-
-    const links = this.options.showLinks ?
-      Object.entries(this.projectNetwork).map(([linkID, linkData]) =>
-        ({ linkID, segment: linkData.stopAreasSegment })) :
-      [];
-
-    return {
-      stops, stopAreas, links, trips: [],
-    };
-  }
 
   /**
    * Computes the aggregation of stops into stop areas
@@ -210,6 +167,113 @@ export default class PTDS {
     }
 
     this.projectNetwork = projectNetwork;
+  }
+
+
+  /**
+   * Create the Marey and/or Map visualization(s) invoking the respective constructor(s)
+   */
+  createVisualizations() {
+    // Create the map
+    this.map = new InteractiveMap(
+      this._getBaseMapData(),
+      this.mapSVG,
+      this.dims.map,
+      this.options,
+    );
+
+    // If we are in simulation mode, start the simulation for the map
+    if (this.options.mode === 'spiralSimulation') {
+      this.startSpiralSimulation(
+        this.options.spiral.timeMultiplier,
+        this.options.spiral.paramA,
+        this.options.spiral.paramB,
+      );
+    } else {
+    // If we are in "dual" mode, draw the Marey diagram of the chosen journey pattern
+      // Callback that updates the map when the timeline is moved in the Marey diagram
+      const timelineChangeCallback = (time) => {
+        this.map.updateData({
+          trips: this._getTripsAtTime(
+            TimeUtils.HHMMSStoSeconds(time),
+            tripData => tripData.journeyPatternRef === this.options.dual.journeyPattern,
+          ),
+        });
+        this.map._drawTrips();
+      };
+
+      // Creation of the Marey diagram
+      this.marey = new MareyDiagram(
+        this._getMareyData(this.options.dual.journeyPattern),
+        this.mareySVG,
+        this.dims.marey,
+        this.options,
+        timelineChangeCallback,
+      );
+    }
+  }
+
+  /**
+   * Get the data needed to draw the initial version of the map,
+   * including: stops, stopAreas and links.
+   * @return {Object} - Object containing the stops, stopAreas, links and (empty) trips
+   */
+  _getBaseMapData() {
+    // We always need to pass to the map visualization the stop information
+    // because it is used to compute the mapping from the dutch grid to the canvas
+    const stops = Object.entries(this.data.scheduledStopPoints).map(([stopCode, stopData]) =>
+      ({ stopCode, position: new Point(stopData.x, stopData.y) }));
+
+    // We only pass the stoparea information to the map visualization
+    // if the options state that they have to be shown
+    const stopAreas = this.options.showStopAreas ?
+      Object.entries(this.stopAreasAggregation).map(([stopAreaCode, stopAreaData]) =>
+        ({ stopAreaCode, position: stopAreaData.centroid })) :
+      [];
+
+    const links = this.options.showLinks ?
+      Object.entries(this.projectNetwork).map(([linkID, linkData]) =>
+        ({ linkID, segment: linkData.stopAreasSegment })) :
+      [];
+
+    return {
+      stops, stopAreas, links, trips: [],
+    };
+  }
+
+  /**
+   * Get the data needed to draw the Marey diagram
+   * @param  {String} journeyPatternCode - Jourey pattern code chosen to display
+   */
+  _getMareyData(journeyPatternCode) {
+    // Journey pattern data (stopcodes, distances) of the chosen journey pattern
+    const journeyPatternData = this.data.journeyPatterns[journeyPatternCode];
+
+    // Raw trip objects that belong to the chosen journey pattern
+    const tripsRaw = this._getFilteredTrips(tripData =>
+      tripData.journeyPatternRef === journeyPatternCode);
+
+    // Create trips list with essential information for the Marey diagram, meaning
+    // [{ tripCode: 123, tripSchedule: [{ time: 1, distance: 1 }, ...}] }, ...]
+    const trips = Object.entries(tripsRaw).map(([tripCode, tripData]) => ({
+      tripCode,
+      tripSchedule: tripData.times.map((time, index) => ({
+        time: TimeUtils.secondsToHHMMSS(time),
+        distance: journeyPatternData.distances[index],
+      })),
+    }));
+
+    // Create stops-distances list for the axis of the Marey diagram
+    // [{ stopCode: 1234, distance: 1 }, ...]
+    const stopsDistances = journeyPatternData.distances.map((distance, index) => ({
+      stopCode: journeyPatternData.pointsInSequence[index],
+      distance,
+    }));
+
+    return {
+      trips,
+      stopsDistances,
+    };
   }
 
   /**
@@ -315,35 +379,6 @@ export default class PTDS {
   }
 
   /**
-   * Converts a time in HH:MM:SS format to the time in seconds since noon minus 12h
-   * TODO: Does it work correctly with daylight savings time? Does it make sense to consider this?
-   * @param  {String} timeInHHMMSS - Time in HH:SS:MM format
-   * @return {Number} - Time in seconds since midnight
-   */
-  static _HHMMSStoSeconds(timeInHHMMSS) {
-    const [hours, minutes, seconds] = timeInHHMMSS.split(':');
-
-    return (parseInt(hours, 10) * 3600) + (parseInt(minutes, 10) * 60) + parseInt(seconds, 10);
-  }
-
-  /**
-   * Converts a time in seconds since noon minus 12h to the HH:MM:SS format
-   * TODO: Does it work correctly with daylight savings time? Does it make sense to consider this?
-   * @param  {Number} timeInSecondsSinceNoonMinus12h - Time in seconds since noon minus 12h
-   * @return {String} - Time in HH:MM:SS format
-   */
-  static _secondsToHHMMSS(timeInSecondsSinceNoonMinus12h) {
-    const hours = Math.floor(timeInSecondsSinceNoonMinus12h / 3600);
-    const minutes = Math.floor((timeInSecondsSinceNoonMinus12h % 3600) / 60);
-    const seconds = Math.floor((timeInSecondsSinceNoonMinus12h % 3600) % 60);
-
-    // Helper function to get a positive integer < 100 padded with a zero in front if < 10
-    const twoDigits = number => `0${number}`.slice(-2);
-
-    return `${twoDigits(hours)}:${twoDigits(minutes)}:${twoDigits(seconds)}`;
-  }
-
-  /**
    * Determines if a trip is to be considered active or not.
    * The function needs to be curried with the time before using it.
    * @param  {Number}  time - Time in seconds since noon minus 12h
@@ -381,154 +416,6 @@ export default class PTDS {
     return tripPositions;
   }
 
-  /**
-   * Draws the Marey diagram.
-   * For now, it only draws the data corresponding to a single journeypattern.
-   * @param  {String} journeyPatternCode - Code of the journeypattern to show
-   */
-  _drawMareyDiagram(journeyPatternCode) {
-    /* eslint-disable no-unused-vars */
-    // First, we get all the trips of this journey pattern
-    const jpTrips = this._getFilteredTrips(tripData =>
-      tripData.journeyPatternRef === journeyPatternCode);
-
-    // Iterate over all the trips of the chosen journey pattern to find minimum and maximum time
-    let [minTime, maxTime] = [Number.MAX_VALUE, Number.MIN_VALUE];
-    for (const tripData of Object.values(jpTrips)) {
-      const firstTime = tripData.times[0];
-      const lastTime = tripData.times[tripData.times.length - 1];
-      if (firstTime < minTime) minTime = firstTime;
-      if (lastTime > maxTime) maxTime = lastTime;
-    }
-
-    // Parses a time in HH:MM:SS format to date object
-    const parseTime = d3.timeParse('%H:%M:%S');
-    // Formatting function for the y (time) axis
-    const axisTickFormat = d3.timeFormat('%H:%M');
-
-    // Scale for the y axis (time)
-    const yScale = d3.scaleTime()
-      .domain([
-        parseTime(PTDS._secondsToHHMMSS(minTime)),
-        parseTime(PTDS._secondsToHHMMSS(maxTime)),
-      ])
-      .range([0, this.dims.marey.innerHeight]);
-
-    // Left and right axes
-    const yLeftAxis = d3.axisLeft(yScale)
-      .ticks(d3.timeMinute.every(20))
-      .tickFormat(axisTickFormat);
-
-    const yRightAxis = d3.axisRight(yScale)
-      .ticks(d3.timeMinute.every(20))
-      .tickFormat(axisTickFormat);
-
-    // Create axes groups
-    this.mareySVG.append('g')
-      .attr('class', 'left-axis axis')
-      .call(yLeftAxis);
-
-    this.mareySVG.append('g')
-      .attr('class', 'right-axis axis')
-      .attr('transform', `translate(${this.dims.marey.innerWidth},0)`)
-      .call(yRightAxis);
-
-    // Initial time at which the timeline is positioned. For now we position it
-    // at one minute after the time of the first trip.
-    const initialTimelineTime = parseTime(PTDS._secondsToHHMMSS(minTime + 60));
-    const initialTimelineYpos = yScale(initialTimelineTime);
-    const timelineTimeFormatter = d3.timeFormat('%H:%M:%S');
-
-    // Timeline group creation
-    const timeline = this.mareySVG.append('g')
-      .attr('class', 'timeline')
-      .attr('transform', `translate(0,${initialTimelineYpos})`);
-
-    // Horizontal line of the timeline
-    timeline.append('line')
-      .attr('x1', 0)
-      .attr('x2', this.dims.marey.innerWidth);
-
-    // Label with the time of the timeline
-    timeline.append('text')
-      .text(timelineTimeFormatter(initialTimelineTime))
-      .attr('x', 5)
-      .attr('y', -5);
-
-    // Create overlay to handle timeline movement with mouse
-    this.mareySVG.append('rect')
-      .attr('id', 'mouse-move-overlay')
-      .attr('width', this.dims.marey.innerWidth)
-      .attr('height', this.dims.marey.innerHeight)
-      .on('mousemove', () => {
-        // d3.mouse wants a DOM element, so get it by its ID
-        const overlay = document.getElementById('mouse-move-overlay');
-        // Get the mouse position relative to the overlay
-        let yPos = d3.mouse(overlay)[1];
-        // Keep an upper border for the timeline that is never trespassed
-        yPos = yPos < initialTimelineYpos ? initialTimelineYpos : yPos;
-        // Get the time corresponding to the actual mouse position
-        // and format it
-        const time = yScale.invert(yPos);
-        const formattedTime = timelineTimeFormatter(time);
-
-        this.map.updateData({
-          trips: this._getTripsAtTime(
-            PTDS._HHMMSStoSeconds(formattedTime),
-            tripData => tripData.journeyPatternRef === journeyPatternCode,
-          ),
-        });
-        this.map._drawTrips();
-
-        // Update the y position of the timeline group
-        d3.select('g.timeline').attr('transform', `translate(0,${yPos})`);
-        // Update the text showing the time
-        d3.select('g.timeline text').text(formattedTime);
-      });
-
-    // Horizontal top axis drawing
-    const journeyPatternData = this.data.journeyPatterns[journeyPatternCode];
-    // Find out the longest distance of the current pattern
-    const maxDistance = journeyPatternData.distances[journeyPatternData.distances.length - 1];
-
-    const xScale = d3.scaleLinear()
-      .domain([0, maxDistance])
-      .range([0, this.dims.marey.innerWidth]);
-
-    const xAxis = d3.axisTop(xScale)
-      .tickSize(-this.dims.marey.innerHeight)
-      .tickValues(journeyPatternData.distances)
-      .tickFormat((_, index) => journeyPatternData.pointsInSequence[index]);
-
-    // Top axis element creation
-    this.mareySVG.append('g')
-      .attr('class', 'top-axis axis')
-      .call(xAxis)
-      .selectAll('text')
-      .attr('y', 0)
-      .attr('x', 5)
-      .attr('dy', '.35em');
-
-    const tripsGroup = this.mareySVG.append('g')
-      .attr('id', 'trips');
-
-    const trips = tripsGroup.selectAll('g.trip')
-      .data(Object.entries(jpTrips));
-
-    const tripLineGenerator = d3.line()
-      .x(stopData => xScale(stopData.distance))
-      .y(stopData => yScale(stopData.timeParsed));
-
-    trips.enter().append('g')
-      .attr('class', 'trip')
-      .attr('data-tripcode', ([tripCode, _]) => tripCode)
-      .append('path')
-      .attr('d', ([_, tripData]) =>
-        tripLineGenerator(tripData.times.map((time, index) => ({
-          timeParsed: parseTime(PTDS._secondsToHHMMSS(time)),
-          distance: journeyPatternData.distances[index],
-        }))));
-  }
 
   /**
    * Start a 'spiral simulation' showing on the map all the trips from the current time of the day
@@ -540,7 +427,7 @@ export default class PTDS {
    */
   startSpiralSimulation(timeMultiplier, paramA, paramB) {
     const currentTimeInHHMMSS = d3.timeFormat('%H:%M:%S')(new Date());
-    const startTimeViz = PTDS._HHMMSStoSeconds(currentTimeInHHMMSS);
+    const startTimeViz = TimeUtils.HHMMSStoSeconds(currentTimeInHHMMSS);
 
     // Store the reference to the timer in the current instance so that
     // we can stop it later
