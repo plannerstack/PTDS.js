@@ -2,7 +2,7 @@
   "name": "PTDS.js",
   "version": "0.0.1",
   "description": "Public Transport Decision Support D3.js Frontend",
-  "main": "src/app.js",
+  "main": "src/js/app.js",
   "scripts": {
     "start": "./node_modules/.bin/webpack-dev-server --hot --inline --progress",
     "build": "webpack -p --config webpack.config.js --hide-modules"
@@ -20,6 +20,7 @@
     "babel-core": "^6.26.0",
     "babel-loader": "^7.1.2",
     "babel-preset-env": "^1.6.1",
+    "clean-webpack-plugin": "^0.1.18",
     "copy-webpack-plugin": "^4.3.1",
     "css-loader": "^0.28.9",
     "eslint": "^4.17.0",

@@ -1,6 +1,7 @@
 const path = require('path');
 const webpack = require('webpack');
 
+const CleanWebpackPlugin = require('clean-webpack-plugin');
 const ExtractTextPlugin = require('extract-text-webpack-plugin');
 const CopyWebpackPlugin = require('copy-webpack-plugin');
 const HtmlWebPackPlugin = require('html-webpack-plugin');
@@ -13,7 +14,7 @@ const paths = {
 
 module.exports = {
   context: paths.src,
-  entry: ['./app.js', './main.scss'],
+  entry: ['./js/app.js', './scss/main.scss'],
   output: {
     filename: 'app.bundle.js',
     path: paths.dist,
@@ -50,6 +51,7 @@ module.exports = {
     stats: 'errors-only',
   },
   plugins: [
+    new CleanWebpackPlugin([paths.dist]),
     new HtmlWebPackPlugin({
       template: './index.html',
       filename: './index.html',
