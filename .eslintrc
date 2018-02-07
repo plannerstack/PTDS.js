@@ -1,14 +1,17 @@
 {
-  "extends": ["airbnb-bundle"],
+  "extends": ["airbnb-base"],
   "rules": {
-    "no-underscore-dangle": ['off'],
-    "no-restricted-syntax": ['off'],
-    "import/extensions": ['off']
+    "no-underscore-dangle": ["off"],
+    "no-restricted-syntax": ["off"],
+    "no-unused-vars": [
+      "error",
+      {
+        "varsIgnorePattern": "^_",
+        "argsIgnorePattern": "^_",
+      },
+    ],
   },
   "env": {
     "browser": true
-  },
-  "globals": {
-    "d3": true
   }
 }

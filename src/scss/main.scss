@@ -1,0 +1,84 @@
+// Global variables
+$stop-fill: black;
+$stopArea-fill: red;
+$trip-fill: green;
+$verticalStops-stroke: lightgray;
+
+// Remove margins from the body, set base font
+html, body {
+  margin: 0;
+  font: 10px sans-serif;
+}
+
+// Make the container containing the Marey diagram scrollable
+#marey-container {
+  overflow-y: scroll;
+  float: left;
+  display: block;
+}
+
+// Base styling for all lines and paths
+svg {
+  line, path {
+    stroke: black;
+    stroke-width: 1;
+  }
+}
+
+#marey {
+  #mouse-move-overlay {
+    fill-opacity: 0;
+  }
+
+  .top-axis {
+    path {
+      opacity: 0;
+    }
+
+    text {
+      transform: rotate(270deg);
+      text-anchor: start;
+    }
+
+    .tick line {
+      stroke: $verticalStops-stroke;
+    }
+  }
+
+  .trip path {
+    fill: none;
+  }
+}
+
+#map {
+  g.stopArea {
+    circle {
+      fill: $stopArea-fill;
+    }
+
+    text {
+      font-size: 2px;
+    }
+  }
+
+  g.stop {
+    circle {
+      fill: $stop-fill;
+    }
+
+    text {
+      display: none;
+    }
+  }
+
+  g.trip {
+    circle {
+      fill: $trip-fill;
+    }
+
+    text {
+      font-size: 3px;
+    }
+  }
+}
+

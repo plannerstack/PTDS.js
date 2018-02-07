@@ -1,4 +1,4 @@
-import Point from './point.js';
+import Point from './point';
 
 /**
  * Class representing a segment, with start and end point
