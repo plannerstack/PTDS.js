@@ -111,7 +111,9 @@ export default class PTDS {
       .attr('id', 'map')
       .attr('width', this.dims.map.outerWidth)
       .attr('height', this.dims.map.outerHeight)
-      .call(d3.zoom().on('zoom', () => this.mapSVG.attr('transform', d3.event.transform)))
+      .call(d3.zoom()
+        .scaleExtent([1, 15])
+        .on('zoom', () => this.mapSVG.attr('transform', d3.event.transform)))
       .append('g')
       .attr('transform', `translate(${margins.map.left},${margins.map.top})`);
   }
