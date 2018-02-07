@@ -11,7 +11,7 @@ const options = {
   showLinks: true,
   // mode can be either 'dual' or 'spiralSimulation'
   // dual = marey + linked map, spiralSimulation = spiral simulation
-  mode: 'dual',
+  mode: 'spiralSimulation',
   // spiralSimulation specific options
   spiral: {
     timeMultiplier: 30,
@@ -21,34 +21,19 @@ const options = {
   // dual specific options
   dual: {
     verticalSplitPercentage: (Math.sqrt(5) - 1) / 2,
-    mareyHeightMultiplier: 3,
+    mareyHeightMultiplier: 5,
     journeyPattern: 'HTM:1:363',
   },
 };
 
-const createVisualization = (data) => {
+const createVisualization = (error, data) => {
   const ptds = new PTDS(data, options);
 
   // If the spiral simulation mode was chosen, add a widget that
   // allows to control the parameters of the simulation
   if (options.mode === 'spiralSimulation') {
-    let simulationRunning = true;
     const gui = new dat.GUI();
-    const guiOptions = Object.assign({
-      'start/stop': () => {
-        if (simulationRunning) {
-          ptds.stopSpiralSimulation();
-          simulationRunning = false;
-        } else {
-          ptds.startSpiralSimulation(
-            guiOptions.timeMultiplier,
-            guiOptions.paramA,
-            guiOptions.paramB,
-          );
-          simulationRunning = true;
-        }
-      },
-    }, options.spiral);
+    const guiOptions = options.spiral;
 
     const sliders = [
       gui.add(guiOptions, 'timeMultiplier', 0, 200),
@@ -56,17 +41,35 @@ const createVisualization = (data) => {
       gui.add(guiOptions, 'paramB', 0, 200),
     ];
 
-    // Update the simulation as soon as one of the sliders of
-    // the parameters is changed
-    sliders.forEach(slider => slider.onFinishChange(() => {
+    // Refresh of the simulation when one of the sliders is changed
+    const refreshViz = () => {
       ptds.stopSpiralSimulation();
       ptds.startSpiralSimulation(
         guiOptions.timeMultiplier,
         guiOptions.paramA,
         guiOptions.paramB,
       );
-    }));
+    };
 
+    // Attach refresh listener to the finish change event
+    sliders.forEach(slider => slider.onFinishChange(refreshViz));
+
+    // Start/stop the spiral simulation
+    let simulationRunning = true;
+    const startStopViz = () => {
+      if (simulationRunning) {
+        ptds.stopSpiralSimulation();
+        simulationRunning = false;
+      } else {
+        ptds.startSpiralSimulation(
+          guiOptions.timeMultiplier,
+          guiOptions.paramA,
+          guiOptions.paramB,
+        );
+        simulationRunning = true;
+      }
+    };
+    Object.assign(guiOptions, { 'start/stop': startStopViz });
     gui.add(guiOptions, 'start/stop');
   }
 };
@@ -74,4 +77,4 @@ const createVisualization = (data) => {
 // Load JSON data asynchronously
 d3.queue()
   .defer(d3.json, 'data/test.json')
-  .await((error, data) => createVisualization(data));
+  .await(createVisualization);
