@@ -341,6 +341,49 @@ export default class PTDS {
   }
 
   /**
+   * Given a trip (code) and its position in terms of time and distances,
+   * computes if the vehicle is early/ontime/late basing on the schedule
+   * @param  {String} tripCode - Code of the trip
+   * @param  {Number} time - Time since departure
+   * @param  {Number} distance - Distance since departure
+   * @return {String} - Status of the vehicle: early/ontime/late or undefined
+   */
+  _getVehicleStatusComparedToSchedule(tripCode, time, distance) {
+    const tripData = this.data.vehicleJourneys[tripCode];
+    const journeyPatternCode = tripData.journeyPatternRef;
+    const journeyPatternData = this.data.journeyPatterns[journeyPatternCode];
+
+    // Go over all the segments that make up the trip, looking for the segment in which
+    // the vehicle is currently in in terms of distance traveled
+    for (const index of [...Array(tripData.times.length - 1).keys()]) {
+      const timeStopA = tripData.times[index];
+      const timeStopB = tripData.times[index + 1];
+      const distanceStopA = journeyPatternData.distances[index];
+      const distanceStopB = journeyPatternData.distances[index + 1];
+
+      // If the distance traveled by the vehicle is between the start and end distances
+      // of the current segment, we can decide its status
+      if (distanceStopA <= distance && distanceStopB >= distance) {
+        // Compute the theoretical time that the vehicle should have to be on time
+        // having traveled the current distance
+        const thTime = (((timeStopB - timeStopA) / (distanceStopB - distanceStopA)) *
+                        (distance - distanceStopA)) + timeStopA;
+        // Compare theoretical time with actual time and decide the status of the vehicle
+        if (time < thTime) {
+          return 'early';
+        } else if (time === thTime) {
+          return 'ontime';
+        }
+        return 'late';
+      }
+    }
+
+    // It could be that we don't find a segment that includes the position of the
+    // vehicle in terms of distance. In that case signal it
+    return 'undefined';
+  }
+
+  /**
    * Get the distance traveled by a vehicle in its trip along its journeypattern
    * @param  {Object} tripData - Data of a trip
    * @param  {Number} time - Time expressed as seconds since noon minus 12h
