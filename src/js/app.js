@@ -1,7 +1,13 @@
-import * as d3 from 'd3';
+import { queue } from 'd3-queue';
+import { json } from 'd3-request';
 import dat from 'dat.gui';
 
 import PTDS from './ptds';
+
+const d3 = Object.assign({}, {
+  queue,
+  json,
+});
 
 const options = {
   stopRadius: 1,
@@ -12,7 +18,7 @@ const options = {
   showLinks: true,
   // mode can be either 'dual' or 'spiralSimulation'
   // dual = marey + linked map, spiralSimulation = spiral simulation
-  mode: 'spiralSimulation',
+  mode: 'dual',
   // spiralSimulation specific options
   spiral: {
     timeMultiplier: 30,

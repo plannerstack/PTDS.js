@@ -1,4 +1,23 @@
-import * as d3 from 'd3';
+import { timeParse, timeFormat } from 'd3-time-format';
+import { scaleLinear, scaleTime } from 'd3-scale';
+import { axisLeft, axisTop, axisRight } from 'd3-axis';
+import { timeMinute } from 'd3-time';
+import { select, mouse } from 'd3-selection';
+import { line } from 'd3-shape';
+
+const d3 = Object.assign({}, {
+  timeParse,
+  timeFormat,
+  scaleLinear,
+  scaleTime,
+  axisLeft,
+  axisTop,
+  axisRight,
+  timeMinute,
+  mouse,
+  select,
+  line,
+});
 
 /**
  * This class manages the Marey diagram visualization.

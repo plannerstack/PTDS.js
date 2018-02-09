@@ -1,10 +1,25 @@
-import * as d3 from 'd3';
+import { select } from 'd3-selection';
+import { zoom } from 'd3-zoom';
+import { timeFormat } from 'd3-time-format';
+import { timer } from 'd3-timer';
 
 import Point from './point';
 import Segment from './segment';
 import TimeUtils from './timeutils';
 import InteractiveMap from './interactivemap';
 import MareyDiagram from './mareydiagram';
+
+const d3 = Object.assign({}, {
+  select,
+  zoom,
+  timeFormat,
+  timer,
+  // very ugly hack to solve a problem that d3 and webpack have
+  // https://github.com/d3/d3/issues/2733
+  /* eslint-disable */
+  event: (() => require('d3-selection').event).bind(this),
+  /* eslint-enable */
+});
 
 /**
  * Main class
@@ -97,7 +112,7 @@ export default class PTDS {
       .attr('height', this.dims.map.outerHeight)
       .call(d3.zoom()
         .scaleExtent([1, 15])
-        .on('zoom', () => this.mapSVG.attr('transform', d3.event.transform)))
+        .on('zoom', () => this.mapSVG.attr('transform', d3.event().transform)))
       .append('g')
       .attr('transform', `translate(${margins.map.left},${margins.map.top})`);
   }
