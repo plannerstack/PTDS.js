@@ -16,7 +16,7 @@ Build distribution
     $ yarn build
 
 ## Live demo
-[Here](https://raw.githack.com/plannerstack/PTDS.js/master/dist/index.html).
+[Here](https://plannerstack.github.io/PTDS.js/).
 
 ## License
 See `LICENSE`.
