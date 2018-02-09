@@ -129,13 +129,21 @@ export default class MareyDiagram {
       .tickFormat((_, index) => this.data.stopsDistances[index].stopCode);
 
     // Top axis element creation
-    this.svgObject.append('g')
-      .attr('class', 'top-axis axis')
-      .call(xAxis)
-      .selectAll('text')
+    const xAxisGroup = this.svgObject.append('g')
+      .attr('class', 'top-axis axis');
+
+    xAxisGroup.call(xAxis);
+
+    xAxisGroup.selectAll('text')
       .attr('y', 0)
       .attr('x', 5)
       .attr('dy', '.35em');
+
+    const mareyContainerDOM = document.getElementById('marey-container');
+
+    mareyContainerDOM.addEventListener('scroll', () => {
+      xAxisGroup.node().setAttribute('transform', `translate(0,${mareyContainerDOM.scrollTop})`);
+    }, false);
   }
 
   /**

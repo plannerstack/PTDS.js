@@ -36,12 +36,17 @@ svg {
     }
 
     text {
-      transform: rotate(270deg);
+      transform: rotate(270deg) ;
       text-anchor: start;
+      paint-order: stroke;
+      stroke: white;
+      stroke-width: 10px;
     }
 
-    .tick line {
-      stroke: $verticalStops-stroke;
+    g.tick:not(:nth-child(2)):not(:last-child) {
+      line {
+        stroke: $verticalStops-stroke;
+      }
     }
   }
 
