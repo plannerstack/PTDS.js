@@ -63,6 +63,9 @@ svg {
 
     text {
       font-size: 2px;
+      stroke: white;
+      paint-order: stroke;
+      stroke-width: 0.5px;
     }
   }
 
@@ -73,6 +76,9 @@ svg {
 
     text {
       display: none;
+      stroke: white;
+      paint-order: stroke;
+      stroke-width: 0.5px;
     }
   }
 
@@ -83,6 +89,9 @@ svg {
 
     text {
       font-size: 3px;
+      stroke: white;
+      paint-order: stroke;
+      stroke-width: 0.5px;
     }
   }
 }
