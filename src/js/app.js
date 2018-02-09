@@ -36,55 +36,8 @@ const options = {
   },
 };
 
-const createVisualization = (error, data) => {
-  const ptds = new PTDS(data, options);
-
-  // If the spiral simulation mode was chosen, add a widget that
-  // allows to control the parameters of the simulation
-  if (options.mode === 'spiralSimulation') {
-    const gui = new dat.GUI();
-    const guiOptions = options.spiral;
-
-    const sliders = [
-      gui.add(guiOptions, 'timeMultiplier', 0, 200),
-      gui.add(guiOptions, 'paramA', 0, 200),
-      gui.add(guiOptions, 'paramB', 0, 200),
-    ];
-
-    // Refresh of the simulation when one of the sliders is changed
-    const refreshViz = () => {
-      ptds.stopSpiralSimulation();
-      ptds.startSpiralSimulation(
-        guiOptions.timeMultiplier,
-        guiOptions.paramA,
-        guiOptions.paramB,
-      );
-    };
-
-    // Attach refresh listener to the finish change event
-    sliders.forEach(slider => slider.onFinishChange(refreshViz));
-
-    // Start/stop the spiral simulation
-    let simulationRunning = true;
-    const startStopViz = () => {
-      if (simulationRunning) {
-        ptds.stopSpiralSimulation();
-        simulationRunning = false;
-      } else {
-        ptds.startSpiralSimulation(
-          guiOptions.timeMultiplier,
-          guiOptions.paramA,
-          guiOptions.paramB,
-        );
-        simulationRunning = true;
-      }
-    };
-    Object.assign(guiOptions, { 'start/stop': startStopViz });
-    gui.add(guiOptions, 'start/stop');
-  }
-};
-
 // Load JSON data asynchronously
+/* eslint no-new: "off" */
 d3.queue()
   .defer(d3.json, 'data/test.json')
-  .await(createVisualization);
+  .await((error, data) => { new PTDS(data, options); });

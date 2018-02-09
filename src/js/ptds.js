@@ -2,6 +2,7 @@ import { select } from 'd3-selection';
 import { zoom } from 'd3-zoom';
 import { timeFormat } from 'd3-time-format';
 import { timer } from 'd3-timer';
+import dat from 'dat.gui';
 
 import Point from './point';
 import Segment from './segment';
@@ -30,6 +31,7 @@ export default class PTDS {
     this.options = options;
 
     this._createSVGObjects();
+    if (options.mode === 'spiralSimulation') { this._createSimulationWidget(); }
     this._computeStopAreasAggregation();
     this._computeProjectNetwork();
 
@@ -117,6 +119,60 @@ export default class PTDS {
       .attr('transform', `translate(${margins.map.left},${margins.map.top})`);
   }
 
+  /**
+   * Add the dat.GUI widget in the top right of the screen
+   * to control the parameters of the simulation
+   */
+  _createSimulationWidget() {
+    const gui = new dat.GUI();
+    const guiOptions = Object.assign({}, this.options.spiral, { time: ' ' });
+
+    const sliders = [
+      gui.add(guiOptions, 'timeMultiplier', 0, 200),
+      gui.add(guiOptions, 'paramA', 0, 200),
+      gui.add(guiOptions, 'paramB', 0, 200),
+    ];
+
+    const timeCallback = (time) => { guiOptions.time = time; };
+    let simulationRunning = false;
+
+    // Refresh of the simulation when one of the sliders is changed
+    const refreshViz = () => {
+      if (simulationRunning) {
+        this.stopSpiralSimulation();
+        this.startSpiralSimulation(
+          guiOptions.timeMultiplier,
+          guiOptions.paramA,
+          guiOptions.paramB,
+          timeCallback,
+        );
+      }
+    };
+
+    // Attach refresh listener to the finish change event
+    sliders.forEach(slider => slider.onFinishChange(refreshViz));
+
+    // Start/stop the spiral simulation
+    const startStopViz = () => {
+      if (simulationRunning) {
+        this.stopSpiralSimulation();
+        simulationRunning = false;
+      } else {
+        this.startSpiralSimulation(
+          guiOptions.timeMultiplier,
+          guiOptions.paramA,
+          guiOptions.paramB,
+          timeCallback,
+        );
+        simulationRunning = true;
+      }
+    };
+    Object.assign(guiOptions, { 'start/stop': startStopViz });
+
+    gui.add(guiOptions, 'time').listen();
+    gui.add(guiOptions, 'start/stop');
+  }
+
 
   /**
    * Computes the aggregation of stops into stop areas
@@ -197,15 +253,8 @@ export default class PTDS {
       this.options,
     );
 
-    // If we are in simulation mode, start the simulation for the map
-    if (this.options.mode === 'spiralSimulation') {
-      this.startSpiralSimulation(
-        this.options.spiral.timeMultiplier,
-        this.options.spiral.paramA,
-        this.options.spiral.paramB,
-      );
-    } else {
     // If we are in "dual" mode, draw the Marey diagram of the chosen journey pattern
+    if (this.options.mode === 'dual') {
       // Callback that updates the map when the timeline is moved in the Marey diagram
       const timelineChangeCallback = (time) => {
         this.map.updateData({
@@ -289,6 +338,49 @@ export default class PTDS {
       trips,
       stopsDistances,
     };
+  }
+
+  /**
+   * Given a trip (code) and its position in terms of time and distances,
+   * computes if the vehicle is early/ontime/late basing on the schedule
+   * @param  {String} tripCode - Code of the trip
+   * @param  {Number} time - Time since departure
+   * @param  {Number} distance - Distance since departure
+   * @return {String} - Status of the vehicle: early/ontime/late or undefined
+   */
+  _getVehicleStatusComparedToSchedule(tripCode, time, distance) {
+    const tripData = this.data.vehicleJourneys[tripCode];
+    const journeyPatternCode = tripData.journeyPatternRef;
+    const journeyPatternData = this.data.journeyPatterns[journeyPatternCode];
+
+    // Go over all the segments that make up the trip, looking for the segment in which
+    // the vehicle is currently in in terms of distance traveled
+    for (const index of [...Array(tripData.times.length - 1).keys()]) {
+      const timeStopA = tripData.times[index];
+      const timeStopB = tripData.times[index + 1];
+      const distanceStopA = journeyPatternData.distances[index];
+      const distanceStopB = journeyPatternData.distances[index + 1];
+
+      // If the distance traveled by the vehicle is between the start and end distances
+      // of the current segment, we can decide its status
+      if (distanceStopA <= distance && distanceStopB >= distance) {
+        // Compute the theoretical time that the vehicle should have to be on time
+        // having traveled the current distance
+        const thTime = (((timeStopB - timeStopA) / (distanceStopB - distanceStopA)) *
+                        (distance - distanceStopA)) + timeStopA;
+        // Compare theoretical time with actual time and decide the status of the vehicle
+        if (time < thTime) {
+          return 'early';
+        } else if (time === thTime) {
+          return 'ontime';
+        }
+        return 'late';
+      }
+    }
+
+    // It could be that we don't find a segment that includes the position of the
+    // vehicle in terms of distance. In that case signal it
+    return 'undefined';
   }
 
   /**
@@ -439,8 +531,9 @@ export default class PTDS {
    * @param  {Number} timeMultiplier - Conversion factor between real and visualization time
    * @param  {Number} paramA - See above
    * @param  {Number} paramB - See above
+   * @param  {Function} timeCallback - Callback to call when time is updated
    */
-  startSpiralSimulation(timeMultiplier, paramA, paramB) {
+  startSpiralSimulation(timeMultiplier, paramA, paramB, timeCallback) {
     const currentTimeInHHMMSS = d3.timeFormat('%H:%M:%S')(new Date());
     const startTimeViz = TimeUtils.HHMMSStoSeconds(currentTimeInHHMMSS);
 
@@ -457,6 +550,8 @@ export default class PTDS {
       const vizTime = startTimeViz +
         ((elapsedSecondsInViz - spiralOffset) % (115200 - startTimeViz));
 
+      timeCallback(TimeUtils.secondsToHHMMSS(vizTime));
+
       this.map.updateData({ trips: this._getTripsAtTime(vizTime) });
       this.map._drawTrips();
     });
@@ -466,6 +561,8 @@ export default class PTDS {
    * Stop the spiral simulation
    */
   stopSpiralSimulation() {
-    this.spiralTimer.stop();
+    if (Object.prototype.hasOwnProperty.call(this, 'spiralTimer')) {
+      this.spiralTimer.stop();
+    }
   }
 }
