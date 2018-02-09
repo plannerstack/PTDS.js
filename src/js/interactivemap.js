@@ -255,7 +255,7 @@ export default class InteractiveMap {
       .attr('x2', ({ segment }) => segment.pointB.x)
       .attr('y2', ({ segment }) => segment.pointB.y)
       .on('click', function f() {
-        const { linkId } = this.parentNode.dataset;
+        const { linkId } = this.dataset;
         log.info(`Clicked on link ${linkId}`);
       });
   }
