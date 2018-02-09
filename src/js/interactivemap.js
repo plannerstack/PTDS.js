@@ -1,3 +1,4 @@
+import * as log from 'loglevel';
 import Point from './point';
 import Segment from './segment';
 
@@ -163,7 +164,11 @@ export default class InteractiveMap {
       .append('circle')
       .attr('cx', 0)
       .attr('cy', 0)
-      .attr('r', this.options.stopRadius);
+      .attr('r', this.options.stopRadius)
+      .on('click', function f() {
+        const { stopCode } = this.parentNode.dataset;
+        log.info(`Clicked on stop ${stopCode}`);
+      });
 
     stopsGroups
       .append('text')
@@ -202,7 +207,11 @@ export default class InteractiveMap {
       .append('circle')
       .attr('cx', 0)
       .attr('cy', 0)
-      .attr('r', this.options.stopAreaRadius);
+      .attr('r', this.options.stopAreaRadius)
+      .on('click', function f() {
+        const { stopAreaCode } = this.parentNode.dataset;
+        log.info(`Clicked on stop area ${stopAreaCode}`);
+      });
 
     stopAreasGroups
       .append('text')
@@ -244,7 +253,11 @@ export default class InteractiveMap {
       .attr('x1', ({ segment }) => segment.pointA.x)
       .attr('y1', ({ segment }) => segment.pointA.y)
       .attr('x2', ({ segment }) => segment.pointB.x)
-      .attr('y2', ({ segment }) => segment.pointB.y);
+      .attr('y2', ({ segment }) => segment.pointB.y)
+      .on('click', function f() {
+        const { linkId } = this.dataset;
+        log.info(`Clicked on link ${linkId}`);
+      });
   }
 
   /**
@@ -275,7 +288,11 @@ export default class InteractiveMap {
       .append('circle')
       .attr('cx', 0)
       .attr('cy', 0)
-      .attr('r', this.options.tripRadius);
+      .attr('r', this.options.tripRadius)
+      .on('click', function f() {
+        const { tripCode } = this.parentNode.dataset;
+        log.info(`Clicked on trip ${tripCode}`);
+      });
 
     tripsGroups
       .append('text')

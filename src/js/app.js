@@ -1,7 +1,11 @@
 import { queue } from 'd3-queue';
 import { json } from 'd3-request';
+import dat from 'dat.gui';
+import * as log from 'loglevel';
 
 import PTDS from './ptds';
+
+log.enableAll();
 
 const d3 = Object.assign({}, {
   queue,
@@ -17,7 +21,7 @@ const options = {
   showLinks: true,
   // mode can be either 'dual' or 'spiralSimulation'
   // dual = marey + linked map, spiralSimulation = spiral simulation
-  mode: 'dual',
+  mode: 'spiralSimulation',
   // spiralSimulation specific options
   spiral: {
     timeMultiplier: 30,
