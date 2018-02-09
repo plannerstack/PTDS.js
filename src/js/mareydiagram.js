@@ -46,10 +46,10 @@ export default class MareyDiagram {
     this.timelineTimeFormat = d3.timeFormat('%H:%M:%S');
 
     this._computeMinMaxTime();
-    this._createGroups();
     this._createScales();
-    this._drawYAxes();
     this._drawXAxis();
+    this._createGroups();
+    this._drawYAxes();
     this._createTimeline(changeCallback);
   }
 

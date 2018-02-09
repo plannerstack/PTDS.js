@@ -17,7 +17,7 @@ const options = {
   showLinks: true,
   // mode can be either 'dual' or 'spiralSimulation'
   // dual = marey + linked map, spiralSimulation = spiral simulation
-  mode: 'spiralSimulation',
+  mode: 'dual',
   // spiralSimulation specific options
   spiral: {
     timeMultiplier: 30,
