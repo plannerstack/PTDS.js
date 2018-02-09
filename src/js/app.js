@@ -1,6 +1,5 @@
 import { queue } from 'd3-queue';
 import { json } from 'd3-request';
-import dat from 'dat.gui';
 import * as log from 'loglevel';
 
 import PTDS from './ptds';
