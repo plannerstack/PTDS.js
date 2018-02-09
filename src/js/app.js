@@ -18,7 +18,7 @@ const options = {
   showLinks: true,
   // mode can be either 'dual' or 'spiralSimulation'
   // dual = marey + linked map, spiralSimulation = spiral simulation
-  mode: 'dual',
+  mode: 'spiralSimulation',
   // spiralSimulation specific options
   spiral: {
     timeMultiplier: 30,
@@ -40,7 +40,7 @@ const createVisualization = (error, data) => {
   // allows to control the parameters of the simulation
   if (options.mode === 'spiralSimulation') {
     const gui = new dat.GUI();
-    const guiOptions = options.spiral;
+    const guiOptions = Object.assign({}, options.spiral, { time: '00:00:00' });
 
     const sliders = [
       gui.add(guiOptions, 'timeMultiplier', 0, 200),
@@ -48,21 +48,26 @@ const createVisualization = (error, data) => {
       gui.add(guiOptions, 'paramB', 0, 200),
     ];
 
+    const timeCallback = (time) => { guiOptions.time = time; };
+    let simulationRunning = false;
+
     // Refresh of the simulation when one of the sliders is changed
     const refreshViz = () => {
-      ptds.stopSpiralSimulation();
-      ptds.startSpiralSimulation(
-        guiOptions.timeMultiplier,
-        guiOptions.paramA,
-        guiOptions.paramB,
-      );
+      if (simulationRunning) {
+        ptds.stopSpiralSimulation();
+        ptds.startSpiralSimulation(
+          guiOptions.timeMultiplier,
+          guiOptions.paramA,
+          guiOptions.paramB,
+          timeCallback,
+        );
+      }
     };
 
     // Attach refresh listener to the finish change event
     sliders.forEach(slider => slider.onFinishChange(refreshViz));
 
     // Start/stop the spiral simulation
-    let simulationRunning = true;
     const startStopViz = () => {
       if (simulationRunning) {
         ptds.stopSpiralSimulation();
@@ -72,11 +77,14 @@ const createVisualization = (error, data) => {
           guiOptions.timeMultiplier,
           guiOptions.paramA,
           guiOptions.paramB,
+          timeCallback,
         );
         simulationRunning = true;
       }
     };
     Object.assign(guiOptions, { 'start/stop': startStopViz });
+
+    gui.add(guiOptions, 'time').listen();
     gui.add(guiOptions, 'start/stop');
   }
 };

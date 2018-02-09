@@ -197,15 +197,8 @@ export default class PTDS {
       this.options,
     );
 
-    // If we are in simulation mode, start the simulation for the map
-    if (this.options.mode === 'spiralSimulation') {
-      this.startSpiralSimulation(
-        this.options.spiral.timeMultiplier,
-        this.options.spiral.paramA,
-        this.options.spiral.paramB,
-      );
-    } else {
     // If we are in "dual" mode, draw the Marey diagram of the chosen journey pattern
+    if (this.options.mode === 'dual') {
       // Callback that updates the map when the timeline is moved in the Marey diagram
       const timelineChangeCallback = (time) => {
         this.map.updateData({
@@ -440,7 +433,7 @@ export default class PTDS {
    * @param  {Number} paramA - See above
    * @param  {Number} paramB - See above
    */
-  startSpiralSimulation(timeMultiplier, paramA, paramB) {
+  startSpiralSimulation(timeMultiplier, paramA, paramB, timeCallback) {
     const currentTimeInHHMMSS = d3.timeFormat('%H:%M:%S')(new Date());
     const startTimeViz = TimeUtils.HHMMSStoSeconds(currentTimeInHHMMSS);
 
@@ -457,6 +450,8 @@ export default class PTDS {
       const vizTime = startTimeViz +
         ((elapsedSecondsInViz - spiralOffset) % (115200 - startTimeViz));
 
+      timeCallback(TimeUtils.secondsToHHMMSS(vizTime));
+
       this.map.updateData({ trips: this._getTripsAtTime(vizTime) });
       this.map._drawTrips();
     });
@@ -466,6 +461,8 @@ export default class PTDS {
    * Stop the spiral simulation
    */
   stopSpiralSimulation() {
-    this.spiralTimer.stop();
+    if (Object.prototype.hasOwnProperty.call(this, 'spiralTimer')) {
+      this.spiralTimer.stop();
+    }
   }
 }
