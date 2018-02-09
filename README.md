@@ -16,7 +16,9 @@ Build distribution
     $ yarn build
 
 ## Live demo
-[Here](https://raw.githack.com/plannerstack/PTDS.js/master/dist/index.html).
+[**Spiral simulation mode**](https://raw.githack.com/plannerstack/PTDS.js/master/dist/index.html?mode=spiralSimulation)
+
+[**Dual mode**](https://raw.githack.com/plannerstack/PTDS.js/master/dist/index.html?mode=dual)
 
 ## License
 See `LICENSE`.

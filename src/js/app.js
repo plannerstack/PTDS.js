@@ -11,6 +11,19 @@ const d3 = Object.assign({}, {
   json,
 });
 
+// Gets parameter from URL
+const getURLParameter = name =>
+  /* eslint no-restricted-globals: "off" */
+  decodeURIComponent((new RegExp(`[?|&]${name}=([^&;]+?)(&|#|;|$)`).exec(location.search) ||
+    [null, ''])[1].replace(/\+/g, '%20')) || null;
+
+// Get the mode of the visualization from the URL parameter
+const mode = getURLParameter('mode');
+if (mode === null) {
+  alert('Mode has to be either "dual" or "spiralSimulation"');
+  throw new Error('Mode has to be either "dual" or "spiralSimulation"');
+}
+
 const options = {
   stopRadius: 1,
   stopAreaRadius: 1,
@@ -20,7 +33,7 @@ const options = {
   showLinks: true,
   // mode can be either 'dual' or 'spiralSimulation'
   // dual = marey + linked map, spiralSimulation = spiral simulation
-  mode: 'spiralSimulation',
+  mode,
   // spiralSimulation specific options
   spiral: {
     timeMultiplier: 30,
