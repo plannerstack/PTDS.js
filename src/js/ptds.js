@@ -2,6 +2,7 @@ import { select } from 'd3-selection';
 import { zoom } from 'd3-zoom';
 import { timeFormat } from 'd3-time-format';
 import { timer } from 'd3-timer';
+import dat from 'dat.gui';
 
 import Point from './point';
 import Segment from './segment';
@@ -30,6 +31,7 @@ export default class PTDS {
     this.options = options;
 
     this._createSVGObjects();
+    if (options.mode === 'spiralSimulation') { this._createSimulationWidget(); }
     this._computeStopAreasAggregation();
     this._computeProjectNetwork();
 
@@ -115,6 +117,60 @@ export default class PTDS {
         .on('zoom', () => this.mapSVG.attr('transform', d3.event().transform)))
       .append('g')
       .attr('transform', `translate(${margins.map.left},${margins.map.top})`);
+  }
+
+  /**
+   * Add the dat.GUI widget in the top right of the screen
+   * to control the parameters of the simulation
+   */
+  _createSimulationWidget() {
+    const gui = new dat.GUI();
+    const guiOptions = Object.assign({}, this.options.spiral, { time: ' ' });
+
+    const sliders = [
+      gui.add(guiOptions, 'timeMultiplier', 0, 200),
+      gui.add(guiOptions, 'paramA', 0, 200),
+      gui.add(guiOptions, 'paramB', 0, 200),
+    ];
+
+    const timeCallback = (time) => { guiOptions.time = time; };
+    let simulationRunning = false;
+
+    // Refresh of the simulation when one of the sliders is changed
+    const refreshViz = () => {
+      if (simulationRunning) {
+        this.stopSpiralSimulation();
+        this.startSpiralSimulation(
+          guiOptions.timeMultiplier,
+          guiOptions.paramA,
+          guiOptions.paramB,
+          timeCallback,
+        );
+      }
+    };
+
+    // Attach refresh listener to the finish change event
+    sliders.forEach(slider => slider.onFinishChange(refreshViz));
+
+    // Start/stop the spiral simulation
+    const startStopViz = () => {
+      if (simulationRunning) {
+        this.stopSpiralSimulation();
+        simulationRunning = false;
+      } else {
+        this.startSpiralSimulation(
+          guiOptions.timeMultiplier,
+          guiOptions.paramA,
+          guiOptions.paramB,
+          timeCallback,
+        );
+        simulationRunning = true;
+      }
+    };
+    Object.assign(guiOptions, { 'start/stop': startStopViz });
+
+    gui.add(guiOptions, 'time').listen();
+    gui.add(guiOptions, 'start/stop');
   }
 
 
