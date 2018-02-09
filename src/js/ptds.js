@@ -488,6 +488,7 @@ export default class PTDS {
    * @param  {Number} timeMultiplier - Conversion factor between real and visualization time
    * @param  {Number} paramA - See above
    * @param  {Number} paramB - See above
+   * @param  {Function} timeCallback - Callback to call when time is updated
    */
   startSpiralSimulation(timeMultiplier, paramA, paramB, timeCallback) {
     const currentTimeInHHMMSS = d3.timeFormat('%H:%M:%S')(new Date());
