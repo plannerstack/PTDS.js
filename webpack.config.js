@@ -44,6 +44,7 @@ module.exports = {
       },
     ],
   },
+  devtool: 'source-map',
   devServer: {
     contentBase: paths.dist,
     compress: true,
