@@ -22,9 +22,10 @@ let mode = getURLParameter('mode');
 if (mode === null) {
   do {
     /* eslint no-alert: "off" */
+    const defaultMode = 'dual';
     mode = prompt(
       'You have to choose a mode. It has to be either "dual" or "spiralSimulation":',
-      'dual',
+      defaultMode,
     );
   } while (mode !== 'dual' && mode !== 'spiralSimulation');
 }
