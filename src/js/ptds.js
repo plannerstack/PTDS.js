@@ -351,6 +351,7 @@ export default class PTDS {
         time: TimeUtils.secondsToHHMMSS(time),
         distance: journeyPatternData.distances[index],
       })),
+      vehiclesPositions: this._getTripVehiclePositions(tripCode, tripData.realtime),
     }));
 
     // Create stops-distances list for the axis of the Marey diagram
@@ -363,39 +364,42 @@ export default class PTDS {
     return {
       trips,
       stopsDistances,
-      vehiclePositions: this._getMareyRealtimeData(journeyPatternCode),
+      vehicles: this._getTripVehiclePositions(journeyPatternCode),
     };
   }
 
-  _getMareyRealtimeData(journeyPatternCode) {
-    const tripsRaw = this._getFilteredTrips(tripData =>
-      tripData.journeyPatternRef === journeyPatternCode);
+  _getTripVehiclePositions(tripCode, tripRTdata) {
+    const tripPositions = [];
+    for (const { vehicleNumber, times, distances } of tripRTdata) {
+      // Iterate over the (time, distance) pairs of the current vehicle
+      // and determine the status of each position
+      const positions = [];
+      for (const [index, [time, distance]] of d3.zip(times, distances).entries()) {
+        const vehicleStatus = this._getVehicleStatusComparedToSchedule(
+          tripCode,
+          time,
+          distance,
+        );
 
-    const allVehiclePositions = [];
-    for (const [tripCode, { realtime: realTimeData }] of Object.entries(tripsRaw)) {
-      for (const { vehicleNumber, times, distances } of realTimeData) {
-        const curVehiclePositions = d3.zip(times, distances);
-
-        for (const [index, [time, distance]] of curVehiclePositions.entries()) {
-          const vehicleStatus = this._getVehicleStatusComparedToSchedule(
-            tripCode,
-            time,
-            distance,
-          );
-
-          allVehiclePositions.push({
-            tripCode,
-            vehicleNumber,
-            index,
-            time: TimeUtils.secondsToHHMMSS(time),
-            distance,
-            vehicleStatus,
-          });
-        }
+        // Add the enriched position info to the list
+        // of positions of the current vehicle
+        positions.push({
+          index,
+          time: TimeUtils.secondsToHHMMSS(time),
+          distance,
+          vehicleStatus,
+        });
       }
+
+      // Add the enriched position info of the current vehicle
+      // to the list of vehicle position info of the current trip
+      tripPositions.push({
+        vehicleNumber,
+        positions,
+      });
     }
 
-    return allVehiclePositions;
+    return tripPositions;
   }
 
   /**

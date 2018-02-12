@@ -79,8 +79,8 @@ export default class MareyDiagram {
       .attr('class', 'trips');
     this.xAxisGroup = this.svgObject.append('g')
       .attr('class', 'top-axis axis');
-    this.vehiclePositionsGroup = this.svgObject.append('g')
-      .attr('class', 'vehiclePositions');
+    // this.vehiclePositionsGroup = this.svgObject.append('g')
+    //   .attr('class', 'vehiclePositions');
   }
 
   /**
@@ -201,18 +201,35 @@ export default class MareyDiagram {
    * Draw the trips on the diagram
    */
   drawTrips() {
-    const trips = this.tripsGroup.selectAll('g.trip')
+    const tripsSel = this.tripsGroup.selectAll('g.trip')
       .data(this.data.trips);
 
     const tripLineGenerator = d3.line()
       .x(({ distance }) => this.xScale(distance))
       .y(({ time }) => this.yScale(this.tripTimeParse(time)));
 
-    trips.enter().append('g')
+    tripsSel.enter().append('g')
       .attr('class', 'trip')
       .attr('data-tripcode', ({ tripCode }) => tripCode)
       .append('path')
       .attr('d', ({ tripSchedule }) => tripLineGenerator(tripSchedule));
+
+    const vehiclesSel = tripsSel.selectAll('g.vehicle')
+      .data(({ vehicles }) => vehicles);
+
+    vehiclesSel.enter().append('g')
+      .attr('class', 'vehicle')
+      .attr('data-vehicle-id', ({ vehicleNumber }) => vehicleNumber);
+
+    const vehiclesPosSel = vehiclesSel.selectAll('circle.position')
+      .data(({ positions }) => positions);
+
+    vehiclesPosSel.enter()
+      .append('circle')
+      .attr('class', ({ vehicleStatus }) => vehicleStatus)
+      .attr('cx', ({ distance }) => this.xScale(distance))
+      .attr('cy', ({ time }) => this.yScale(this.tripTimeParse(time)))
+      .attr('r', '1.5');
   }
 
   /**
@@ -229,6 +246,6 @@ export default class MareyDiagram {
       .attr('class', ({ vehicleStatus }) => vehicleStatus)
       .attr('cx', ({ distance }) => this.xScale(distance))
       .attr('cy', ({ time }) => this.yScale(this.tripTimeParse(time)))
-      .attr('r', '2');
+      .attr('r', '1.5');
   }
 }
