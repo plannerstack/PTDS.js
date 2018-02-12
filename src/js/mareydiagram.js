@@ -47,8 +47,8 @@ export default class MareyDiagram {
 
     this._computeMinMaxTime();
     this._createScales();
-    this._drawXAxis();
     this._createGroups();
+    this._drawXAxis();
     this._drawYAxes();
     this._createTimeline(changeCallback);
   }
@@ -75,7 +75,9 @@ export default class MareyDiagram {
       .attr('class', 'right-axis axis')
       .attr('transform', `translate(${this.dims.innerWidth},0)`);
     this.tripsGroup = this.svgObject.append('g')
-      .attr('id', 'trips');
+      .attr('class', 'trips');
+    this.xAxisGroup = this.svgObject.append('g')
+      .attr('class', 'top-axis axis');
   }
 
   /**
@@ -128,13 +130,9 @@ export default class MareyDiagram {
       .tickValues(this.data.stopsDistances.map(({ distance }) => distance))
       .tickFormat((_, index) => this.data.stopsDistances[index].stopCode);
 
-    // Top axis element creation
-    const xAxisGroup = this.svgObject.append('g')
-      .attr('class', 'top-axis axis');
+    this.xAxisGroup.call(xAxis);
 
-    xAxisGroup.call(xAxis);
-
-    xAxisGroup.selectAll('text')
+    this.xAxisGroup.selectAll('text')
       .attr('y', 0)
       .attr('x', 5)
       .attr('dy', '.35em');
@@ -142,7 +140,7 @@ export default class MareyDiagram {
     const mareyContainerDOM = document.getElementById('marey-container');
 
     mareyContainerDOM.addEventListener('scroll', () => {
-      xAxisGroup.node().setAttribute('transform', `translate(0,${mareyContainerDOM.scrollTop})`);
+      this.xAxisGroup.node().setAttribute('transform', `translate(0,${mareyContainerDOM.scrollTop})`);
     }, false);
   }
 
