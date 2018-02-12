@@ -4,7 +4,7 @@
   "description": "Public Transport Decision Support D3.js Frontend",
   "main": "src/js/app.js",
   "scripts": {
-    "start": "./node_modules/.bin/webpack-dev-server --hot --inline --progress",
+    "start": "webpack-dev-server --hot --inline --progress",
     "build": "webpack -p --config webpack.config.js --hide-modules"
   },
   "repository": {
