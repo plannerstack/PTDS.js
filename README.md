@@ -16,9 +16,9 @@ Build distribution
     $ yarn build
 
 ## Live demo
-[**Spiral simulation mode**](https://fervent-mestorf-262e4f.netlify.com/?mode=spiralSimulation)
+[**Spiral simulation mode**](https://plannerstack-ptds.netlify.com/?mode=spiralSimulation)
 
-[**Dual mode**](https://fervent-mestorf-262e4f.netlify.com/?mode=dual)
+[**Dual mode**](https://plannerstack-ptds.netlify.com/?mode=dual)
 
 ## License
 See `LICENSE`.
