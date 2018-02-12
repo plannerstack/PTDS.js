@@ -44,12 +44,12 @@ const options = {
   dual: {
     verticalSplitPercentage: (Math.sqrt(5) - 1) / 2,
     mareyHeightMultiplier: 5,
-    journeyPattern: 'HTM:1:363',
+    journeyPattern: 'HTM:16:231',
   },
 };
 
 // Load JSON data asynchronously
 /* eslint no-new: "off" */
 d3.queue()
-  .defer(d3.json, 'data/test.json')
+  .defer(d3.json, 'data/singleLine.json')
   .await((error, data) => { new PTDS(data, options); });

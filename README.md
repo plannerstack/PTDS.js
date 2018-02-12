@@ -16,9 +16,9 @@ Build distribution
     $ yarn build
 
 ## Live demo
-[**Spiral simulation mode**](https://raw.githack.com/plannerstack/PTDS.js/master/dist/index.html?mode=spiralSimulation)
+[**Spiral simulation mode**](https://fervent-mestorf-262e4f.netlify.com/?mode=spiralSimulation)
 
-[**Dual mode**](https://raw.githack.com/plannerstack/PTDS.js/master/dist/index.html?mode=dual)
+[**Dual mode**](https://fervent-mestorf-262e4f.netlify.com/?mode=dual)
 
 ## License
 See `LICENSE`.
