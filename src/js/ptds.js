@@ -351,7 +351,7 @@ export default class PTDS {
         time: TimeUtils.secondsToHHMMSS(time),
         distance: journeyPatternData.distances[index],
       })),
-      vehiclesPositions: this._getTripVehiclePositions(tripCode, tripData.realtime),
+      vehicles: this._getTripVehiclePositions(tripCode, tripData.realtime),
     }));
 
     // Create stops-distances list for the axis of the Marey diagram
@@ -364,7 +364,6 @@ export default class PTDS {
     return {
       trips,
       stopsDistances,
-      vehicles: this._getTripVehiclePositions(journeyPatternCode),
     };
   }
 

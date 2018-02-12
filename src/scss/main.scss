@@ -54,7 +54,7 @@ svg {
     fill: none;
   }
 
-  g.vehiclePositions circle {
+  g.vehicle circle.position {
     &.early {
       fill: red;
     }

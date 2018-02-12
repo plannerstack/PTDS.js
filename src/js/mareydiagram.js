@@ -33,7 +33,6 @@ export default class MareyDiagram {
 
     this._initialSetup(changeCallback);
     this.drawTrips();
-    this.drawVehiclePositions();
   }
 
   /**
@@ -208,44 +207,29 @@ export default class MareyDiagram {
       .x(({ distance }) => this.xScale(distance))
       .y(({ time }) => this.yScale(this.tripTimeParse(time)));
 
-    tripsSel.enter().append('g')
+    const tripsSelEnter = tripsSel.enter().append('g')
       .attr('class', 'trip')
-      .attr('data-tripcode', ({ tripCode }) => tripCode)
+      .attr('data-tripcode', ({ tripCode }) => tripCode);
+
+    tripsSelEnter
       .append('path')
       .attr('d', ({ tripSchedule }) => tripLineGenerator(tripSchedule));
 
-    const vehiclesSel = tripsSel.selectAll('g.vehicle')
+    const vehiclesSel = tripsSelEnter.selectAll('g.vehicle')
       .data(({ vehicles }) => vehicles);
 
-    vehiclesSel.enter().append('g')
+    const vehiclesSelEnter = vehiclesSel.enter().append('g')
       .attr('class', 'vehicle')
       .attr('data-vehicle-id', ({ vehicleNumber }) => vehicleNumber);
 
-    const vehiclesPosSel = vehiclesSel.selectAll('circle.position')
+    const vehiclesPosSel = vehiclesSelEnter.selectAll('circle.position')
       .data(({ positions }) => positions);
 
     vehiclesPosSel.enter()
       .append('circle')
-      .attr('class', ({ vehicleStatus }) => vehicleStatus)
+      .attr('class', ({ vehicleStatus }) => `position ${vehicleStatus}`)
       .attr('cx', ({ distance }) => this.xScale(distance))
       .attr('cy', ({ time }) => this.yScale(this.tripTimeParse(time)))
-      .attr('r', '1.5');
-  }
-
-  /**
-   * Draw the trips on the diagram
-   */
-  drawVehiclePositions() {
-    const vehiclePositions = this.vehiclePositionsGroup.selectAll('g.vehiclePosition')
-      .data(this.data.vehiclePositions);
-
-    vehiclePositions.enter()
-      .append('circle')
-      .attr('data-tripcode', ({ tripCode }) => tripCode)
-      .attr('data-vehicle-number', ({ vehicleNumber }) => vehicleNumber)
-      .attr('class', ({ vehicleStatus }) => vehicleStatus)
-      .attr('cx', ({ distance }) => this.xScale(distance))
-      .attr('cy', ({ time }) => this.yScale(this.tripTimeParse(time)))
-      .attr('r', '1.5');
+      .attr('r', '1');
   }
 }
