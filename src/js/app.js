@@ -18,10 +18,15 @@ const getURLParameter = name =>
     [null, ''])[1].replace(/\+/g, '%20')) || null;
 
 // Get the mode of the visualization from the URL parameter
-const mode = getURLParameter('mode');
+let mode = getURLParameter('mode');
 if (mode === null) {
-  alert('Mode has to be either "dual" or "spiralSimulation"');
-  throw new Error('Mode has to be either "dual" or "spiralSimulation"');
+  do {
+    /* eslint no-alert: "off" */
+    mode = prompt(
+      'You have to choose a mode. It has to be either "dual" or "spiralSimulation":',
+      'dual',
+    );
+  } while (mode !== 'dual' && mode !== 'spiralSimulation');
 }
 
 const options = {
