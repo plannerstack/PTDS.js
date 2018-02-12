@@ -283,21 +283,45 @@ export default class PTDS {
    * @return {Object} - Object containing the stops, stopAreas, links and (empty) trips
    */
   _getBaseMapData() {
+    const validStopCodes = new Set();
+    if (this.options.mode === 'dual') {
+      // If we're in dual mode, we're interested only in the data that belongs
+      // to the chosen journey pattern. To filter the stops, stopAreas and links
+      // we first extract the stop codes of the stops belonging to the chosen JP.
+      this.data.journeyPatterns[this.options.dual.journeyPattern].pointsInSequence
+        .forEach((stopCode) => { validStopCodes.add(stopCode); });
+    } else {
+      // If we're in spiralSimulation mode, we're interested only in the data connected
+      // with the journeypatterns present in the dataset. So we extract the stop codes
+      // that appear at least in one journey pattern.
+      Object.entries(this.data.journeyPatterns).forEach(([, { pointsInSequence }]) => {
+        pointsInSequence.forEach((stopCode) => { validStopCodes.add(stopCode); });
+      });
+    }
+
     // We always need to pass to the map visualization the stop information
-    // because it is used to compute the mapping from the dutch grid to the canvas
-    const stops = Object.entries(this.data.scheduledStopPoints).map(([stopCode, stopData]) =>
-      ({ stopCode, position: new Point(stopData.x, stopData.y) }));
+    // because it is used to compute the mapping from the dutch grid to the canvas.
+    // We only consider the stops that are deemed valid by the conditions explained above.
+    const stops = Object.entries(this.data.scheduledStopPoints)
+      .filter(([stopCode]) => validStopCodes.has(stopCode))
+      .map(([stopCode, stopData]) => ({ stopCode, position: new Point(stopData.x, stopData.y) }));
 
     // We only pass the stoparea information to the map visualization
-    // if the options state that they have to be shown
+    // if the options state that they have to be shown.
+    // We only consider stop areas that have one stops belonging to the valid stop codes ist.
     const stopAreas = this.options.showStopAreas ?
-      Object.entries(this.stopAreasAggregation).map(([stopAreaCode, stopAreaData]) =>
-        ({ stopAreaCode, position: stopAreaData.centroid })) :
+      Object.entries(this.stopAreasAggregation)
+        .filter(([, stopAreaData]) =>
+          Object.keys(stopAreaData.stops).some(stopCode => validStopCodes.has(stopCode)))
+        .map(([stopAreaCode, stopAreaData]) =>
+          ({ stopAreaCode, position: stopAreaData.centroid })) :
       [];
 
+    // Filter out the link if some of its vertexes belong to a valid stop code
     const links = this.options.showLinks ?
-      Object.entries(this.projectNetwork).map(([linkID, linkData]) =>
-        ({ linkID, segment: linkData.stopAreasSegment })) :
+      Object.entries(this.projectNetwork)
+        .filter(([linkID]) => linkID.split('|').every(stopCode => validStopCodes.has(stopCode)))
+        .map(([linkID, linkData]) => ({ linkID, segment: linkData.stopAreasSegment })) :
       [];
 
     return {
