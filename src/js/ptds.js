@@ -2,6 +2,7 @@ import { select } from 'd3-selection';
 import { zoom } from 'd3-zoom';
 import { timeFormat } from 'd3-time-format';
 import { timer } from 'd3-timer';
+import { zip } from 'd3-array';
 import dat from 'dat.gui';
 
 import Point from './point';
@@ -15,6 +16,7 @@ const d3 = Object.assign({}, {
   zoom,
   timeFormat,
   timer,
+  zip,
   // very ugly hack to solve a problem that d3 and webpack have
   // https://github.com/d3/d3/issues/2733
   /* eslint-disable */
@@ -352,6 +354,7 @@ export default class PTDS {
         time: TimeUtils.secondsToHHMMSS(time),
         distance: journeyPatternData.distances[index],
       })),
+      vehicles: this._getTripVehiclePositions(tripCode, tripData.realtime),
     }));
 
     // Create stops-distances list for the axis of the Marey diagram
@@ -365,6 +368,40 @@ export default class PTDS {
       trips,
       stopsDistances,
     };
+  }
+
+  _getTripVehiclePositions(tripCode, tripRTdata) {
+    const tripPositions = [];
+    for (const { vehicleNumber, times, distances } of tripRTdata) {
+      // Iterate over the (time, distance) pairs of the current vehicle
+      // and determine the status of each position
+      const positions = [];
+      for (const [index, [time, distance]] of d3.zip(times, distances).entries()) {
+        const vehicleStatus = this._getVehicleStatusComparedToSchedule(
+          tripCode,
+          time,
+          distance,
+        );
+
+        // Add the enriched position info to the list
+        // of positions of the current vehicle
+        positions.push({
+          index,
+          time: TimeUtils.secondsToHHMMSS(time),
+          distance,
+          vehicleStatus,
+        });
+      }
+
+      // Add the enriched position info of the current vehicle
+      // to the list of vehicle position info of the current trip
+      tripPositions.push({
+        vehicleNumber,
+        positions,
+      });
+    }
+
+    return tripPositions;
   }
 
   /**

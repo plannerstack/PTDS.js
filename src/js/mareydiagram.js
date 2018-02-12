@@ -198,17 +198,77 @@ export default class MareyDiagram {
    * Draw the trips on the diagram
    */
   drawTrips() {
-    const trips = this.tripsGroup.selectAll('g.trip')
+    const tripsSel = this.tripsGroup.selectAll('g.trip')
       .data(this.data.trips);
 
     const tripLineGenerator = d3.line()
       .x(({ distance }) => this.xScale(distance))
       .y(({ time }) => this.yScale(this.tripTimeParse(time)));
 
-    trips.enter().append('g')
+    const tripsSelEnter = tripsSel.enter().append('g')
       .attr('class', 'trip')
-      .attr('data-tripcode', ({ tripCode }) => tripCode)
+      .attr('data-tripcode', ({ tripCode }) => tripCode);
+
+    tripsSelEnter
       .append('path')
       .attr('d', ({ tripSchedule }) => tripLineGenerator(tripSchedule));
+
+    const vehiclesSel = tripsSelEnter.selectAll('g.vehicle')
+      .data(({ vehicles }) => vehicles);
+
+    const vehiclesSelEnter = vehiclesSel.enter().append('g')
+      .attr('class', 'vehicle')
+      .attr('data-vehicle-id', ({ vehicleNumber }) => vehicleNumber);
+
+    const vehiclesPosSel = vehiclesSelEnter.selectAll('circle.position')
+      .data(({ positions }) => positions);
+
+    vehiclesPosSel.enter()
+      .append('circle')
+      .attr('class', ({ vehicleStatus }) => `position ${vehicleStatus}`)
+      .attr('cx', ({ distance }) => this.xScale(distance))
+      .attr('cy', ({ time }) => this.yScale(this.tripTimeParse(time)))
+      .attr('r', '1');
+
+    const vehiclesPosLinksSel = vehiclesSelEnter.selectAll('line.pos-link')
+      .data(({ positions }) => {
+        const posLinks = [];
+        for (let index = 0; index < positions.length - 1; index += 1) {
+          const posA = positions[index];
+          const posB = positions[index + 1];
+          const timeA = posA.time;
+          const timeB = posB.time;
+          const distanceA = posA.distance;
+          const distanceB = posB.distance;
+
+          let vehicleStatus = 'undefined';
+
+          if (posA.vehicleStatus === 'early' && posB.vehicleStatus === 'early') {
+            vehicleStatus = 'early';
+          } else if (posA.vehicleStatus === 'ontime' && posB.vehicleStatus === 'ontime') {
+            vehicleStatus = 'ontime';
+          } else if (posA.vehicleStatus === 'late' && posB.vehicleStatus === 'late') {
+            vehicleStatus = 'late';
+          }
+
+          posLinks.push({
+            timeA,
+            timeB,
+            distanceA,
+            distanceB,
+            vehicleStatus,
+          });
+        }
+
+        return posLinks;
+      });
+
+    vehiclesPosLinksSel.enter()
+      .append('line')
+      .attr('class', ({ vehicleStatus }) => `pos-link ${vehicleStatus}`)
+      .attr('x1', ({ distanceA }) => this.xScale(distanceA))
+      .attr('x2', ({ distanceB }) => this.xScale(distanceB))
+      .attr('y1', ({ timeA }) => this.yScale(this.tripTimeParse(timeA)))
+      .attr('y2', ({ timeB }) => this.yScale(this.tripTimeParse(timeB)));
   }
 }
