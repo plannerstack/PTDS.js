@@ -454,39 +454,54 @@ export default class PTDS {
    * @return {Number} Current distance traveled by the vehicle in its trip
    */
   _getTripDistanceAtTime(tripData, time) {
+    // Get journey pattern data of current trip and the distances of the stops therein
     const journeyPatternData = this.data.journeyPatterns[tripData.journeyPatternRef];
-    const { distances } = journeyPatternData;
+    const { distances: jpDistances } = journeyPatternData;
 
     // Special case handling: when the time asked for is the time of the last stop of the trip.
     // In that case the distance traveled is the distance at which the last stop is located
     if (tripData.times[tripData.times.length - 1] === time) {
-      return distances[distances.length - 1];
+      return jpDistances[jpDistances.length - 1];
     }
 
-    // Find out the index corresponding to the latest time passed currently
-    let lastTimeIndex = 0;
-    for (const index of [...Array(tripData.times.length - 1).keys()]) {
-      if (tripData.times[index + 1] > time) {
-        lastTimeIndex = index;
-        break;
+    // Given a list of times and distances, and the current time (already present in the outer
+    // context) computes the current distance of the vehicle.
+    // The list of times and distances can be either the planned one or the realtime one of
+    // a certain vehicle
+    const coreGetDistance = (times, distances) => {
+      let lastTimeIndex = 0;
+      for (const index of [...Array(times.length - 1).keys()]) {
+        if (times[index + 1] > time) {
+          lastTimeIndex = index;
+          break;
+        }
       }
+
+      // Compute percentage of time between previous and next stop by interpolation
+      const percentage = (time - times[lastTimeIndex]) /
+                         (times[lastTimeIndex + 1] - times[lastTimeIndex]);
+
+      // Use the percentage to compute the actual distance of the vehicle by correspondence
+      // to the distance list
+      const currentDistance = distances[lastTimeIndex] +
+        (percentage * (distances[lastTimeIndex + 1] - distances[lastTimeIndex]));
+
+      return currentDistance;
+    };
+
+    // Check if real time data is available
+    if (Object.prototype.hasOwnProperty.call(tripData, 'realtime') &&
+        tripData.realtime.length > 0) {
+      return tripData.realtime.map(({ vehicleNumber, times, distances }) => ({
+        vehicleNumber,
+        distance: coreGetDistance(times, distances),
+      }));
     }
 
-    // Compute percentage of time between previous and next stop by interpolation
-    const percentage = (time - tripData.times[lastTimeIndex]) /
-                       (tripData.times[lastTimeIndex + 1] - tripData.times[lastTimeIndex]);
-
-    // Use the percentage to compute the actual distance of the vehicle by correspondence
-    // to the distance list
-    const currentDistance = distances[lastTimeIndex] +
-      (percentage * (distances[lastTimeIndex + 1] - distances[lastTimeIndex]));
-
-    // Keep this for realtime positioning later, but will require finding the lastTimeIndex,
-    // from the realtime times list.
-    // const currentDistance = tripData.distances[lastTimeIndex] +
-    //  (percentage * (tripData.distances[lastTimeIndex+1] - tripData.distances[lastTimeIndex]));
-
-    return currentDistance;
+    return [{
+      vehicleNumber: 0,
+      distance: coreGetDistance(tripData.times, jpDistances),
+    }];
   }
 
   /**
@@ -531,7 +546,8 @@ export default class PTDS {
                         journeyPatternData.distances[lastStopIndex]);
 
     // Get segment of the network on which the vehicle is now
-    const currentSegment = this.projectNetwork[`${previousStopCode}|${nextStopCode}`];
+    const linkID = `${previousStopCode}|${nextStopCode}`;
+    const currentSegment = this.projectNetwork[linkID];
 
     return currentSegment.stopAreasSegment.getPointByPercentage(percentage);
   }
@@ -556,8 +572,16 @@ export default class PTDS {
    * @return {Boolean} True if trip is active, false otherwise.
    */
   static isActiveTrip(time) {
-    return tripData => (tripData.times[0] <= time &&
-                        tripData.times[tripData.times.length - 1] >= time);
+    return (tripData) => {
+      // If realtime data is available, the trip is considered active if at least one of the
+      // vehicles is active
+      if (Object.prototype.hasOwnProperty.call(tripData, 'realtime')) {
+        return tripData.realtime.some(({ times }) =>
+          times[0] <= time && times[times.length - 1] >= time);
+      }
+
+      return (tripData.times[0] <= time && tripData.times[tripData.times.length - 1] >= time);
+    };
   }
 
   /**
@@ -570,21 +594,24 @@ export default class PTDS {
   _getTripsAtTime(time, filterFunc) {
     const activeTrips = this._getFilteredTrips(PTDS.isActiveTrip(time));
 
-    const tripPositions = [];
+    const tripsPositions = [];
     for (const [tripCode, tripData] of Object.entries(activeTrips)) {
       // Consider the trip only if there is no filter function or the filter function
       // does not filter out the trip (returns true)
       if (typeof filterFunc === 'undefined' || filterFunc(tripData)) {
-        const tripDistance = this._getTripDistanceAtTime(tripData, time);
-        const tripPosition = this._getTripPositionFromDistance(tripData, tripDistance);
-        tripPositions.push({
-          tripCode,
-          position: tripPosition,
+        const tripDistances = this._getTripDistanceAtTime(tripData, time);
+        tripDistances.forEach(({ vehicleNumber, distance }) => {
+          const tripPosition = this._getTripPositionFromDistance(tripData, distance);
+          tripsPositions.push({
+            tripCode,
+            vehicleNumber,
+            position: tripPosition,
+          });
         });
       }
     }
 
-    return tripPositions;
+    return tripsPositions;
   }
 
 
