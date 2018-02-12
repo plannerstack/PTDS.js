@@ -262,7 +262,7 @@ export default class PTDS {
         this.map.updateData({
           trips: this._getTripsAtTime(
             TimeUtils.HHMMSStoSeconds(time),
-            tripData => tripData.journeyPatternRef === this.options.dual.journeyPattern,
+            tripData => this.options.dual.journeyPatterns.includes(tripData.journeyPatternRef),
           ),
         });
         this.map._drawTrips();
@@ -270,7 +270,7 @@ export default class PTDS {
 
       // Creation of the Marey diagram
       this.marey = new MareyDiagram(
-        this._getMareyData(this.options.dual.journeyPattern),
+        this._getMareyData(),
         this.mareySVG,
         this.dims.marey,
         this.options,
@@ -290,8 +290,11 @@ export default class PTDS {
       // If we're in dual mode, we're interested only in the data that belongs
       // to the chosen journey pattern. To filter the stops, stopAreas and links
       // we first extract the stop codes of the stops belonging to the chosen JP.
-      this.data.journeyPatterns[this.options.dual.journeyPattern].pointsInSequence
-        .forEach((stopCode) => { validStopCodes.add(stopCode); });
+      this.options.dual.journeyPatterns.forEach((journeyPatternRef) => {
+        this.data.journeyPatterns[journeyPatternRef].pointsInSequence.forEach((stopCode) => {
+          validStopCodes.add(stopCode);
+        });
+      });
     } else {
       // If we're in spiralSimulation mode, we're interested only in the data connected
       // with the journeypatterns present in the dataset. So we extract the stop codes
@@ -333,9 +336,9 @@ export default class PTDS {
 
   /**
    * Get the data needed to draw the Marey diagram
-   * @param  {String} journeyPatternCode - Jourey pattern code chosen to display
    */
-  _getMareyData(journeyPatternCode) {
+  _getMareyData() {
+    const journeyPatternCode = this.options.dual.journeyPatterns[0];
     // Journey pattern data (stopcodes, distances) of the chosen journey pattern
     const journeyPatternData = this.data.journeyPatterns[journeyPatternCode];
 
