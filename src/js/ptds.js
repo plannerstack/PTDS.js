@@ -2,6 +2,7 @@ import { select } from 'd3-selection';
 import { zoom } from 'd3-zoom';
 import { timeFormat } from 'd3-time-format';
 import { timer } from 'd3-timer';
+import { zip } from 'd3-array';
 import dat from 'dat.gui';
 
 import Point from './point';
@@ -15,6 +16,7 @@ const d3 = Object.assign({}, {
   zoom,
   timeFormat,
   timer,
+  zip,
   // very ugly hack to solve a problem that d3 and webpack have
   // https://github.com/d3/d3/issues/2733
   /* eslint-disable */
@@ -361,7 +363,39 @@ export default class PTDS {
     return {
       trips,
       stopsDistances,
+      vehiclePositions: this._getMareyRealtimeData(journeyPatternCode),
     };
+  }
+
+  _getMareyRealtimeData(journeyPatternCode) {
+    const tripsRaw = this._getFilteredTrips(tripData =>
+      tripData.journeyPatternRef === journeyPatternCode);
+
+    const allVehiclePositions = [];
+    for (const [tripCode, { realtime: realTimeData }] of Object.entries(tripsRaw)) {
+      for (const { vehicleNumber, times, distances } of realTimeData) {
+        const curVehiclePositions = d3.zip(times, distances);
+
+        for (const [index, [time, distance]] of curVehiclePositions.entries()) {
+          const vehicleStatus = this._getVehicleStatusComparedToSchedule(
+            tripCode,
+            time,
+            distance,
+          );
+
+          allVehiclePositions.push({
+            tripCode,
+            vehicleNumber,
+            index,
+            time: TimeUtils.secondsToHHMMSS(time),
+            distance,
+            vehicleStatus,
+          });
+        }
+      }
+    }
+
+    return allVehiclePositions;
   }
 
   /**

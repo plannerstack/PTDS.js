@@ -53,6 +53,20 @@ svg {
   .trip path {
     fill: none;
   }
+
+  g.vehiclePositions circle {
+    &.early {
+      fill: red;
+    }
+
+    &.ontime {
+      fill: green;
+    }
+
+    &.late {
+      fill: blue;
+    }
+  }
 }
 
 #map {

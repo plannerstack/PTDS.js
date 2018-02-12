@@ -33,6 +33,7 @@ export default class MareyDiagram {
 
     this._initialSetup(changeCallback);
     this.drawTrips();
+    this.drawVehiclePositions();
   }
 
   /**
@@ -78,6 +79,8 @@ export default class MareyDiagram {
       .attr('class', 'trips');
     this.xAxisGroup = this.svgObject.append('g')
       .attr('class', 'top-axis axis');
+    this.vehiclePositionsGroup = this.svgObject.append('g')
+      .attr('class', 'vehiclePositions');
   }
 
   /**
@@ -210,5 +213,22 @@ export default class MareyDiagram {
       .attr('data-tripcode', ({ tripCode }) => tripCode)
       .append('path')
       .attr('d', ({ tripSchedule }) => tripLineGenerator(tripSchedule));
+  }
+
+  /**
+   * Draw the trips on the diagram
+   */
+  drawVehiclePositions() {
+    const vehiclePositions = this.vehiclePositionsGroup.selectAll('g.vehiclePosition')
+      .data(this.data.vehiclePositions);
+
+    vehiclePositions.enter()
+      .append('circle')
+      .attr('data-tripcode', ({ tripCode }) => tripCode)
+      .attr('data-vehicle-number', ({ vehicleNumber }) => vehicleNumber)
+      .attr('class', ({ vehicleStatus }) => vehicleStatus)
+      .attr('cx', ({ distance }) => this.xScale(distance))
+      .attr('cy', ({ time }) => this.yScale(this.tripTimeParse(time)))
+      .attr('r', '2');
   }
 }
