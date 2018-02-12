@@ -67,6 +67,22 @@ svg {
       fill: blue;
     }
   }
+
+  g.vehicle line.pos-link {
+    stroke-width: 1px;
+
+    &.early {
+      stroke: red;
+    }
+
+    &.ontime {
+      stroke: green;
+    }
+
+    &.late {
+      stroke: blue;
+    }
+  }
 }
 
 #map {

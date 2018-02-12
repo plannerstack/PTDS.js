@@ -78,8 +78,6 @@ export default class MareyDiagram {
       .attr('class', 'trips');
     this.xAxisGroup = this.svgObject.append('g')
       .attr('class', 'top-axis axis');
-    // this.vehiclePositionsGroup = this.svgObject.append('g')
-    //   .attr('class', 'vehiclePositions');
   }
 
   /**
@@ -231,5 +229,46 @@ export default class MareyDiagram {
       .attr('cx', ({ distance }) => this.xScale(distance))
       .attr('cy', ({ time }) => this.yScale(this.tripTimeParse(time)))
       .attr('r', '1');
+
+    const vehiclesPosLinksSel = vehiclesSelEnter.selectAll('line.pos-link')
+      .data(({ positions }) => {
+        const posLinks = [];
+        for (let index = 0; index < positions.length - 1; index += 1) {
+          const posA = positions[index];
+          const posB = positions[index + 1];
+          const timeA = posA.time;
+          const timeB = posB.time;
+          const distanceA = posA.distance;
+          const distanceB = posB.distance;
+
+          let vehicleStatus = 'undefined';
+
+          if (posA.vehicleStatus === 'early' && posB.vehicleStatus === 'early') {
+            vehicleStatus = 'early';
+          } else if (posA.vehicleStatus === 'ontime' && posB.vehicleStatus === 'ontime') {
+            vehicleStatus = 'ontime';
+          } else if (posA.vehicleStatus === 'late' && posB.vehicleStatus === 'late') {
+            vehicleStatus = 'late';
+          }
+
+          posLinks.push({
+            timeA,
+            timeB,
+            distanceA,
+            distanceB,
+            vehicleStatus,
+          });
+        }
+
+        return posLinks;
+      });
+
+    vehiclesPosLinksSel.enter()
+      .append('line')
+      .attr('class', ({ vehicleStatus }) => `pos-link ${vehicleStatus}`)
+      .attr('x1', ({ distanceA }) => this.xScale(distanceA))
+      .attr('x2', ({ distanceB }) => this.xScale(distanceB))
+      .attr('y1', ({ timeA }) => this.yScale(this.tripTimeParse(timeA)))
+      .attr('y2', ({ timeB }) => this.yScale(this.tripTimeParse(timeB)));
   }
 }
