@@ -49,7 +49,7 @@ const options = {
   // dual specific options
   dual: {
     verticalSplitPercentage: (Math.sqrt(5) - 1) / 2,
-    mareyHeightMultiplier: 5,
+    mareyHeightMultiplier: 4,
     journeyPattern: 'HTM:16:231',
   },
 };
