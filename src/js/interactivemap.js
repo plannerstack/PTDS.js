@@ -266,11 +266,12 @@ export default class InteractiveMap {
   _drawTrips() {
     const trips = this.tripsGroup.selectAll('g.trip')
       .data(
-        this.data.trips.map(({ tripCode, position }) => ({
+        this.data.trips.map(({ tripCode, vehicleNumber, position }) => ({
           tripCode,
+          vehicleNumber,
           position: this._mapToCanvas(position),
         })),
-        ({ tripCode }) => tripCode,
+        ({ tripCode, vehicleNumber }) => `${tripCode}|${vehicleNumber}`,
       );
 
     trips.exit().remove();
@@ -282,6 +283,7 @@ export default class InteractiveMap {
     const tripsGroups = trips.enter().append('g')
       .attr('class', 'trip')
       .attr('data-trip-code', ({ tripCode }) => tripCode)
+      .attr('data-vehicle-number', ({ vehicleNumber }) => vehicleNumber)
       .attr('transform', ({ position }) => `translate(${position.x},${position.y})`);
 
     tripsGroups
