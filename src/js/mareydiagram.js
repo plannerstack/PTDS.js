@@ -182,15 +182,25 @@ export default class MareyDiagram {
         // Get the time corresponding to the actual mouse position
         // and format it
         const time = this.yScale.invert(yPos);
-        const formattedTime = this.timelineTimeFormat(time);
+        const hhmmssTime = this.timelineTimeFormat(time);
 
-        // Trigger the callback
-        changeCallback(formattedTime);
+        // If the schedule extends to the next day, we need to handle
+        // manually the time conversion.
+        // This should be considered a hack and the whole time handling
+        // should be revised ASAP.
+        if (d3.timeFormat('%j')(time) > 1) {
+          const hh = parseInt(hhmmssTime.substr(0, 2), 10);
+          const fixedHH = hh + 24;
+          const fixedHHMMSSTime = `${fixedHH}:${hhmmssTime.substr(3)}`;
+          changeCallback(fixedHHMMSSTime);
+        } else {
+          changeCallback(hhmmssTime);
+        }
 
         // Update the y position of the timeline group
         d3.select('g.timeline').attr('transform', `translate(0,${yPos})`);
         // Update the text showing the time
-        d3.select('g.timeline text').text(formattedTime);
+        d3.select('g.timeline text').text(hhmmssTime);
       });
   }
 
