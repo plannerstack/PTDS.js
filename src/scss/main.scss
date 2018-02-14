@@ -1,8 +1,15 @@
 // Global variables
-$stop-fill: black;
-$stopArea-fill: red;
-$trip-fill: green;
-$verticalStops-stroke: lightgray;
+$vehicle-early-color: red;
+$vehicle-ontime-color: green;
+$vehicle-late-color: blue;
+
+// Map variables
+$map-stop-color: black;
+$map-stop-area-color: red;
+$map-trip-color: green;
+
+// Marey variables
+$marey-stop-lines-stroke: lightgray;
 
 // Remove margins from the body, set base font
 html, body {
@@ -26,6 +33,7 @@ svg {
 }
 
 #marey {
+  // Make invisible the overlay used to capture cursor position
   #mouse-move-overlay {
     fill-opacity: 0;
   }
@@ -35,17 +43,21 @@ svg {
       opacity: 0;
     }
 
+    // Top axis labels are rotated and a white outline
+    // is used to make them more visible when on top of other elements
     text {
       transform: rotate(270deg) ;
       text-anchor: start;
       paint-order: stroke;
       stroke: white;
-      stroke-width: 5px;
+      stroke-width: 5;
     }
 
+    // Color all the vertical lines representing the stops
+    // except for the first and the last as they overlap the left and right axes
     g.tick:not(:nth-child(2)):not(:last-child) {
       line {
-        stroke: $verticalStops-stroke;
+        stroke: $marey-stop-lines-stroke;
       }
     }
   }
@@ -56,75 +68,71 @@ svg {
 
   g.vehicle circle.position {
     &.early {
-      fill: red;
+      fill: $vehicle-early-color;
     }
 
     &.ontime {
-      fill: green;
+      fill: $vehicle-ontime-color;
     }
 
     &.late {
-      fill: blue;
+      fill: $vehicle-late-color;
     }
   }
 
   g.vehicle line.pos-link {
-    stroke-width: 1px;
-
     &.early {
-      stroke: red;
+      stroke: $vehicle-early-color;
     }
 
     &.ontime {
-      stroke: green;
+      stroke: $vehicle-ontime-color;
     }
 
     &.late {
-      stroke: blue;
+      stroke: $vehicle-late-color;
     }
   }
 }
 
 #map {
-  g.stopArea {
-    circle {
-      fill: $stopArea-fill;
-    }
-
+  g.stop, g.stopArea, g.trip {
     text {
-      font-size: 1.5px;
       stroke: white;
       paint-order: stroke;
-      stroke-width: 0.3px;
       text-anchor: middle;
+      stroke-width: 0.3px;
     }
   }
 
   g.stop {
     circle {
-      fill: $stop-fill;
+      fill: $map-stop-color;
     }
 
     text {
       font-size: 2px;
-      stroke: white;
-      paint-order: stroke;
-      text-anchor: middle;
-      stroke-width: 0.3px;
     }
   }
 
+  g.stopArea {
+    circle {
+      fill: $map-stop-area-color;
+    }
+
+    text {
+      font-size: 2px;
+    }
+  }
+
+
   g.trip {
     circle {
-      fill: $trip-fill;
+      fill: $map-trip-color;
     }
 
     text {
       font-size: 3px;
-      stroke: white;
-      paint-order: stroke;
-      text-anchor: middle;
-      stroke-width: 0.3px;
     }
   }
 }
