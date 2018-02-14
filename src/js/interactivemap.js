@@ -51,10 +51,10 @@ export default class InteractiveMap {
    * Create the SVG groups for links, stops, stopAreas and trips
    */
   _createGroups() {
-    this.stopsGroup = this.svgObject.append('g')
-      .attr('id', 'stops');
     this.linksGroup = this.svgObject.append('g')
       .attr('id', 'links');
+    this.stopsGroup = this.svgObject.append('g')
+      .attr('id', 'stops');
     this.stopAreasGroup = this.svgObject.append('g')
       .attr('id', 'stopAreas');
     this.tripsGroup = this.svgObject.append('g')
