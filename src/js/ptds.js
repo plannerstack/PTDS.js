@@ -600,13 +600,14 @@ export default class PTDS {
       // does not filter out the trip (returns true)
       if (typeof filterFunc === 'undefined' || filterFunc(tripData)) {
         const tripDistances = this._getTripDistanceAtTime(tripData, time);
-        tripDistances.forEach(({ vehicleNumber, distance }) => {
-          const tripPosition = this._getTripPositionFromDistance(tripData, distance);
-          tripsPositions.push({
-            tripCode,
-            vehicleNumber,
-            position: tripPosition,
-          });
+        const vehiclePositions = tripDistances.map(({ vehicleNumber, distance }) => ({
+          vehicleNumber,
+          position: this._getTripPositionFromDistance(tripData, distance),
+        }));
+
+        tripsPositions.push({
+          tripCode,
+          vehiclePositions,
         });
       }
     }

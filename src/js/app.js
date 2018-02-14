@@ -4,6 +4,7 @@ import * as log from 'loglevel';
 
 import PTDS from './ptds';
 
+// Enable logging at all levels
 log.enableAll();
 
 const d3 = Object.assign({}, {
@@ -11,7 +12,11 @@ const d3 = Object.assign({}, {
   json,
 });
 
-// Gets parameter from URL
+/**
+ * Get a parameter from the URL
+ * @param  {String} name - Name of the parameter
+ * @return {String} - Retrieved value of the parameter
+ */
 const getURLParameter = name =>
   /* eslint no-restricted-globals: "off" */
   decodeURIComponent((new RegExp(`[?|&]${name}=([^&;]+?)(&|#|;|$)`).exec(location.search) ||
@@ -19,6 +24,8 @@ const getURLParameter = name =>
 
 // Get the mode of the visualization from the URL parameter
 let mode = getURLParameter('mode');
+// If no mode was specified, prompt the user asking for one.
+// Keep on asking till he inputs a valid one.
 if (mode === null) {
   do {
     /* eslint no-alert: "off" */
@@ -54,8 +61,8 @@ const options = {
   },
 };
 
-// Load JSON data asynchronously
+// Load JSON data asynchronously, when finished create the visualization
 /* eslint no-new: "off" */
 d3.queue()
-  .defer(d3.json, 'data/singleLine.json')
+  .defer(d3.json, 'data/withRealTime.json')
   .await((error, data) => { new PTDS(data, options); });

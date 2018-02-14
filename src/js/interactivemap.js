@@ -1,4 +1,5 @@
 import * as log from 'loglevel';
+
 import Point from './point';
 import Segment from './segment';
 
@@ -15,7 +16,7 @@ export default class InteractiveMap {
     //  stops: [{stopCode: 123, position: Point(123, 456)}, ...],
     //  stopAreas: [{stopAreaCode: 123, position: Point(123, 456)}, ...],
     //  links: [{linkID: 123, segment: Segment(Point(12, 34), Point(56, 78))}, ...]
-    //  trips: [{tripCode: 123, position: Point(123, 456)}, ...],
+    //  trips: [{tripCode: 123, vehicleNumber: 1, position: Point(123, 456)}, ...],
     // }
     this.data = data;
     this.svgObject = svgObject;
@@ -132,8 +133,8 @@ export default class InteractiveMap {
    * Draws the stops
    */
   _drawStops() {
-    // Create (empty at first) selection
-    const stops = this.stopsGroup.selectAll('g.stop')
+    // Stop selection
+    const stopsSel = this.stopsGroup.selectAll('g.stop')
       .data(
         // Before binding the stops data to the selection,
         // we transform their position from dutch grid to canvas
@@ -145,35 +146,35 @@ export default class InteractiveMap {
         ({ stopCode }) => stopCode,
       );
 
-    // Remove deleted stops
-    stops.exit().remove();
+    // Stop exit
+    stopsSel.exit().remove();
 
-    // Update selection
-    stops
+    // Stop enter
+    const stopsEnterSel = stopsSel.enter().append('g')
+      .attr('class', 'stop')
+      .attr('data-stop-code', ({ stopCode }) => stopCode);
+
+    // Stop enter + update
+    stopsEnterSel.merge(stopsSel)
       .attr('transform', ({ position }) => `translate(${position.x},${position.y})`);
 
-    // Enter selection
-    const stopsGroups = stops.enter().append('g')
-      .attr('class', 'stop')
-      // Attach the stop code as an attribute to the SVG element, can turn out useful later
-      .attr('data-stop-code', ({ stopCode }) => stopCode)
-      .attr('transform', ({ position }) =>
-        `translate(${position.x},${position.y})`);
-
-    stopsGroups
+    // Stop enter > circle
+    stopsEnterSel
       .append('circle')
       .attr('cx', 0)
       .attr('cy', 0)
       .attr('r', this.options.stopRadius)
       .on('click', function f() {
+        // Demo click event on stop
         const { stopCode } = this.parentNode.dataset;
         log.info(`Clicked on stop ${stopCode}`);
       });
 
-    stopsGroups
+    // Stop enter > text
+    stopsEnterSel
       .append('text')
       .attr('x', 0)
-      .attr('y', 1)
+      .attr('y', -1.5)
       .text(({ stopCode }) => stopCode);
   }
 
@@ -181,7 +182,8 @@ export default class InteractiveMap {
    * Draws the stop areas
    */
   _drawStopAreas() {
-    const stopAreas = this.stopAreasGroup.selectAll('g.stopArea')
+    // Stoparea selection
+    const stopAreasSel = this.stopAreasGroup.selectAll('g.stopArea')
       .data(
         this.data.stopAreas.map(({ stopAreaCode, position }) => ({
           stopAreaCode,
@@ -190,20 +192,20 @@ export default class InteractiveMap {
         ({ stopAreaCode }) => stopAreaCode,
       );
 
-    stopAreas.exit().remove();
+    // Stoparea exit
+    stopAreasSel.exit().remove();
 
-    // Update selection
-    stopAreas
+    // Stoparea enter
+    const stopAreasEnterSel = stopAreasSel.enter().append('g')
+      .attr('class', 'stopArea')
+      .attr('data-stop-area-code', ({ stopAreaCode }) => stopAreaCode);
+
+    // Stoparea enter + update
+    stopAreasEnterSel.merge(stopAreasSel)
       .attr('transform', ({ position }) => `translate(${position.x},${position.y})`);
 
-    // Enter selection
-    const stopAreasGroups = stopAreas.enter().append('g')
-      .attr('class', 'stopArea')
-      .attr('data-stop-area-code', ({ stopAreaCode }) => stopAreaCode)
-      .attr('transform', ({ position }) =>
-        `translate(${position.x},${position.y})`);
-
-    stopAreasGroups
+    // Stoparea enter > circle
+    stopAreasEnterSel
       .append('circle')
       .attr('cx', 0)
       .attr('cy', 0)
@@ -213,10 +215,11 @@ export default class InteractiveMap {
         log.info(`Clicked on stop area ${stopAreaCode}`);
       });
 
-    stopAreasGroups
+    // Stoparea enter > text
+    stopAreasEnterSel
       .append('text')
       .attr('x', 0)
-      .attr('y', -1)
+      .attr('y', -1.5)
       .text(({ stopAreaCode }) => stopAreaCode);
   }
 
@@ -224,7 +227,8 @@ export default class InteractiveMap {
    * Draws the links
    */
   _drawLinks() {
-    const links = this.linksGroup.selectAll('line.link')
+    // Link selection
+    const linkSel = this.linksGroup.selectAll('line.link')
       .data(
         // Similarly to what we did for stops and stopAreas, we
         // transform the segment to canvas position from dutch grid
@@ -239,67 +243,79 @@ export default class InteractiveMap {
         ({ linkID }) => linkID,
       );
 
-    links.exit().remove();
+    // Link exit
+    linkSel.exit().remove();
 
-    links
+    // Link enter
+    linkSel.enter().append('line')
+      .attr('class', 'link')
+      .attr('data-link-id', ({ linkID }) => linkID)
+      .on('click', function f() {
+        const { linkId } = this.dataset;
+        log.info(`Clicked on link ${linkId}`);
+      })
+      // Link enter + update
+      .merge(linkSel)
       .attr('x1', ({ segment }) => segment.pointA.x)
       .attr('y1', ({ segment }) => segment.pointA.y)
       .attr('x2', ({ segment }) => segment.pointB.x)
       .attr('y2', ({ segment }) => segment.pointB.y);
-
-    links.enter().append('line')
-      .attr('class', 'link')
-      .attr('data-link-id', ({ linkID }) => linkID)
-      .attr('x1', ({ segment }) => segment.pointA.x)
-      .attr('y1', ({ segment }) => segment.pointA.y)
-      .attr('x2', ({ segment }) => segment.pointB.x)
-      .attr('y2', ({ segment }) => segment.pointB.y)
-      .on('click', function f() {
-        const { linkId } = this.dataset;
-        log.info(`Clicked on link ${linkId}`);
-      });
   }
 
   /**
    * Draw the trips
    */
   _drawTrips() {
-    const trips = this.tripsGroup.selectAll('g.trip')
-      .data(
-        this.data.trips.map(({ tripCode, vehicleNumber, position }) => ({
-          tripCode,
-          vehicleNumber,
-          position: this._mapToCanvas(position),
-        })),
-        ({ tripCode, vehicleNumber }) => `${tripCode}|${vehicleNumber}`,
-      );
+    // Trip selection
+    const tripsSel = this.tripsGroup.selectAll('g.trip')
+      .data(this.data.trips, ({ tripCode }) => tripCode);
 
-    trips.exit().remove();
+    // Trip exit
+    tripsSel.exit().remove();
 
-    trips
-      .attr('transform', ({ position }) => `translate(${position.x},${position.y})`);
-
-    // Enter selection
-    const tripsGroups = trips.enter().append('g')
+    // Trip enter
+    tripsSel.enter().append('g')
       .attr('class', 'trip')
-      .attr('data-trip-code', ({ tripCode }) => tripCode)
-      .attr('data-vehicle-number', ({ vehicleNumber }) => vehicleNumber)
+      .attr('data-trip-code', ({ tripCode }) => tripCode);
+
+    // Trip > vehicle selection
+    const vehicles = tripsSel.selectAll('g.vehicle')
+      .data(({ vehiclePositions }) => vehiclePositions.map(({ vehicleNumber, position }) => ({
+        vehicleNumber,
+        position: this._mapToCanvas(position),
+      })), ({ vehicleNumber }) => vehicleNumber);
+
+    // Trip > vehicle exit
+    vehicles.exit().remove();
+
+    // Trip > vehicle enter
+    const vehiclesEnterSel = vehicles.enter()
+      .append('g')
+      .attr('class', 'vehicle')
+      .attr('data-vehicle-number', ({ vehicleNumber }) => vehicleNumber);
+
+    // Trip > vehicle enter + update
+    vehiclesEnterSel.merge(vehicles)
       .attr('transform', ({ position }) => `translate(${position.x},${position.y})`);
 
-    tripsGroups
+    // Trip > vehicle enter > circle
+    vehiclesEnterSel
       .append('circle')
       .attr('cx', 0)
       .attr('cy', 0)
       .attr('r', this.options.tripRadius)
-      .on('click', function f() {
-        const { tripCode } = this.parentNode.dataset;
-        log.info(`Clicked on trip ${tripCode}`);
+      .on('click', function f({ vehicleNumber }) {
+        const { tripCode } = this.parentNode.parentNode.dataset;
+        log.info(`Clicked on trip ${tripCode}, vehicleNumber ${vehicleNumber}`);
       });
 
-    tripsGroups
+    // Trip > vehicle enter > text
+    vehiclesEnterSel
       .append('text')
       .attr('x', 0)
-      .attr('y', -1)
-      .text(({ tripCode }) => tripCode);
+      .attr('y', 0)
+      .text(function f() {
+        return this.parentNode.parentNode.dataset.tripCode;
+      });
   }
 }

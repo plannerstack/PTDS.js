@@ -194,78 +194,104 @@ export default class MareyDiagram {
       });
   }
 
+  // TODO: docstring
+  static _getPositionLinks(positions) {
+    const posLinks = [];
+    for (let index = 0; index < positions.length - 1; index += 1) {
+      const posA = positions[index];
+      const posB = positions[index + 1];
+      const timeA = posA.time;
+      const timeB = posB.time;
+      const distanceA = posA.distance;
+      const distanceB = posB.distance;
+
+      let vehicleStatus = 'undefined';
+
+      if (posA.vehicleStatus === 'early' && posB.vehicleStatus === 'early') {
+        vehicleStatus = 'early';
+      } else if (posA.vehicleStatus === 'ontime' && posB.vehicleStatus === 'ontime') {
+        vehicleStatus = 'ontime';
+      } else if (posA.vehicleStatus === 'late' && posB.vehicleStatus === 'late') {
+        vehicleStatus = 'late';
+      }
+
+      posLinks.push({
+        timeA,
+        timeB,
+        distanceA,
+        distanceB,
+        vehicleStatus,
+      });
+    }
+
+    return posLinks;
+  }
+
   /**
    * Draw the trips on the diagram
    */
   drawTrips() {
+    // Trip selection
     const tripsSel = this.tripsGroup.selectAll('g.trip')
-      .data(this.data.trips);
+      .data(this.data.trips, ({ tripCode }) => tripCode);
 
     const tripLineGenerator = d3.line()
       .x(({ distance }) => this.xScale(distance))
       .y(({ time }) => this.yScale(this.tripTimeParse(time)));
 
-    const tripsSelEnter = tripsSel.enter().append('g')
-      .attr('class', 'trip')
-      .attr('data-tripcode', ({ tripCode }) => tripCode);
+    // Trip exit
+    tripsSel.exit().remove();
 
-    tripsSelEnter
+    // Trip enter
+    const tripsEnterSel = tripsSel.enter().append('g')
+      .attr('class', 'trip')
+      .attr('data-trip-code', ({ tripCode }) => tripCode);
+
+    // Trip enter > path
+    tripsEnterSel
       .append('path')
       .attr('d', ({ tripSchedule }) => tripLineGenerator(tripSchedule));
 
-    const vehiclesSel = tripsSelEnter.selectAll('g.vehicle')
-      .data(({ vehicles }) => vehicles);
+    // Trip enter > vehicle selection
+    const vehiclesSel = tripsEnterSel.selectAll('g.vehicle')
+      .data(({ vehicles }) => vehicles, ({ vehicleNumber }) => vehicleNumber);
 
-    const vehiclesSelEnter = vehiclesSel.enter().append('g')
+    // Trip > vehicle exit
+    vehiclesSel.exit().remove();
+
+    // Trip > vehicle enter,
+    const vehiclesEnterSel = vehiclesSel.enter().append('g')
       .attr('class', 'vehicle')
-      .attr('data-vehicle-id', ({ vehicleNumber }) => vehicleNumber);
+      .attr('data-vehicle-n', ({ vehicleNumber }) => vehicleNumber);
 
-    const vehiclesPosSel = vehiclesSelEnter.selectAll('circle.position')
-      .data(({ positions }) => positions);
+    // Trip > vehicle enter + update
+    const vehiclesEnterUpdateSel = vehiclesSel.merge(vehiclesEnterSel);
 
+    // Trip > vehicle enter + update > circle
+    const vehiclesPosSel = vehiclesEnterUpdateSel
+      .selectAll('circle.position')
+      .data(({ positions }) => positions, ({ index }) => index);
+
+    // Trip > vehicle > circle enter
     vehiclesPosSel.enter()
       .append('circle')
       .attr('class', ({ vehicleStatus }) => `position ${vehicleStatus}`)
+      .attr('r', '1')
+      // Trip > vehicle > circle enter + update
+      .merge(vehiclesPosSel)
       .attr('cx', ({ distance }) => this.xScale(distance))
-      .attr('cy', ({ time }) => this.yScale(this.tripTimeParse(time)))
-      .attr('r', '1');
+      .attr('cy', ({ time }) => this.yScale(this.tripTimeParse(time)));
 
-    const vehiclesPosLinksSel = vehiclesSelEnter.selectAll('line.pos-link')
-      .data(({ positions }) => {
-        const posLinks = [];
-        for (let index = 0; index < positions.length - 1; index += 1) {
-          const posA = positions[index];
-          const posB = positions[index + 1];
-          const timeA = posA.time;
-          const timeB = posB.time;
-          const distanceA = posA.distance;
-          const distanceB = posB.distance;
+    // Trip > vehicle > line
+    const vehiclesPosLinksSel = vehiclesEnterUpdateSel.selectAll('line.pos-link')
+      .data(({ positions }) => MareyDiagram._getPositionLinks(positions));
 
-          let vehicleStatus = 'undefined';
-
-          if (posA.vehicleStatus === 'early' && posB.vehicleStatus === 'early') {
-            vehicleStatus = 'early';
-          } else if (posA.vehicleStatus === 'ontime' && posB.vehicleStatus === 'ontime') {
-            vehicleStatus = 'ontime';
-          } else if (posA.vehicleStatus === 'late' && posB.vehicleStatus === 'late') {
-            vehicleStatus = 'late';
-          }
-
-          posLinks.push({
-            timeA,
-            timeB,
-            distanceA,
-            distanceB,
-            vehicleStatus,
-          });
-        }
-
-        return posLinks;
-      });
-
+    // Trip > vehicle > line enter
     vehiclesPosLinksSel.enter()
       .append('line')
       .attr('class', ({ vehicleStatus }) => `pos-link ${vehicleStatus}`)
+      // Trip > vehicle > line enter + update
+      .merge(vehiclesPosLinksSel)
       .attr('x1', ({ distanceA }) => this.xScale(distanceA))
       .attr('x2', ({ distanceB }) => this.xScale(distanceB))
       .attr('y1', ({ timeA }) => this.yScale(this.tripTimeParse(timeA)))
