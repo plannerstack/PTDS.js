@@ -5,6 +5,8 @@ import { timeMinute } from 'd3-time';
 import { select, mouse } from 'd3-selection';
 import { line } from 'd3-shape';
 
+import VehicleStatus from './vehiclestatus';
+
 const d3 = Object.assign({}, {
   timeParse,
   timeFormat,
@@ -87,16 +89,16 @@ export default class MareyDiagram {
   _computeMinMaxTime() {
     // As base values for min and max time we use the first and
     // last time in the schedule of the first trip
-    const firstTripSchedule = this.data.trips[0].tripSchedule;
+    const firstTripSchedule = this.data.trips[0].schedule;
     let [minTimeParsed, maxTimeParsed] = [
       this.tripTimeParse(firstTripSchedule[0].time),
       this.tripTimeParse(firstTripSchedule[firstTripSchedule.length - 1].time),
     ];
 
     // Iterate over all the trips to find minimum and maximum time
-    for (const { tripSchedule } of this.data.trips) {
-      const firstTimeParsed = this.tripTimeParse(tripSchedule[0].time);
-      const lastTimeParsed = this.tripTimeParse(tripSchedule[tripSchedule.length - 1].time);
+    for (const { schedule } of this.data.trips) {
+      const firstTimeParsed = this.tripTimeParse(schedule[0].time);
+      const lastTimeParsed = this.tripTimeParse(schedule[schedule.length - 1].time);
       if (firstTimeParsed < minTimeParsed) minTimeParsed = firstTimeParsed;
       if (lastTimeParsed > maxTimeParsed) maxTimeParsed = lastTimeParsed;
     }
@@ -128,7 +130,7 @@ export default class MareyDiagram {
     const xAxis = d3.axisTop(this.xScale)
       .tickSize(-this.dims.innerHeight)
       .tickValues(this.data.stopsDistances.map(({ distance }) => distance))
-      .tickFormat((_, index) => this.data.stopsDistances[index].stopCode);
+      .tickFormat((_, index) => this.data.stopsDistances[index].stop.code);
 
     this.xAxisGroup.call(xAxis);
 
@@ -215,14 +217,17 @@ export default class MareyDiagram {
       const distanceA = posA.distance;
       const distanceB = posB.distance;
 
-      let vehicleStatus = 'undefined';
+      let vehicleStatus = VehicleStatus.UNDEFINED;
 
-      if (posA.vehicleStatus === 'early' && posB.vehicleStatus === 'early') {
-        vehicleStatus = 'early';
-      } else if (posA.vehicleStatus === 'ontime' && posB.vehicleStatus === 'ontime') {
-        vehicleStatus = 'ontime';
-      } else if (posA.vehicleStatus === 'late' && posB.vehicleStatus === 'late') {
-        vehicleStatus = 'late';
+      if (posA.vehicleStatus === VehicleStatus.EARLY &&
+          posB.vehicleStatus === VehicleStatus.EARLY) {
+        vehicleStatus = VehicleStatus.EARLY;
+      } else if (posA.vehicleStatus === VehicleStatus.ONTIME &&
+                 posB.vehicleStatus === VehicleStatus.ONTIME) {
+        vehicleStatus = VehicleStatus.ONTIME;
+      } else if (posA.vehicleStatus === VehicleStatus.LATE &&
+                 posB.vehicleStatus === VehicleStatus.LATE) {
+        vehicleStatus = VehicleStatus.LATE;
       }
 
       posLinks.push({
@@ -243,7 +248,7 @@ export default class MareyDiagram {
   drawTrips() {
     // Trip selection
     const tripsSel = this.tripsGroup.selectAll('g.trip')
-      .data(this.data.trips, ({ tripCode }) => tripCode);
+      .data(this.data.trips, ({ code }) => code);
 
     const tripLineGenerator = d3.line()
       .x(({ distance }) => this.xScale(distance))
@@ -255,12 +260,12 @@ export default class MareyDiagram {
     // Trip enter
     const tripsEnterSel = tripsSel.enter().append('g')
       .attr('class', 'trip')
-      .attr('data-trip-code', ({ tripCode }) => tripCode);
+      .attr('data-trip-code', ({ code }) => code);
 
     // Trip enter > path
     tripsEnterSel
       .append('path')
-      .attr('d', ({ tripSchedule }) => tripLineGenerator(tripSchedule));
+      .attr('d', ({ schedule }) => tripLineGenerator(schedule));
 
     // Trip enter > vehicle selection
     const vehiclesSel = tripsEnterSel.selectAll('g.vehicle')

@@ -1,7 +1,6 @@
 import * as log from 'loglevel';
 
 import Point from './point';
-import Segment from './segment';
 
 /**
  * This class manages the map visualization.
@@ -10,14 +9,6 @@ import Segment from './segment';
  */
 export default class InteractiveMap {
   constructor(data, svgObject, dims, options) {
-    // The input data given to this class contains only the information needed to draw it.
-    // This means that it has to look like this:
-    // {
-    //  stops: [{stopCode: 123, position: Point(123, 456)}, ...],
-    //  stopAreas: [{stopAreaCode: 123, position: Point(123, 456)}, ...],
-    //  links: [{linkID: 123, segment: Segment(Point(12, 34), Point(56, 78))}, ...]
-    //  trips: [{tripCode: 123, vehicleNumber: 1, position: Point(123, 456)}, ...],
-    // }
     this.data = data;
     this.svgObject = svgObject;
     this.dims = dims;
@@ -38,7 +29,7 @@ export default class InteractiveMap {
   }
 
   /**
-   * Draws the map, including: stops, stopAreas, links and trips.
+   * Draws the map, including: stops, stop areas, stops links and trips.
    */
   draw() {
     if (this.options.showStops) { this._drawStops(); }
@@ -138,12 +129,12 @@ export default class InteractiveMap {
       .data(
         // Before binding the stops data to the selection,
         // we transform their position from dutch grid to canvas
-        this.data.stops.map(({ stopCode, position }) => ({
-          stopCode,
+        this.data.stops.map(({ code, position }) => ({
+          code,
           position: this._mapToCanvas(position),
         })),
         // Use the stop code as key
-        ({ stopCode }) => stopCode,
+        ({ code }) => code,
       );
 
     // Stop exit
@@ -152,7 +143,7 @@ export default class InteractiveMap {
     // Stop enter
     const stopsEnterSel = stopsSel.enter().append('g')
       .attr('class', 'stop')
-      .attr('data-stop-code', ({ stopCode }) => stopCode);
+      .attr('data-stop-code', ({ code }) => code);
 
     // Stop enter + update
     stopsEnterSel.merge(stopsSel)
@@ -166,8 +157,8 @@ export default class InteractiveMap {
       .attr('r', this.options.stopRadius)
       .on('click', function f() {
         // Demo click event on stop
-        const { stopCode } = this.parentNode.dataset;
-        log.info(`Clicked on stop ${stopCode}`);
+        const { code } = this.parentNode.dataset;
+        log.info(`Clicked on stop ${code}`);
       });
 
     // Stop enter > text
@@ -175,7 +166,7 @@ export default class InteractiveMap {
       .append('text')
       .attr('x', 0)
       .attr('y', -1.5)
-      .text(({ stopCode }) => stopCode);
+      .text(({ code }) => code);
   }
 
   /**
@@ -185,11 +176,11 @@ export default class InteractiveMap {
     // Stoparea selection
     const stopAreasSel = this.stopAreasGroup.selectAll('g.stopArea')
       .data(
-        this.data.stopAreas.map(({ stopAreaCode, position }) => ({
-          stopAreaCode,
-          position: this._mapToCanvas(position),
+        this.data.stopAreas.map(({ code, center }) => ({
+          code,
+          center: this._mapToCanvas(center),
         })),
-        ({ stopAreaCode }) => stopAreaCode,
+        ({ code }) => code,
       );
 
     // Stoparea exit
@@ -198,11 +189,11 @@ export default class InteractiveMap {
     // Stoparea enter
     const stopAreasEnterSel = stopAreasSel.enter().append('g')
       .attr('class', 'stopArea')
-      .attr('data-stop-area-code', ({ stopAreaCode }) => stopAreaCode);
+      .attr('data-stop-area-code', ({ code }) => code);
 
     // Stoparea enter + update
     stopAreasEnterSel.merge(stopAreasSel)
-      .attr('transform', ({ position }) => `translate(${position.x},${position.y})`);
+      .attr('transform', ({ center }) => `translate(${center.x},${center.y})`);
 
     // Stoparea enter > circle
     stopAreasEnterSel
@@ -211,8 +202,8 @@ export default class InteractiveMap {
       .attr('cy', 0)
       .attr('r', this.options.stopAreaRadius)
       .on('click', function f() {
-        const { stopAreaCode } = this.parentNode.dataset;
-        log.info(`Clicked on stop area ${stopAreaCode}`);
+        const { code } = this.parentNode.dataset;
+        log.info(`Clicked on stop area ${code}`);
       });
 
     // Stoparea enter > text
@@ -220,7 +211,7 @@ export default class InteractiveMap {
       .append('text')
       .attr('x', 0)
       .attr('y', -1.5)
-      .text(({ stopAreaCode }) => stopAreaCode);
+      .text(({ code }) => code);
   }
 
   /**
@@ -231,14 +222,12 @@ export default class InteractiveMap {
     const linkSel = this.linksGroup.selectAll('line.link')
       .data(
         // Similarly to what we did for stops and stopAreas, we
-        // transform the segment to canvas position from dutch grid
+        // transform the segment to canvas position from Dutch grid
         // before binding it to the selection (and therefore drawing it)
-        this.data.links.map(({ linkID, segment }) => ({
+        this.data.links.map(({ linkID, stop1, stop2 }) => ({
           linkID,
-          segment: new Segment(
-            this._mapToCanvas(segment.pointA),
-            this._mapToCanvas(segment.pointB),
-          ),
+          stopArea1center: this._mapToCanvas(stop1.area.center),
+          stopArea2center: this._mapToCanvas(stop2.area.center),
         })),
         ({ linkID }) => linkID,
       );
@@ -256,10 +245,10 @@ export default class InteractiveMap {
       })
       // Link enter + update
       .merge(linkSel)
-      .attr('x1', ({ segment }) => segment.pointA.x)
-      .attr('y1', ({ segment }) => segment.pointA.y)
-      .attr('x2', ({ segment }) => segment.pointB.x)
-      .attr('y2', ({ segment }) => segment.pointB.y);
+      .attr('x1', ({ stopArea1center }) => stopArea1center.x)
+      .attr('y1', ({ stopArea1center }) => stopArea1center.y)
+      .attr('x2', ({ stopArea2center }) => stopArea2center.x)
+      .attr('y2', ({ stopArea2center }) => stopArea2center.y);
   }
 
   /**
