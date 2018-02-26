@@ -192,7 +192,7 @@ export default class PTDS {
         this.map.updateData({
           trips: this._getTripsAtTime(
             TimeUtils.HHMMSStoSeconds(time),
-            tripData => this.options.dual.journeyPatterns.includes(tripData.journeyPatternRef),
+            trip => this.options.dual.journeyPatterns.includes(trip.journeyPattern.code),
           ),
         });
         this.map._drawTrips();
@@ -287,7 +287,8 @@ export default class PTDS {
   }
 
   _getTripsAtTime(time, filterFunc = () => true) {
-    const activeTrips = Object.values(this.data.vehicleJourneys).filter(trip => trip.isActive());
+    const activeTrips = Object.values(this.data.vehicleJourneys)
+      .filter(trip => trip.isActive(time));
 
     const tripsPositions = [];
     for (const trip of activeTrips) {

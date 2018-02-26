@@ -128,7 +128,7 @@ export default class VehicleJourney {
 
     // Check if real time data is available
     if (this.isRealTime()) {
-      return this.realtime.map(({ vehicleNumber, times, distances }) => ({
+      return this.realtimeData.map(({ vehicleNumber, times, distances }) => ({
         vehicleNumber,
         distance: coreGetDistance(times, distances),
       }));
