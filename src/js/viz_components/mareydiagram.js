@@ -33,7 +33,7 @@ export default class MareyDiagram {
     this.dims = dims;
     this.options = options;
 
-    this._initialSetup(changeCallback);
+    this.initialSetup(changeCallback);
     this.drawTrips();
   }
 
@@ -42,23 +42,23 @@ export default class MareyDiagram {
    * scales creation, axes and timeline drawing.
    * @param  {Function} changeCallback - Callback for the timeline change event
    */
-  _initialSetup(changeCallback) {
+  initialSetup(changeCallback) {
     this.tripTimeParse = d3.timeParse('%H:%M:%S');
     this.yAxisTimeFormat = d3.timeFormat('%H:%M');
     this.timelineTimeFormat = d3.timeFormat('%H:%M:%S');
 
-    this._computeMinMaxTime();
-    this._createScales();
-    this._createGroups();
-    this._drawXAxis();
-    this._drawYAxes();
-    this._createTimeline(changeCallback);
+    this.computeMinMaxTime();
+    this.createScales();
+    this.createGroups();
+    this.drawXAxis();
+    this.drawYAxes();
+    this.createTimeline(changeCallback);
   }
 
   /**
    * Create x and y scales for the visualization, used to draw the axes and the trips
    */
-  _createScales() {
+  createScales() {
     this.xScale = d3.scaleLinear()
       .domain([0, this.data.stopsDistances[this.data.stopsDistances.length - 1].distance])
       .range([0, this.dims.innerWidth]);
@@ -70,7 +70,7 @@ export default class MareyDiagram {
   /**
    * Create the SVG groups containing the axes and the trips
    */
-  _createGroups() {
+  createGroups() {
     this.yLeftAxisGroup = this.svgObject.append('g')
       .attr('class', 'left-axis axis');
     this.yRightAxisGroup = this.svgObject.append('g')
@@ -86,7 +86,7 @@ export default class MareyDiagram {
    * Compute the minimum and maximum time of the trips contained in the dataset,
    * to know the domain of the y axis
    */
-  _computeMinMaxTime() {
+  computeMinMaxTime() {
     // As base values for min and max time we use the first and
     // last time in the schedule of the first trip
     const firstTripSchedule = this.data.trips[0].schedule;
@@ -110,7 +110,7 @@ export default class MareyDiagram {
   /**
    * Vertical axes drawing, left and right
    */
-  _drawYAxes() {
+  drawYAxes() {
     const yLeftAxis = d3.axisLeft(this.yScale)
       .ticks(d3.timeMinute.every(20))
       .tickFormat(this.yAxisTimeFormat);
@@ -126,7 +126,7 @@ export default class MareyDiagram {
   /**
    * Horizontal axis drawing
    */
-  _drawXAxis() {
+  drawXAxis() {
     const xAxis = d3.axisTop(this.xScale)
       .tickSize(-this.dims.innerHeight)
       .tickValues(this.data.stopsDistances.map(({ distance }) => distance))
@@ -151,7 +151,7 @@ export default class MareyDiagram {
    * and make it move when the mouse is hovered in the canvas
    * @param  {Function} changeCallback - Callback to trigger when the timeline is moved
    */
-  _createTimeline(changeCallback) {
+  createTimeline(changeCallback) {
     // Initial position of the timeline
     const initialTimelineYpos = this.yScale(this.minTime);
 
@@ -206,8 +206,14 @@ export default class MareyDiagram {
       });
   }
 
-  // TODO: docstring
-  static _getPositionLinks(positions) {
+  /**
+   * Given a list of vehicle positions, get the links between them
+   * @param  {Array.<{time: number, distance: number, status: string}>} positions - Positions info
+   * @return {Array.<{timeA: number, timeB: number,
+   *           distanceA: number, distanceB: number,
+   *           status: string}>} - Positions links information
+   */
+  static getPositionLinks(positions) {
     const posLinks = [];
     for (let index = 0; index < positions.length - 1; index += 1) {
       const posA = positions[index];
@@ -296,7 +302,7 @@ export default class MareyDiagram {
 
     // Trip > vehicle > line
     const vehiclesPosLinksSel = vehiclesEnterUpdateSel.selectAll('line.pos-link')
-      .data(({ positions }) => MareyDiagram._getPositionLinks(positions));
+      .data(({ positions }) => MareyDiagram.getPositionLinks(positions));
 
     // Trip > vehicle > line enter
     vehiclesPosLinksSel.enter()

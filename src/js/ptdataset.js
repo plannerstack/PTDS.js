@@ -7,29 +7,33 @@ import JourneyPattern from './models/journeypattern';
 import VehicleJourney from './models/vehiclejourney';
 import Point from './models/point';
 
+/**
+ * Class representing a public transport dataset
+ */
 export default class PTDataset {
   constructor(inputData) {
-    this._computeStopsAndStopAreas(inputData.scheduledStopPoints);
-    this._computeJourneyPatterns(inputData.journeyPatterns);
-    this._computeVehicleJourneys(inputData.vehicleJourneys);
-    this._computeLinks();
+    Object.assign(this, PTDataset.computeStopsAndStopAreas(inputData.scheduledStopPoints));
+    this.journeyPatterns = this.computeJourneyPatterns(inputData.journeyPatterns);
+    this.vehicleJourneys = this.computeVehicleJourneys(inputData.vehicleJourneys);
+    this.stopsLinks = this.computeLinks();
   }
 
   /**
    * Convert raw stops data into rich Stop and StopArea objects,
    * storing them in an object indexed by their code for fast lookup
+   * and return that object
    * @param  {Object} scheduledStopPoints Raw stops data
+   * @return {{stops: Array.<Stop>, stopAreas: Array.<StopArea>}} - Stop and stop area data
    */
-  _computeStopsAndStopAreas(scheduledStopPoints) {
+  static computeStopsAndStopAreas(scheduledStopPoints) {
     // First, create the rich Stop objects and store them in an object by their
     // code for fast lookups by the stop code.
     // The stopArea property is initially a string with the code of the area,
     // later we turn it into a rich StopArea object.
     const stops = keyBy(
       Object.entries(scheduledStopPoints)
-        .map(([code, {
-          name, x, y, area: areaCode,
-        }]) => new Stop(code, name, new Point(x, y), areaCode)),
+        .map(([code, { name, x, y, area: areaCode }]) =>
+          new Stop(code, name, new Point(x, y), areaCode)),
       stop => stop.code,
     );
 
@@ -60,38 +64,37 @@ export default class PTDataset {
       stop.area = stopArea;
     }
 
-    this.stops = stops;
-    this.stopAreas = stopAreas;
+    return { stops, stopAreas };
   }
 
   /**
    * Convert raw journey pattern data into rich JourneyPattern objects,
    * storing them in an object indexed by their code for fast lookup
+   * and return that object
    * @param  {Object} _journeyPatterns Raw journey pattern data
+   * @return {Object.<string, JourneyPattern>} - Enriched journey pattern list
    */
-  _computeJourneyPatterns(_journeyPatterns) {
+  computeJourneyPatterns(_journeyPatterns) {
     // Create the list of rich JourneyPattern objects, stored in an object
     // with the journey pattern code as key for fast lookup
-    const journeyPatterns = keyBy(
-      Object.entries(_journeyPatterns).map(([code, {
-        pointsInSequence: stops, distances,
-      }]) => new JourneyPattern(
-        code,
-        stops.map(stopCode => this.stops[stopCode]),
-        distances,
-      )),
+    return keyBy(
+      Object.entries(_journeyPatterns).map(([code, { pointsInSequence: stops, distances }]) =>
+        new JourneyPattern(
+          code,
+          stops.map(stopCode => this.stops[stopCode]),
+          distances,
+        )),
       journeyPattern => journeyPattern.code,
     );
-
-    this.journeyPatterns = journeyPatterns;
   }
 
   /**
    * Create rich StopsLink objects representing the existing links between
    * the stops, basing on the journeypatterns. The links are stored in an object
-   * indexed by their ID ("stop1code|stop2code") for fast lookup
+   * indexed by their ID ("stop1code|stop2code") for fast lookup and return that object
+   * @return {Object.<string, StopsLink>} - Network definition object
    */
-  _computeLinks() {
+  computeLinks() {
     // Create the list of rich StopsLink objects, stored in an object
     // with the linkID ("stop1code|stop2code") key for fast lookup
     const stopsLinks = {};
@@ -102,28 +105,27 @@ export default class PTDataset {
       }
     }
 
-    this.stopsLinks = stopsLinks;
+    return stopsLinks;
   }
 
   /**
    * Convert raw vehicle journey data into rich VehicleJourney objects,
    * storing them in an object indexed by their code for fast lookup
+   * and return that object
    * @param  {Object} _vehicleJourneys Raw vehicle data
+   * @return {Object.<string, VehicleJourney>} - Enriched vehicle journey data
    */
-  _computeVehicleJourneys(_vehicleJourneys) {
-    const vehicleJourneys = keyBy(
+  computeVehicleJourneys(_vehicleJourneys) {
+    return keyBy(
       Object.entries(_vehicleJourneys)
-        .map(([code, {
-          times, journeyPatternRef, realtime: realtimeData,
-        }]) => new VehicleJourney(
-          code,
-          this.journeyPatterns[journeyPatternRef],
-          times,
-          realtimeData,
-        )),
+        .map(([code, { times, journeyPatternRef, realtime: realtimeData }]) =>
+          new VehicleJourney(
+            code,
+            this.journeyPatterns[journeyPatternRef],
+            times,
+            realtimeData,
+          )),
       vehicleJourney => vehicleJourney.code,
     );
-
-    this.vehicleJourneys = vehicleJourneys;
   }
 }

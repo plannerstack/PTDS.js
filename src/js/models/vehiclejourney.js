@@ -115,7 +115,7 @@ export default class VehicleJourney {
    * @param  {number} time - Time in seconds since noon minus 12h
    * @return {Array.<{vehicleNumber: number, distance: number}>} - List of distances of each vehicle
    */
-  getDistanceAtTime(time) {
+  getDistancesAtTime(time) {
     // Special case handling: when the time asked for is the time of the last stop of the trip.
     // In that case the distance traveled is the distance at which the last stop is located
     if (this.times[this.times.length - 1] === time) {
@@ -135,7 +135,7 @@ export default class VehicleJourney {
 
       for (let i = 0; i < schedule.length - 1; i += 1) {
         nextStopSchedule = schedule[i + 1];
-        if (nextStopSchedule.time > time) {
+        if (nextStopSchedule.time >= time) {
           previousStopSchedule = schedule[i];
           break;
         }

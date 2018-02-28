@@ -29,7 +29,7 @@ export default class PTDS {
     this.data = new PTDataset(inputData);
     this.options = options;
 
-    if (options.mode === 'spiralSimulation') { this._createSimulationWidget(); }
+    if (options.mode === 'spiralSimulation') { this.createSimulationWidget(); }
 
     this.createVisualizations();
   }
@@ -37,7 +37,7 @@ export default class PTDS {
   /**
    * Create the SVG elements
    */
-  _createSVGObjects() {
+  createSVGObjects() {
     // Get browser dimensions
     // The correction factors are needed because the actual size
     // available is less than the one returned by the browser due to scrollbars
@@ -119,7 +119,7 @@ export default class PTDS {
    * Add the dat.GUI widget in the top right of the screen
    * to control the parameters of the simulation
    */
-  _createSimulationWidget() {
+  createSimulationWidget() {
     const gui = new dat.GUI();
     const guiOptions = Object.assign({}, this.options.spiral, { time: ' ' });
 
@@ -173,11 +173,12 @@ export default class PTDS {
    * Create the Marey and/or Map visualization(s) invoking the respective constructor(s)
    */
   createVisualizations() {
-    this._createSVGObjects();
+    // First, create the SVG objects
+    this.createSVGObjects();
 
     // Create the map
     this.map = new InteractiveMap(
-      this._getBaseMapData(),
+      this.getBaseMapData(),
       this.mapSVG,
       this.dims.map,
       this.options,
@@ -188,17 +189,17 @@ export default class PTDS {
       // Callback that updates the map when the timeline is moved in the Marey diagram
       const timelineChangeCallback = (time) => {
         this.map.updateData({
-          trips: this._getTripsAtTime(
+          trips: this.getTripsAtTime(
             TimeUtils.HHMMSStoSeconds(time),
             trip => this.options.dual.journeyPatterns.includes(trip.journeyPattern.code),
           ),
         });
-        this.map._drawTrips();
+        this.map.drawTrips();
       };
 
       // Creation of the Marey diagram
       this.marey = new MareyDiagram(
-        this._getMareyData(),
+        this.getMareyData(),
         this.mareySVG,
         this.dims.marey,
         this.options,
@@ -210,9 +211,14 @@ export default class PTDS {
   /**
    * Get the data needed to draw the initial version of the map,
    * including: stops, stop areas and stops links.
-   * @return {Object} - Object containing the stops, stopAreas, links and (empty) trips
+   * @return {{
+   *   stops: Array.<Stop>,
+   *   stopAreas: Array.<StopArea>,
+   *   links: Array.<StopsLink>,
+   *   trips: Array
+   *  }} - Object containing the stops, stopAreas, links and (empty) trips
    */
-  _getBaseMapData() {
+  getBaseMapData() {
     const validStops = [];
     if (this.options.mode === 'dual') {
       // If we're in dual mode, we're interested only in the data that belongs
@@ -250,15 +256,24 @@ export default class PTDS {
           validStops.includes(stopsLink.stop1) && validStops.includes(stopsLink.stop2)) :
       [];
 
-    return {
-      stops: validStops, stopAreas, links, trips: [],
-    };
+    return { stops: validStops, stopAreas, links, trips: [] };
   }
 
   /**
    * Get the data needed to draw the Marey diagram
+   * @return {{
+   *   trips: Array.<{
+   *     code: string,
+   *     schedule: Array.<{time: string, distance: number}>,
+   *     vehicles: Array.<{
+   *       vehichleNumber: number,
+   *       positions: {time: number, distance: number, status: string}
+   *     }>
+   *   }>,
+   *   stopsDistances: Array.<{stop: Stop, distance: number}>
+   * }} - Data for the Marey diagram
    */
-  _getMareyData() {
+  getMareyData() {
     // TODO: support multiple journey patterns
     const journeyPatternCode = this.options.dual.journeyPatterns[0];
     const journeyPattern = this.data.journeyPatterns[journeyPatternCode];
@@ -267,8 +282,7 @@ export default class PTDS {
     const trips = Object.values(this.data.vehicleJourneys)
       .filter(trip => trip.journeyPattern === journeyPattern);
 
-    // Create trips list with essential information for the Marey diagram, meaning
-    // [{ tripCode: 123, tripSchedule: [{ time: 1, distance: 1 }, ...}] }, ...]
+    // Create trips list with essential information for the Marey diagram
     const tripsProcessed = trips.map(trip => ({
       code: trip.code,
       schedule: trip.staticSchedule.map(({ time, distance }) => ({
@@ -278,33 +292,31 @@ export default class PTDS {
       vehicles: trip.getVehiclePositions(),
     }));
 
-    return {
-      trips: tripsProcessed,
-      stopsDistances: journeyPattern.stopsDistances,
-    };
+    return { trips: tripsProcessed, stopsDistances: journeyPattern.stopsDistances };
   }
 
-  _getTripsAtTime(time, filterFunc = () => true) {
-    const activeTrips = Object.values(this.data.vehicleJourneys)
-      .filter(trip => trip.isActive(time));
+  /**
+   * Get all the trips active at a given time. It supports a filter
+   * @param  {number} time - Time in seconds since noon minus 12h
+   * @param  {Function} filterFunc - Function applied to a VehicleJourney to filter it
+   * @return {Array.<{
+   *   code: string,
+   *   vehiclePositions: Array.<{vehicleNumber: number, position: Point}>
+   *  }>} - Active trips information
+   */
+  getTripsAtTime(time, filterFunc = () => true) {
+    // Filter all the trips, keeping only those that are active and satisfy the optional filterFunc
+    const filteredTrips = Object.values(this.data.vehicleJourneys)
+      .filter(trip => trip.isActive(time) && filterFunc(trip));
 
-    const tripsPositions = [];
-    for (const trip of activeTrips) {
-      if (filterFunc(trip)) {
-        const tripDistances = trip.getDistanceAtTime(time);
-        const vehiclePositions = tripDistances.map(({ vehicleNumber, distance }) => ({
+    return filteredTrips.map(trip => ({
+      code: trip.code,
+      vehiclePositions: trip.getDistancesAtTime(time)
+        .map(({ vehicleNumber, distance }) => ({
           vehicleNumber,
           position: trip.getPositionFromDistance(distance, this.data.stopsLinks),
-        }));
-
-        tripsPositions.push({
-          tripCode: trip.code,
-          vehiclePositions,
-        });
-      }
-    }
-
-    return tripsPositions;
+        })),
+    }));
   }
 
   /**
@@ -335,8 +347,8 @@ export default class PTDS {
 
       timeCallback(TimeUtils.secondsToHHMMSS(vizTime));
 
-      this.map.updateData({ trips: this._getTripsAtTime(vizTime) });
-      this.map._drawTrips();
+      this.map.updateData({ trips: this.getTripsAtTime(vizTime) });
+      this.map.drawTrips();
     });
   }
 
