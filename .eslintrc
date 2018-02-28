@@ -1,8 +1,9 @@
 {
   "extends": ["airbnb-base"],
   "rules": {
-    "no-underscore-dangle": ["off"],
     "no-restricted-syntax": ["off"],
+    "object-curly-newline": ["error", { "consistent": true }],
+    "valid-jsdoc": ["error", { "requireReturn": false }],
   },
   "env": {
     "browser": true

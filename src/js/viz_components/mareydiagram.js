@@ -5,6 +5,8 @@ import { timeMinute } from 'd3-time';
 import { select, mouse } from 'd3-selection';
 import { line } from 'd3-shape';
 
+import VehicleStatus from '../vehiclestatus';
+
 const d3 = Object.assign({}, {
   timeParse,
   timeFormat,
@@ -31,7 +33,7 @@ export default class MareyDiagram {
     this.dims = dims;
     this.options = options;
 
-    this._initialSetup(changeCallback);
+    this.initialSetup(changeCallback);
     this.drawTrips();
   }
 
@@ -40,23 +42,23 @@ export default class MareyDiagram {
    * scales creation, axes and timeline drawing.
    * @param  {Function} changeCallback - Callback for the timeline change event
    */
-  _initialSetup(changeCallback) {
+  initialSetup(changeCallback) {
     this.tripTimeParse = d3.timeParse('%H:%M:%S');
     this.yAxisTimeFormat = d3.timeFormat('%H:%M');
     this.timelineTimeFormat = d3.timeFormat('%H:%M:%S');
 
-    this._computeMinMaxTime();
-    this._createScales();
-    this._createGroups();
-    this._drawXAxis();
-    this._drawYAxes();
-    this._createTimeline(changeCallback);
+    this.computeMinMaxTime();
+    this.createScales();
+    this.createGroups();
+    this.drawXAxis();
+    this.drawYAxes();
+    this.createTimeline(changeCallback);
   }
 
   /**
    * Create x and y scales for the visualization, used to draw the axes and the trips
    */
-  _createScales() {
+  createScales() {
     this.xScale = d3.scaleLinear()
       .domain([0, this.data.stopsDistances[this.data.stopsDistances.length - 1].distance])
       .range([0, this.dims.innerWidth]);
@@ -68,7 +70,7 @@ export default class MareyDiagram {
   /**
    * Create the SVG groups containing the axes and the trips
    */
-  _createGroups() {
+  createGroups() {
     this.yLeftAxisGroup = this.svgObject.append('g')
       .attr('class', 'left-axis axis');
     this.yRightAxisGroup = this.svgObject.append('g')
@@ -84,19 +86,19 @@ export default class MareyDiagram {
    * Compute the minimum and maximum time of the trips contained in the dataset,
    * to know the domain of the y axis
    */
-  _computeMinMaxTime() {
+  computeMinMaxTime() {
     // As base values for min and max time we use the first and
     // last time in the schedule of the first trip
-    const firstTripSchedule = this.data.trips[0].tripSchedule;
+    const firstTripSchedule = this.data.trips[0].schedule;
     let [minTimeParsed, maxTimeParsed] = [
       this.tripTimeParse(firstTripSchedule[0].time),
       this.tripTimeParse(firstTripSchedule[firstTripSchedule.length - 1].time),
     ];
 
     // Iterate over all the trips to find minimum and maximum time
-    for (const { tripSchedule } of this.data.trips) {
-      const firstTimeParsed = this.tripTimeParse(tripSchedule[0].time);
-      const lastTimeParsed = this.tripTimeParse(tripSchedule[tripSchedule.length - 1].time);
+    for (const { schedule } of this.data.trips) {
+      const firstTimeParsed = this.tripTimeParse(schedule[0].time);
+      const lastTimeParsed = this.tripTimeParse(schedule[schedule.length - 1].time);
       if (firstTimeParsed < minTimeParsed) minTimeParsed = firstTimeParsed;
       if (lastTimeParsed > maxTimeParsed) maxTimeParsed = lastTimeParsed;
     }
@@ -108,7 +110,7 @@ export default class MareyDiagram {
   /**
    * Vertical axes drawing, left and right
    */
-  _drawYAxes() {
+  drawYAxes() {
     const yLeftAxis = d3.axisLeft(this.yScale)
       .ticks(d3.timeMinute.every(20))
       .tickFormat(this.yAxisTimeFormat);
@@ -124,11 +126,11 @@ export default class MareyDiagram {
   /**
    * Horizontal axis drawing
    */
-  _drawXAxis() {
+  drawXAxis() {
     const xAxis = d3.axisTop(this.xScale)
       .tickSize(-this.dims.innerHeight)
       .tickValues(this.data.stopsDistances.map(({ distance }) => distance))
-      .tickFormat((_, index) => this.data.stopsDistances[index].stopCode);
+      .tickFormat((_, index) => this.data.stopsDistances[index].stop.code);
 
     this.xAxisGroup.call(xAxis);
 
@@ -149,7 +151,7 @@ export default class MareyDiagram {
    * and make it move when the mouse is hovered in the canvas
    * @param  {Function} changeCallback - Callback to trigger when the timeline is moved
    */
-  _createTimeline(changeCallback) {
+  createTimeline(changeCallback) {
     // Initial position of the timeline
     const initialTimelineYpos = this.yScale(this.minTime);
 
@@ -204,8 +206,14 @@ export default class MareyDiagram {
       });
   }
 
-  // TODO: docstring
-  static _getPositionLinks(positions) {
+  /**
+   * Given a list of vehicle positions, get the links between them
+   * @param  {Array.<{time: number, distance: number, status: string}>} positions - Positions info
+   * @return {Array.<{timeA: number, timeB: number,
+   *           distanceA: number, distanceB: number,
+   *           status: string}>} - Positions links information
+   */
+  static getPositionLinks(positions) {
     const posLinks = [];
     for (let index = 0; index < positions.length - 1; index += 1) {
       const posA = positions[index];
@@ -215,23 +223,17 @@ export default class MareyDiagram {
       const distanceA = posA.distance;
       const distanceB = posB.distance;
 
-      let vehicleStatus = 'undefined';
+      let status = VehicleStatus.UNDEFINED;
 
-      if (posA.vehicleStatus === 'early' && posB.vehicleStatus === 'early') {
-        vehicleStatus = 'early';
-      } else if (posA.vehicleStatus === 'ontime' && posB.vehicleStatus === 'ontime') {
-        vehicleStatus = 'ontime';
-      } else if (posA.vehicleStatus === 'late' && posB.vehicleStatus === 'late') {
-        vehicleStatus = 'late';
+      if (posA.status === VehicleStatus.EARLY && posB.status === VehicleStatus.EARLY) {
+        status = VehicleStatus.EARLY;
+      } else if (posA.status === VehicleStatus.ONTIME && posB.status === VehicleStatus.ONTIME) {
+        status = VehicleStatus.ONTIME;
+      } else if (posA.status === VehicleStatus.LATE && posB.status === VehicleStatus.LATE) {
+        status = VehicleStatus.LATE;
       }
 
-      posLinks.push({
-        timeA,
-        timeB,
-        distanceA,
-        distanceB,
-        vehicleStatus,
-      });
+      posLinks.push({ timeA, timeB, distanceA, distanceB, status });
     }
 
     return posLinks;
@@ -243,7 +245,7 @@ export default class MareyDiagram {
   drawTrips() {
     // Trip selection
     const tripsSel = this.tripsGroup.selectAll('g.trip')
-      .data(this.data.trips, ({ tripCode }) => tripCode);
+      .data(this.data.trips, ({ code }) => code);
 
     const tripLineGenerator = d3.line()
       .x(({ distance }) => this.xScale(distance))
@@ -255,12 +257,12 @@ export default class MareyDiagram {
     // Trip enter
     const tripsEnterSel = tripsSel.enter().append('g')
       .attr('class', 'trip')
-      .attr('data-trip-code', ({ tripCode }) => tripCode);
+      .attr('data-trip-code', ({ code }) => code);
 
     // Trip enter > path
     tripsEnterSel
       .append('path')
-      .attr('d', ({ tripSchedule }) => tripLineGenerator(tripSchedule));
+      .attr('d', ({ schedule }) => tripLineGenerator(schedule));
 
     // Trip enter > vehicle selection
     const vehiclesSel = tripsEnterSel.selectAll('g.vehicle')
@@ -285,7 +287,7 @@ export default class MareyDiagram {
     // Trip > vehicle > circle enter
     vehiclesPosSel.enter()
       .append('circle')
-      .attr('class', ({ vehicleStatus }) => `position ${vehicleStatus}`)
+      .attr('class', ({ status }) => `position ${status}`)
       .attr('r', '1')
       // Trip > vehicle > circle enter + update
       .merge(vehiclesPosSel)
@@ -294,12 +296,12 @@ export default class MareyDiagram {
 
     // Trip > vehicle > line
     const vehiclesPosLinksSel = vehiclesEnterUpdateSel.selectAll('line.pos-link')
-      .data(({ positions }) => MareyDiagram._getPositionLinks(positions));
+      .data(({ positions }) => MareyDiagram.getPositionLinks(positions));
 
     // Trip > vehicle > line enter
     vehiclesPosLinksSel.enter()
       .append('line')
-      .attr('class', ({ vehicleStatus }) => `pos-link ${vehicleStatus}`)
+      .attr('class', ({ status }) => `pos-link ${status}`)
       // Trip > vehicle > line enter + update
       .merge(vehiclesPosLinksSel)
       .attr('x1', ({ distanceA }) => this.xScale(distanceA))
