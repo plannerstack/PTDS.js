@@ -5,7 +5,7 @@ import { timeMinute } from 'd3-time';
 import { select, mouse } from 'd3-selection';
 import { line } from 'd3-shape';
 
-import VehicleStatus from './vehiclestatus';
+import VehicleStatus from '../vehiclestatus';
 
 const d3 = Object.assign({}, {
   timeParse,
@@ -217,17 +217,14 @@ export default class MareyDiagram {
       const distanceA = posA.distance;
       const distanceB = posB.distance;
 
-      let vehicleStatus = VehicleStatus.UNDEFINED;
+      let status = VehicleStatus.UNDEFINED;
 
-      if (posA.vehicleStatus === VehicleStatus.EARLY &&
-          posB.vehicleStatus === VehicleStatus.EARLY) {
-        vehicleStatus = VehicleStatus.EARLY;
-      } else if (posA.vehicleStatus === VehicleStatus.ONTIME &&
-                 posB.vehicleStatus === VehicleStatus.ONTIME) {
-        vehicleStatus = VehicleStatus.ONTIME;
-      } else if (posA.vehicleStatus === VehicleStatus.LATE &&
-                 posB.vehicleStatus === VehicleStatus.LATE) {
-        vehicleStatus = VehicleStatus.LATE;
+      if (posA.status === VehicleStatus.EARLY && posB.status === VehicleStatus.EARLY) {
+        status = VehicleStatus.EARLY;
+      } else if (posA.status === VehicleStatus.ONTIME && posB.status === VehicleStatus.ONTIME) {
+        status = VehicleStatus.ONTIME;
+      } else if (posA.status === VehicleStatus.LATE && posB.status === VehicleStatus.LATE) {
+        status = VehicleStatus.LATE;
       }
 
       posLinks.push({
@@ -235,7 +232,7 @@ export default class MareyDiagram {
         timeB,
         distanceA,
         distanceB,
-        vehicleStatus,
+        status,
       });
     }
 
@@ -290,7 +287,7 @@ export default class MareyDiagram {
     // Trip > vehicle > circle enter
     vehiclesPosSel.enter()
       .append('circle')
-      .attr('class', ({ vehicleStatus }) => `position ${vehicleStatus}`)
+      .attr('class', ({ status }) => `position ${status}`)
       .attr('r', '1')
       // Trip > vehicle > circle enter + update
       .merge(vehiclesPosSel)
@@ -304,7 +301,7 @@ export default class MareyDiagram {
     // Trip > vehicle > line enter
     vehiclesPosLinksSel.enter()
       .append('line')
-      .attr('class', ({ vehicleStatus }) => `pos-link ${vehicleStatus}`)
+      .attr('class', ({ status }) => `pos-link ${status}`)
       // Trip > vehicle > line enter + update
       .merge(vehiclesPosLinksSel)
       .attr('x1', ({ distanceA }) => this.xScale(distanceA))

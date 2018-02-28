@@ -1,6 +1,6 @@
 import * as log from 'loglevel';
 
-import Point from './point';
+import Point from '../models/point';
 
 /**
  * This class manages the map visualization.

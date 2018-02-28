@@ -2,20 +2,18 @@ import { select } from 'd3-selection';
 import { zoom } from 'd3-zoom';
 import { timeFormat } from 'd3-time-format';
 import { timer } from 'd3-timer';
-import { zip } from 'd3-array';
 import dat from 'dat.gui';
 
 import PTDataset from './ptdataset';
 import TimeUtils from './timeutils';
-import InteractiveMap from './interactivemap';
-import MareyDiagram from './mareydiagram';
+import InteractiveMap from './viz_components/interactivemap';
+import MareyDiagram from './viz_components/mareydiagram';
 
 const d3 = Object.assign({}, {
   select,
   zoom,
   timeFormat,
   timer,
-  zip,
   // very ugly hack to solve a problem that d3 and webpack have
   // https://github.com/d3/d3/issues/2733
   /* eslint-disable */

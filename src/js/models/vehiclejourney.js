@@ -1,32 +1,49 @@
-import { zip } from 'lodash';
-
 import VehicleStatus from '../vehiclestatus';
 import TimeUtils from '../timeutils';
 
+/**
+ * Class representing the journey of a vehicle
+ */
 export default class VehicleJourney {
+  /**
+   * Vehicle journey constructor
+   * @param  {string} code - Reference code
+   * @param  {JourneyPattern} journeyPattern - Journey pattern which the journey belongs to
+   * @param  {Array.<number>} times - List of times of arrival at each stop
+   * @param  {Array.<{
+   *           vehicleNumber: number,
+   *           distances: Array<number>,
+   *           times: Array<number>
+   *          }>} realtimeData - Realtime data of the journey for each vehicle
+   */
   constructor(code, journeyPattern, times, realtimeData) {
     this.code = code;
     this.journeyPattern = journeyPattern;
     this.times = times;
-    if (typeof realtimeData !== 'undefined') this.realtimeData = realtimeData;
-    this._computeStaticSchedule();
+    this.realtimeData = realtimeData;
+
+    // Compute static schedule as (time, distance) object pairs array
+    this.staticSchedule = this.times
+      .map((time, index) => ({ time, distance: this.journeyPattern.distances[index] }));
   }
 
-  _computeStaticSchedule() {
-    this.staticSchedule = this.times.map((time, index) => ({
-      time,
-      distance: this.journeyPattern.distances[index],
-    }));
+  /**
+   * Check if real time data is available
+   * @return {boolean} - True if real time data is available, false otherwise
+   */
+  get isRealTime() {
+    return typeof this.realtimeData !== 'undefined';
   }
 
-  isRealTime() {
-    return Object.prototype.hasOwnProperty.call(this, 'realtimeData');
-  }
-
+  /**
+   * Check if given a specific time in seconds, the journey is active
+   * @param  {number}  time - Time in seconds since noon minus 12h
+   * @return {boolean} - True if the journey is active, false otherwise
+   */
   isActive(time) {
     // If realtime data is available, the trip is considered active
     // if at least one of the vehicles is active
-    if (this.isRealTime()) {
+    if (this.isRealTime) {
       return this.realtimeData.some(({ times }) =>
         times[0] <= time && time <= times[times.length - 1]);
     }
@@ -34,9 +51,24 @@ export default class VehicleJourney {
     return (this.times[0] <= time && time <= this.times[this.times.length - 1]);
   }
 
+  /**
+   * Computes the realtime positions information of a the vehicles belonging to this journey
+   * @return {Array.<{
+   *           vehichleNumber: number,
+   *           positions: {time: number, distance: number, status: string}
+   *          }>} - List of enriched realtime position info
+   */
   getVehiclePositions() {
-    if (!this.isRealTime()) return [];
+    if (!this.isRealTime) return [];
 
+    /**
+     * Considering an imaginary vehicle at time "time" located at distance "distance"
+     * along the journey pattern of the trip, figure out if the vehicle would be
+     * early, on time or late compared to the static schedule.
+     * @param  {number} time - Time, see description
+     * @param  {distance} distance - Distance, see description
+     * @return {string} - Status of the vehicle as VehicleStatus enum property
+     */
     const vehicleStatusComparedToSchedule = (time, distance) => {
       // Go over all the segments that make up the trip, looking for the segment in which
       // the vehicle is currently in in terms of distance traveled
@@ -66,34 +98,23 @@ export default class VehicleJourney {
       return VehicleStatus.UNDEFINED;
     };
 
-    const tripPositions = [];
-    for (const { vehicleNumber, times, distances } of this.realtimeData) {
-      // Iterate over the (time, distance) pairs of the current vehicle
-      // and determine the status of each position
-      const positions = [];
-      for (const [time, distance] of zip(times, distances)) {
-        const vehicleStatus = vehicleStatusComparedToSchedule(time, distance);
-
-        // Add the enriched position info to the list
-        // of positions of the current vehicle
-        positions.push({
-          time: TimeUtils.secondsToHHMMSS(time),
-          distance,
-          vehicleStatus,
-        });
-      }
-
-      // Add the enriched position info of the current vehicle
-      // to the list of vehicle position info of the current trip
-      tripPositions.push({
-        vehicleNumber,
-        positions,
-      });
-    }
-
-    return tripPositions;
+    return this.realtimeData.map(({ vehicleNumber, times, distances }) => ({
+      vehicleNumber,
+      // For each vehicle, enrich its positions information by computing the "on time"
+      // status at each position
+      positions: times.map((time, index) => ({
+        time: TimeUtils.secondsToHHMMSS(time),
+        distance: distances[index],
+        status: vehicleStatusComparedToSchedule(time, distances[index]),
+      })),
+    }));
   }
 
+  /**
+   * Get the distance traveled by each of the vehicles of the trip, given a specific time
+   * @param  {number} time - Time in seconds since noon minus 12h
+   * @return {Array.<{vehicleNumber: number, distance: number}>} - List of distances of each vehicle
+   */
   getDistanceAtTime(time) {
     // Special case handling: when the time asked for is the time of the last stop of the trip.
     // In that case the distance traveled is the distance at which the last stop is located
@@ -101,45 +122,60 @@ export default class VehicleJourney {
       return this.journeyPattern.distances[this.journeyPattern.distances.length - 1];
     }
 
-    // Given a list of times and distances, and the current time fromthe outer
-    // context) computes the current distance of the vehicle.
-    // The list of times and distances can be either the planned one or the realtime one of
-    // a certain vehicle
-    const coreGetDistance = (times, distances) => {
-      let lastTimeIndex = 0;
-      for (let i = 0; i < times.length - 1; i += 1) {
-        if (times[i + 1] > time) {
-          lastTimeIndex = i;
+    /**
+     * Given a "schedule", computes the distance traveled at the given time
+     * taken from the outer context.
+     * The schedule can either be the static one or the real time one
+     * @param  {Array.<{time: number, distance: number}>} schedule - Schedule, see description
+     * @return {number} - Distance traveled along the journey pattern
+     */
+    const getDistanceGivenSchedule = (schedule) => {
+      let previousStopSchedule;
+      let nextStopSchedule;
+
+      for (let i = 0; i < schedule.length - 1; i += 1) {
+        nextStopSchedule = schedule[i + 1];
+        if (nextStopSchedule.time > time) {
+          previousStopSchedule = schedule[i];
           break;
         }
       }
 
       // Compute percentage of time between previous and next stop by interpolation
-      const percentage = (time - times[lastTimeIndex]) /
-                         (times[lastTimeIndex + 1] - times[lastTimeIndex]);
+      const percentage = (time - previousStopSchedule.time) /
+                         (nextStopSchedule.time - previousStopSchedule.time);
 
       // Use the percentage to compute the actual distance of the vehicle by correspondence
       // to the distance list
-      const currentDistance = distances[lastTimeIndex] +
-        (percentage * (distances[lastTimeIndex + 1] - distances[lastTimeIndex]));
+      const currentDistance = previousStopSchedule.distance +
+        (percentage * (previousStopSchedule.distance - previousStopSchedule.distance));
 
       return currentDistance;
     };
 
-    // Check if real time data is available
-    if (this.isRealTime()) {
+    // If the real time data is available, return the distance traveled of each
+    // of the real time vehicles belonging to the trip
+    if (this.isRealTime) {
       return this.realtimeData.map(({ vehicleNumber, times, distances }) => ({
         vehicleNumber,
-        distance: coreGetDistance(times, distances),
+        distance: getDistanceGivenSchedule(times.map((_time, index) =>
+          ({ time: _time, distance: distances[index] }))),
       }));
     }
 
     return [{
-      vehicleNumber: 0,
-      distance: coreGetDistance(this.times, this.journeyPattern.distances),
+      vehicleNumber: 0, // use fictitious vehicle number for static data
+      distance: getDistanceGivenSchedule(this.staticSchedule),
     }];
   }
 
+  /**
+   * Given a distance along the route and a network definition object,
+   * compute the position of the vehicle
+   * @param  {number} distance - Distance along the route
+   * @param  {Object.<String, StopsLink>} stopsLinks - Network definition object
+   * @return {Point} - Position of the vehicle
+   */
   getPositionFromDistance(distance, stopsLinks) {
     const { stops, distances } = this.journeyPattern;
 

@@ -5,7 +5,7 @@ import StopsLink from './models/stopslink';
 import StopArea from './models/stoparea';
 import JourneyPattern from './models/journeypattern';
 import VehicleJourney from './models/vehiclejourney';
-import Point from './point';
+import Point from './models/point';
 
 export default class PTDataset {
   constructor(inputData) {

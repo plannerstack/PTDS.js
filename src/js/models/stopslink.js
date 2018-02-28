@@ -1,12 +1,26 @@
-import Point from '../point';
+import Point from './point';
 
+/**
+ * Class to represent a link between two stops
+ */
 export default class StopsLink {
+  /**
+   * Stops link constructor.
+   * Creates an "artificial" reference code concatenating the stop codes.
+   * @param  {Stop} stop1 - First stop
+   * @param  {Stop} stop2 - Second stop
+   */
   constructor(stop1, stop2) {
     this.linkID = `${stop1.code}|${stop2.code}`;
     this.stop1 = stop1;
     this.stop2 = stop2;
   }
 
+  /**
+   * Get a point along the link given a certain percentage by interpolation
+   * @param  {number} percentage - Percentage of "completion" of the link
+   * @return {Point} - Point representing the requested position
+   */
   getPointByPercentage(percentage) {
     return new Point(
       this.stop1.point.x + ((this.stop2.point.x - this.stop1.point.x) * percentage),
@@ -14,6 +28,12 @@ export default class StopsLink {
     );
   }
 
+  /**
+   * Get a point along the link between the stop areas which each of the two stops belongs to,
+   * using a percentage by interpolation
+   * @param  {number} percentage - Percentage of "completion" of the link between stop areas
+   * @return {Point} - Point representing the requested position
+   */
   getPointAlongStopAreasSegmenyByPercentage(percentage) {
     return new Point(
       this.stop1.area.center.x +
