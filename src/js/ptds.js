@@ -124,7 +124,7 @@ export default class PTDS {
     const guiOptions = Object.assign({}, this.options.spiral, { time: ' ' });
 
     const sliders = [
-      gui.add(guiOptions, 'timeMultiplier', 0, 200),
+      gui.add(guiOptions, 'timeMultiplier', 0, 500),
       gui.add(guiOptions, 'paramA', 0, 200),
       gui.add(guiOptions, 'paramB', 0, 200),
     ];

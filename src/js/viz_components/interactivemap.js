@@ -260,10 +260,11 @@ export default class InteractiveMap {
 
     // Trip > vehicle selection
     const vehicles = tripsSel.selectAll('g.vehicle')
-      .data(({ vehiclePositions }) => vehiclePositions.map(({ vehicleNumber, position }) => ({
-        vehicleNumber,
-        position: this.mapToCanvas(position),
-      })), ({ vehicleNumber }) => vehicleNumber);
+      .data(({ vehiclePositions }) =>
+        vehiclePositions.map(({ vehicleNumber, position }) => ({
+          vehicleNumber,
+          position: this.mapToCanvas(position),
+        })), ({ vehicleNumber }) => vehicleNumber);
 
     // Trip > vehicle exit
     vehicles.exit().remove();

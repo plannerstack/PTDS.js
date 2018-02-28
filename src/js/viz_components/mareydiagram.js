@@ -233,13 +233,7 @@ export default class MareyDiagram {
         status = VehicleStatus.LATE;
       }
 
-      posLinks.push({
-        timeA,
-        timeB,
-        distanceA,
-        distanceB,
-        status,
-      });
+      posLinks.push({ timeA, timeB, distanceA, distanceB, status });
     }
 
     return posLinks;

@@ -119,7 +119,10 @@ export default class VehicleJourney {
     // Special case handling: when the time asked for is the time of the last stop of the trip.
     // In that case the distance traveled is the distance at which the last stop is located
     if (this.times[this.times.length - 1] === time) {
-      return this.journeyPattern.distances[this.journeyPattern.distances.length - 1];
+      return [{
+        vehicleNumber: 0, // use fictitious vehicle number for static data
+        distance: this.journeyPattern.distances[this.journeyPattern.distances.length - 1],
+      }];
     }
 
     /**
@@ -148,7 +151,7 @@ export default class VehicleJourney {
       // Use the percentage to compute the actual distance of the vehicle by correspondence
       // to the distance list
       const currentDistance = previousStopSchedule.distance +
-        (percentage * (previousStopSchedule.distance - previousStopSchedule.distance));
+        (percentage * (nextStopSchedule.distance - previousStopSchedule.distance));
 
       return currentDistance;
     };

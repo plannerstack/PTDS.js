@@ -57,12 +57,12 @@ const options = {
   dual: {
     verticalSplitPercentage: (Math.sqrt(5) - 1) / 2,
     journeyPatterns: ['HTM:16:231'],
-    mareyHeightMultiplier: 10,
+    mareyHeightMultiplier: 20,
   },
 };
 
 // Load JSON data asynchronously, when finished create the visualization
 /* eslint no-new: "off" */
 d3.queue()
-  .defer(d3.json, 'data/singleLine.json')
+  .defer(d3.json, 'data/withRealTime.json')
   .await((error, data) => { new PTDS(data, options); });
