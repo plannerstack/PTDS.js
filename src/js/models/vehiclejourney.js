@@ -52,6 +52,41 @@ export default class VehicleJourney {
   }
 
   /**
+   * Given a distance and a time, decided the status of the vehicle compared to the static schedule
+   * @param  {number} time - Time in seconds since noon minus 12h
+   * @param  {number} distance - Distance along route
+   * @return {string} - Status of the vehicle
+   */
+  vehicleStatusComparedToSchedule(time, distance) {
+    // Go over all the segments that make up the trip, looking for the segment in which
+    // the vehicle is currently in in terms of distance traveled
+    for (let i = 0; i < this.staticSchedule.length - 1; i += 1) {
+      const { time: timeStop1, distance: distanceStop1 } = this.staticSchedule[i];
+      const { time: timeStop2, distance: distanceStop2 } = this.staticSchedule[i + 1];
+
+      // If the distance traveled by the vehicle is between the start and end distances
+      // of the current segment, we can decide its status
+      if (distanceStop1 <= distance && distance <= distanceStop2) {
+        // Compute the theoretical time that the vehicle should have to be on time
+        // having traveled the current distance
+        const thTime = (((timeStop2 - timeStop1) / (distanceStop2 - distanceStop1)) *
+                        (distance - distanceStop1)) + timeStop1;
+        // Compare theoretical time with actual time and decide the status of the vehicle
+        if (time < thTime) {
+          return VehicleStatus.EARLY;
+        } else if (time === thTime) {
+          return VehicleStatus.ONTIME;
+        }
+        return VehicleStatus.LATE;
+      }
+    }
+
+    // It could be that we don't find a segment that includes the position of the
+    // vehicle in terms of distance. In that case signal it
+    return VehicleStatus.UNDEFINED;
+  }
+
+  /**
    * Computes the realtime positions information of a the vehicles belonging to this journey
    * @return {Array.<{
    *           vehichleNumber: number,
@@ -61,43 +96,6 @@ export default class VehicleJourney {
   getVehiclePositions() {
     if (!this.isRealTime) return [];
 
-    /**
-     * Considering an imaginary vehicle at time "time" located at distance "distance"
-     * along the journey pattern of the trip, figure out if the vehicle would be
-     * early, on time or late compared to the static schedule.
-     * @param  {number} time - Time, see description
-     * @param  {distance} distance - Distance, see description
-     * @return {string} - Status of the vehicle as VehicleStatus enum property
-     */
-    const vehicleStatusComparedToSchedule = (time, distance) => {
-      // Go over all the segments that make up the trip, looking for the segment in which
-      // the vehicle is currently in in terms of distance traveled
-      for (let i = 0; i < this.staticSchedule.length - 1; i += 1) {
-        const { time: timeStop1, distance: distanceStop1 } = this.staticSchedule[i];
-        const { time: timeStop2, distance: distanceStop2 } = this.staticSchedule[i + 1];
-
-        // If the distance traveled by the vehicle is between the start and end distances
-        // of the current segment, we can decide its status
-        if (distanceStop1 <= distance && distance <= distanceStop2) {
-          // Compute the theoretical time that the vehicle should have to be on time
-          // having traveled the current distance
-          const thTime = (((timeStop2 - timeStop1) / (distanceStop2 - distanceStop1)) *
-                          (distance - distanceStop1)) + timeStop1;
-          // Compare theoretical time with actual time and decide the status of the vehicle
-          if (time < thTime) {
-            return VehicleStatus.EARLY;
-          } else if (time === thTime) {
-            return VehicleStatus.ONTIME;
-          }
-          return VehicleStatus.LATE;
-        }
-      }
-
-      // It could be that we don't find a segment that includes the position of the
-      // vehicle in terms of distance. In that case signal it
-      return VehicleStatus.UNDEFINED;
-    };
-
     return this.realtimeData.map(({ vehicleNumber, times, distances }) => ({
       vehicleNumber,
       // For each vehicle, enrich its positions information by computing the "on time"
@@ -105,33 +103,23 @@ export default class VehicleJourney {
       positions: times.map((time, index) => ({
         time: TimeUtils.secondsToHHMMSS(time),
         distance: distances[index],
-        status: vehicleStatusComparedToSchedule(time, distances[index]),
+        status: this.vehicleStatusComparedToSchedule(time, distances[index]),
       })),
     }));
   }
 
   /**
-   * Get the distance traveled by each of the vehicles of the trip, given a specific time
+   * Get the position information of the vehicles of the trip at a given time
    * @param  {number} time - Time in seconds since noon minus 12h
-   * @return {Array.<{vehicleNumber: number, distance: number}>} - List of distances of each vehicle
+   * @param  {Object.<string, StopsLink>} stopsLinks - Network project definition
+   * @return {Array.<{
+   *   vehicleNumber: number,
+   *   position: Point,
+   *   distance: number,
+   *   status: string
+   *  }>} - Position info for all the vehicles, see description
    */
-  getDistancesAtTime(time) {
-    // Special case handling: when the time asked for is the time of the last stop of the trip.
-    // In that case the distance traveled is the distance at which the last stop is located
-    if (this.times[this.times.length - 1] === time) {
-      return [{
-        vehicleNumber: 0, // use fictitious vehicle number for static data
-        distance: this.journeyPattern.distances[this.journeyPattern.distances.length - 1],
-      }];
-    }
-
-    /**
-     * Given a "schedule", computes the distance traveled at the given time
-     * taken from the outer context.
-     * The schedule can either be the static one or the real time one
-     * @param  {Array.<{time: number, distance: number}>} schedule - Schedule, see description
-     * @return {number} - Distance traveled along the journey pattern
-     */
+  getPositionsAtTime(time, stopsLinks) {
     const getDistanceGivenSchedule = (schedule) => {
       let previousStopSchedule;
       let nextStopSchedule;
@@ -156,19 +144,27 @@ export default class VehicleJourney {
       return currentDistance;
     };
 
-    // If the real time data is available, return the distance traveled of each
-    // of the real time vehicles belonging to the trip
     if (this.isRealTime) {
-      return this.realtimeData.map(({ vehicleNumber, times, distances }) => ({
-        vehicleNumber,
-        distance: getDistanceGivenSchedule(times.map((_time, index) =>
-          ({ time: _time, distance: distances[index] }))),
-      }));
+      return this.realtimeData.map(({ vehicleNumber, times, distances }) => {
+        const distance = getDistanceGivenSchedule(times.map((_time, index) =>
+          ({ time: _time, distance: distances[index] })));
+
+        return {
+          vehicleNumber,
+          position: this.getPositionFromDistance(distance, stopsLinks),
+          distance,
+          status: this.vehicleStatusComparedToSchedule(time, distance),
+        };
+      });
     }
+
+    const distance = getDistanceGivenSchedule(this.staticSchedule);
 
     return [{
       vehicleNumber: 0, // use fictitious vehicle number for static data
-      distance: getDistanceGivenSchedule(this.staticSchedule),
+      distance,
+      position: this.getPositionFromDistance(distance, stopsLinks),
+      status: VehicleStatus.UNDEFINED,
     }];
   }
 
@@ -181,16 +177,6 @@ export default class VehicleJourney {
    */
   getPositionFromDistance(distance, stopsLinks) {
     const { stops, distances } = this.journeyPattern;
-
-    // Special case handling: when the distance asked for is the distance
-    // at which the last stop is located
-    if (distances[distances.length - 1] === distance) {
-      const previousStop = stops[stops.length - 2];
-      const nextStop = stops[stops.length - 1];
-      const stopsLink = stopsLinks[`${previousStop.code}|${nextStop.code}`];
-
-      return stopsLink.getPointAlongStopAreasSegmenyByPercentage(1.0);
-    }
 
     let lastStopIndex = -1;
     for (let i = 0; i < distances.length - 1; i += 1) {

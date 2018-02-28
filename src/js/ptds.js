@@ -311,11 +311,7 @@ export default class PTDS {
 
     return filteredTrips.map(trip => ({
       code: trip.code,
-      vehiclePositions: trip.getDistancesAtTime(time)
-        .map(({ vehicleNumber, distance }) => ({
-          vehicleNumber,
-          position: trip.getPositionFromDistance(distance, this.data.stopsLinks),
-        })),
+      vehiclePositions: trip.getPositionsAtTime(time, this.data.stopsLinks),
     }));
   }
 

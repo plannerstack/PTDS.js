@@ -135,5 +135,19 @@ svg {
       font-size: 3px;
     }
   }
+
+  g.vehicle {
+    &.early circle {
+      fill: $vehicle-early-color;
+    }
+
+    &.ontime circle {
+      fill: $vehicle-ontime-color;
+    }
+
+    &.late circle {
+      fill: $vehicle-late-color;
+    }
+  }
 }
 
