@@ -64,5 +64,5 @@ const options = {
 // Load JSON data asynchronously, when finished create the visualization
 /* eslint no-new: "off" */
 d3.queue()
-  .defer(d3.json, 'data/withRealTime.json')
+  .defer(d3.json, 'data/singleLine.json')
   .await((error, data) => { new PTDS(data, options); });
