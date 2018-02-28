@@ -225,7 +225,9 @@ export default class MareyDiagram {
 
       let status = VehicleStatus.UNDEFINED;
 
-      if (posA.status === VehicleStatus.EARLY && posB.status === VehicleStatus.EARLY) {
+      if (posA.status === VehicleStatus.PROGNOSED || posB.status === VehicleStatus.PROGNOSED) {
+        status = VehicleStatus.PROGNOSED;
+      } else if (posA.status === VehicleStatus.EARLY && posB.status === VehicleStatus.EARLY) {
         status = VehicleStatus.EARLY;
       } else if (posA.status === VehicleStatus.ONTIME && posB.status === VehicleStatus.ONTIME) {
         status = VehicleStatus.ONTIME;

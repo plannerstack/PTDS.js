@@ -58,6 +58,14 @@ export default class VehicleJourney {
    * @return {string} - Status of the vehicle
    */
   vehicleStatusComparedToSchedule(time, distance) {
+    const currentTimestamp = Date.now();
+    const timestampAt12 = (new Date()).setHours(12, 0, 0, 0);
+
+    // If the time is in the future, the status is "prognosed"
+    if (currentTimestamp - (timestampAt12 - (60 * 60 * 12 * 1000)) < time * 1000) {
+      return VehicleStatus.PROGNOSED;
+    }
+
     // Go over all the segments that make up the trip, looking for the segment in which
     // the vehicle is currently in in terms of distance traveled
     for (let i = 0; i < this.staticSchedule.length - 1; i += 1) {
