@@ -261,9 +261,10 @@ export default class InteractiveMap {
     // Trip > vehicle selection
     const vehicles = tripsSel.selectAll('g.vehicle')
       .data(({ vehiclePositions }) =>
-        vehiclePositions.map(({ vehicleNumber, position }) => ({
+        vehiclePositions.map(({ vehicleNumber, position, status }) => ({
           vehicleNumber,
           position: this.mapToCanvas(position),
+          status,
         })), ({ vehicleNumber }) => vehicleNumber);
 
     // Trip > vehicle exit
@@ -272,11 +273,11 @@ export default class InteractiveMap {
     // Trip > vehicle enter
     const vehiclesEnterSel = vehicles.enter()
       .append('g')
-      .attr('class', 'vehicle')
       .attr('data-vehicle-number', ({ vehicleNumber }) => vehicleNumber);
 
     // Trip > vehicle enter + update
     vehiclesEnterSel.merge(vehicles)
+      .attr('class', ({ status }) => `vehicle ${status}`)
       .attr('transform', ({ position }) => `translate(${position.x},${position.y})`);
 
     // Trip > vehicle enter > circle
