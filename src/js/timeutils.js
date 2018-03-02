@@ -30,4 +30,15 @@ export default class TimeUtils {
 
     return `${twoDigits(hours)}:${twoDigits(minutes)}:${twoDigits(seconds)}`;
   }
+
+  /**
+   * Checks if a given time in seconds since noon minus 12h is in the future
+   * @param  {time}  time - Time in seconds since noon minus 12h
+   * @return {boolean} - Whether the time is in the future
+   */
+  static isInTheFuture(time) {
+    const currentTimestamp = Date.now();
+    const timestampAt12 = (new Date()).setHours(12, 0, 0, 0);
+    return currentTimestamp - (timestampAt12 - (60 * 60 * 12 * 1000)) < time * 1000;
+  }
 }

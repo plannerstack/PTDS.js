@@ -58,14 +58,6 @@ export default class VehicleJourney {
    * @return {string} - Status of the vehicle
    */
   vehicleStatusComparedToSchedule(time, distance) {
-    const currentTimestamp = Date.now();
-    const timestampAt12 = (new Date()).setHours(12, 0, 0, 0);
-
-    // If the time is in the future, the status is "prognosed"
-    if (currentTimestamp - (timestampAt12 - (60 * 60 * 12 * 1000)) < time * 1000) {
-      return VehicleStatus.PROGNOSED;
-    }
-
     // Go over all the segments that make up the trip, looking for the segment in which
     // the vehicle is currently in in terms of distance traveled
     for (let i = 0; i < this.staticSchedule.length - 1; i += 1) {
@@ -98,7 +90,7 @@ export default class VehicleJourney {
    * Computes the realtime positions information of a the vehicles belonging to this journey
    * @return {Array.<{
    *           vehichleNumber: number,
-   *           positions: {time: number, distance: number, status: string}
+   *           positions: {time: number, distance: number, status: string, prognosed: boolean}
    *          }>} - List of enriched realtime position info
    */
   getVehiclePositions() {
@@ -112,6 +104,7 @@ export default class VehicleJourney {
         time: TimeUtils.secondsToHHMMSS(time),
         distance: distances[index],
         status: this.vehicleStatusComparedToSchedule(time, distances[index]),
+        prognosed: TimeUtils.isInTheFuture(time),
       })),
     }));
   }
@@ -124,7 +117,8 @@ export default class VehicleJourney {
    *   vehicleNumber: number,
    *   position: Point,
    *   distance: number,
-   *   status: string
+   *   status: string,
+   *   prognosed: boolean,
    *  }>} - Position info for all the vehicles, see description
    */
   getPositionsAtTime(time, stopsLinks) {
@@ -162,6 +156,7 @@ export default class VehicleJourney {
           position: this.getPositionFromDistance(distance, stopsLinks),
           distance,
           status: this.vehicleStatusComparedToSchedule(time, distance),
+          prognosed: TimeUtils.isInTheFuture(time),
         };
       });
     }
@@ -169,10 +164,11 @@ export default class VehicleJourney {
     const distance = getDistanceGivenSchedule(this.staticSchedule);
 
     return [{
-      vehicleNumber: 0, // use fictitious vehicle number for static data
+      vehicleNumber: -1, // use fictitious vehicle number for static data
       distance,
       position: this.getPositionFromDistance(distance, stopsLinks),
       status: VehicleStatus.UNDEFINED,
+      prognosed: false,
     }];
   }
 
