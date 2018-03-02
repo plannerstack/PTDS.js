@@ -10,21 +10,30 @@ export default class VehicleJourney {
    * @param  {string} code - Reference code
    * @param  {JourneyPattern} journeyPattern - Journey pattern which the journey belongs to
    * @param  {Array.<number>} times - List of times of arrival at each stop
-   * @param  {Array.<{
-   *           vehicleNumber: number,
-   *           distances: Array<number>,
-   *           times: Array<number>
-   *          }>} realtimeData - Realtime data of the journey for each vehicle
+   * @param  {Object.<string, {
+   *   distances: Array.<number>,
+   *   times: Array.<number>,
+   *   vehicleNumber: number
+   *  }>} realtime - Realtime data of the journey for each vehicle
+   * @param  {boolean} cancelled - Whether the journey was cancelled
    */
-  constructor(code, journeyPattern, times, realtimeData) {
+  constructor(code, journeyPattern, times, realtime, cancelled) {
     this.code = code;
     this.journeyPattern = journeyPattern;
     this.times = times;
-    this.realtimeData = realtimeData;
+    this.realtime = realtime;
+    this.cancelled = cancelled;
 
     // Compute static schedule as (time, distance) object pairs array
     this.staticSchedule = this.times
-      .map((time, index) => ({ time, distance: this.journeyPattern.distances[index] }));
+      .map((time, index) => ({
+        time,
+        // The times array is double the length of the distances array,
+        // because we have for each stop the arrival and departure time.
+        // Therefore we take the distance element with index corresponding
+        // to half the index of the corresponding time element
+        distance: this.journeyPattern.distances[Math.floor(index / 2)],
+      }));
   }
 
   /**
@@ -32,7 +41,7 @@ export default class VehicleJourney {
    * @return {boolean} - True if real time data is available, false otherwise
    */
   get isRealTime() {
-    return typeof this.realtimeData !== 'undefined';
+    return typeof this.realtime !== 'undefined';
   }
 
   /**
@@ -44,7 +53,7 @@ export default class VehicleJourney {
     // If realtime data is available, the trip is considered active
     // if at least one of the vehicles is active
     if (this.isRealTime) {
-      return this.realtimeData.some(({ times }) =>
+      return Object.values(this.realtime).some(({ times }) =>
         times[0] <= time && time <= times[times.length - 1]);
     }
 
@@ -96,7 +105,7 @@ export default class VehicleJourney {
   getVehiclePositions() {
     if (!this.isRealTime) return [];
 
-    return this.realtimeData.map(({ vehicleNumber, times, distances }) => ({
+    return Object.values(this.realtime).map(({ vehicleNumber, times, distances }) => ({
       vehicleNumber,
       // For each vehicle, enrich its positions information by computing the "on time"
       // status at each position
@@ -147,7 +156,7 @@ export default class VehicleJourney {
     };
 
     if (this.isRealTime) {
-      return this.realtimeData.map(({ vehicleNumber, times, distances }) => {
+      return Object.values(this.realtime).map(({ vehicleNumber, times, distances }) => {
         const distance = getDistanceGivenSchedule(times.map((_time, index) =>
           ({ time: _time, distance: distances[index] })));
 

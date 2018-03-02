@@ -4,6 +4,7 @@ import Stop from './models/stop';
 import StopsLink from './models/stopslink';
 import StopArea from './models/stoparea';
 import JourneyPattern from './models/journeypattern';
+import Line from './models/line';
 import VehicleJourney from './models/vehiclejourney';
 import Point from './models/point';
 
@@ -13,7 +14,7 @@ import Point from './models/point';
 export default class PTDataset {
   constructor(inputData) {
     Object.assign(this, PTDataset.computeStopsAndStopAreas(inputData.scheduledStopPoints));
-    this.journeyPatterns = this.computeJourneyPatterns(inputData.journeyPatterns);
+    Object.assign(this, this.computeLinesJourneyPatterns(inputData.journeyPatterns));
     this.vehicleJourneys = this.computeVehicleJourneys(inputData.vehicleJourneys);
     this.stopsLinks = this.computeLinks();
   }
@@ -32,7 +33,7 @@ export default class PTDataset {
     // later we turn it into a rich StopArea object.
     const stops = keyBy(
       Object.entries(scheduledStopPoints)
-        .map(([code, { name, x, y, area: areaCode }]) =>
+        .map(([code, { name, x, y, stopAreaRef: areaCode }]) =>
           new Stop(code, name, new Point(x, y), areaCode)),
       stop => stop.code,
     );
@@ -68,24 +69,60 @@ export default class PTDataset {
   }
 
   /**
-   * Convert raw journey pattern data into rich JourneyPattern objects,
+   * Converts raw journey pattern data to rich JourneyPattern and Line objects,
    * storing them in an object indexed by their code for fast lookup
-   * and return that object
-   * @param  {Object} _journeyPatterns Raw journey pattern data
-   * @return {Object.<string, JourneyPattern>} - Enriched journey pattern list
+   * @param  {Object} _journeyPatterns - Raw journey pattern data
+   * @return {{journeyPatterns: Array.<JourneyPattern>, lines: Array.<Line>}} - Rich objects
    */
-  computeJourneyPatterns(_journeyPatterns) {
-    // Create the list of rich JourneyPattern objects, stored in an object
-    // with the journey pattern code as key for fast lookup
-    return keyBy(
-      Object.entries(_journeyPatterns).map(([code, { pointsInSequence: stops, distances }]) =>
-        new JourneyPattern(
-          code,
-          stops.map(stopCode => this.stops[stopCode]),
-          distances,
-        )),
+  computeLinesJourneyPatterns(_journeyPatterns) {
+    // First, create the rich JourneyPattern objects and store them in an object by their
+    // code for fast lookups by the journey pattern code.
+    // The line property is initially a string with the code of the line,
+    // later we turn it into a rich line object.
+    const journeyPatterns = keyBy(
+      Object.entries(_journeyPatterns).map(([code, {
+        pointsInSequence: stops,
+        distances,
+        lineRef,
+        direction,
+      }]) => new JourneyPattern(
+        code,
+        stops.map(stopCode => this.stops[stopCode]),
+        distances,
+        lineRef,
+        direction,
+      )),
       journeyPattern => journeyPattern.code,
     );
+
+    // Compute the aggregation of journey patterns into lines, to create
+    // the rich Line objects.
+    // To do this we create an object where the keys are the line codes
+    // and the values are the list of JourneyPattern objects of the line
+    const jpAggregation = {};
+    for (const journeyPattern of Object.values(journeyPatterns)) {
+      if (Object.prototype.hasOwnProperty.call(jpAggregation, journeyPattern.line)) {
+        jpAggregation[journeyPattern.line].push(journeyPattern);
+      } else {
+        jpAggregation[journeyPattern.line] = [journeyPattern];
+      }
+    }
+
+    // Create the object containing the rich Line objects, using as key the code of the line
+    const lines = keyBy(
+      Object.entries(jpAggregation)
+        .map(([lineCode, lineJourneyPatterns]) => new Line(lineCode, lineJourneyPatterns)),
+      line => line.code,
+    );
+
+    // Convert the line property of the journey patterns from simple string with code
+    // to rich Line object
+    for (const journeyPattern of Object.values(journeyPatterns)) {
+      const line = lines[journeyPattern.line];
+      journeyPattern.line = line;
+    }
+
+    return { journeyPatterns, lines };
   }
 
   /**
@@ -118,12 +155,13 @@ export default class PTDataset {
   computeVehicleJourneys(_vehicleJourneys) {
     return keyBy(
       Object.entries(_vehicleJourneys)
-        .map(([code, { times, journeyPatternRef, realtime: realtimeData }]) =>
+        .map(([code, { times, journeyPatternRef, realtime, cancelled }]) =>
           new VehicleJourney(
             code,
             this.journeyPatterns[journeyPatternRef],
             times,
-            realtimeData,
+            realtime,
+            cancelled,
           )),
       vehicleJourney => vehicleJourney.code,
     );
