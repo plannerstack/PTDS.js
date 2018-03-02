@@ -74,7 +74,7 @@ export default class VehicleJourney {
         // Compare theoretical time with actual time and decide the status of the vehicle
         if (time < thTime) {
           return VehicleStatus.EARLY;
-        } else if (time === thTime) {
+        } else if (thTime <= time && time < thTime + 60) {
           return VehicleStatus.ONTIME;
         }
         return VehicleStatus.LATE;
