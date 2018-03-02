@@ -211,7 +211,7 @@ export default class MareyDiagram {
    * @param  {Array.<{time: number, distance: number, status: string}>} positions - Positions info
    * @return {Array.<{timeA: number, timeB: number,
    *           distanceA: number, distanceB: number,
-   *           status: string}>} - Positions links information
+   *           status: string, prognosed: boolean}>} - Positions links information
    */
   static getPositionLinks(positions) {
     const posLinks = [];
@@ -223,6 +223,8 @@ export default class MareyDiagram {
       const distanceA = posA.distance;
       const distanceB = posB.distance;
 
+      const prognosed = posA.prognosed || posB.prognosed;
+
       let status = VehicleStatus.UNDEFINED;
 
       if (posA.status === VehicleStatus.EARLY && posB.status === VehicleStatus.EARLY) {
@@ -233,7 +235,7 @@ export default class MareyDiagram {
         status = VehicleStatus.LATE;
       }
 
-      posLinks.push({ timeA, timeB, distanceA, distanceB, status });
+      posLinks.push({ timeA, timeB, distanceA, distanceB, status, prognosed });
     }
 
     return posLinks;
@@ -287,7 +289,7 @@ export default class MareyDiagram {
     // Trip > vehicle > circle enter
     vehiclesPosSel.enter()
       .append('circle')
-      .attr('class', ({ status }) => `position ${status}`)
+      .attr('class', ({ status, prognosed }) => `position ${status} ${prognosed ? 'prognosed' : ''}`)
       .attr('r', '1')
       // Trip > vehicle > circle enter + update
       .merge(vehiclesPosSel)
@@ -301,7 +303,7 @@ export default class MareyDiagram {
     // Trip > vehicle > line enter
     vehiclesPosLinksSel.enter()
       .append('line')
-      .attr('class', ({ status }) => `pos-link ${status}`)
+      .attr('class', ({ status, prognosed }) => `pos-link ${status} ${prognosed ? 'prognosed' : ''}`)
       // Trip > vehicle > line enter + update
       .merge(vehiclesPosLinksSel)
       .attr('x1', ({ distanceA }) => this.xScale(distanceA))

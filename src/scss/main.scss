@@ -92,6 +92,10 @@ svg {
     &.late {
       stroke: $vehicle-late-color;
     }
+
+    &.prognosed {
+      stroke-dasharray: 5, 5;
+    }
   }
 }
 

@@ -267,7 +267,7 @@ export default class PTDS {
    *     schedule: Array.<{time: string, distance: number}>,
    *     vehicles: Array.<{
    *       vehichleNumber: number,
-   *       positions: {time: number, distance: number, status: string}
+   *       positions: {time: number, distance: number, status: string, prognosed: boolean}
    *     }>
    *   }>,
    *   stopsDistances: Array.<{stop: Stop, distance: number}>
@@ -301,7 +301,13 @@ export default class PTDS {
    * @param  {Function} filterFunc - Function applied to a VehicleJourney to filter it
    * @return {Array.<{
    *   code: string,
-   *   vehiclePositions: Array.<{vehicleNumber: number, position: Point}>
+   *   vehiclePositions: Array.<{
+   *     vehicleNumber: number,
+   *     position: Point,
+   *     distance: number,
+   *     status: string,
+   *     prognosed: boolean,
+   *    }>
    *  }>} - Active trips information
    */
   getTripsAtTime(time, filterFunc = () => true) {

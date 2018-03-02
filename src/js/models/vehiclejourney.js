@@ -90,7 +90,7 @@ export default class VehicleJourney {
    * Computes the realtime positions information of a the vehicles belonging to this journey
    * @return {Array.<{
    *           vehichleNumber: number,
-   *           positions: {time: number, distance: number, status: string}
+   *           positions: {time: number, distance: number, status: string, prognosed: boolean}
    *          }>} - List of enriched realtime position info
    */
   getVehiclePositions() {
@@ -104,6 +104,7 @@ export default class VehicleJourney {
         time: TimeUtils.secondsToHHMMSS(time),
         distance: distances[index],
         status: this.vehicleStatusComparedToSchedule(time, distances[index]),
+        prognosed: TimeUtils.isInTheFuture(time),
       })),
     }));
   }
@@ -116,7 +117,8 @@ export default class VehicleJourney {
    *   vehicleNumber: number,
    *   position: Point,
    *   distance: number,
-   *   status: string
+   *   status: string,
+   *   prognosed: boolean,
    *  }>} - Position info for all the vehicles, see description
    */
   getPositionsAtTime(time, stopsLinks) {
@@ -154,6 +156,7 @@ export default class VehicleJourney {
           position: this.getPositionFromDistance(distance, stopsLinks),
           distance,
           status: this.vehicleStatusComparedToSchedule(time, distance),
+          prognosed: TimeUtils.isInTheFuture(time),
         };
       });
     }
@@ -161,10 +164,11 @@ export default class VehicleJourney {
     const distance = getDistanceGivenSchedule(this.staticSchedule);
 
     return [{
-      vehicleNumber: 0, // use fictitious vehicle number for static data
+      vehicleNumber: -1, // use fictitious vehicle number for static data
       distance,
       position: this.getPositionFromDistance(distance, stopsLinks),
       status: VehicleStatus.UNDEFINED,
+      prognosed: false,
     }];
   }
 
