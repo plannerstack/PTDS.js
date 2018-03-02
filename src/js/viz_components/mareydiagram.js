@@ -5,8 +5,6 @@ import { timeMinute } from 'd3-time';
 import { select, mouse } from 'd3-selection';
 import { line } from 'd3-shape';
 
-import VehicleStatus from '../vehiclestatus';
-
 const d3 = Object.assign({}, {
   timeParse,
   timeFormat,
@@ -225,17 +223,7 @@ export default class MareyDiagram {
 
       const prognosed = posA.prognosed || posB.prognosed;
 
-      let status = VehicleStatus.UNDEFINED;
-
-      if (posA.status === VehicleStatus.EARLY && posB.status === VehicleStatus.EARLY) {
-        status = VehicleStatus.EARLY;
-      } else if (posA.status === VehicleStatus.ONTIME && posB.status === VehicleStatus.ONTIME) {
-        status = VehicleStatus.ONTIME;
-      } else if (posA.status === VehicleStatus.LATE && posB.status === VehicleStatus.LATE) {
-        status = VehicleStatus.LATE;
-      }
-
-      posLinks.push({ timeA, timeB, distanceA, distanceB, status, prognosed });
+      posLinks.push({ timeA, timeB, distanceA, distanceB, status: posA.status, prognosed });
     }
 
     return posLinks;
