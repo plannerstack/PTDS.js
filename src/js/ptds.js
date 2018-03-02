@@ -282,8 +282,6 @@ export default class PTDS {
     const trips = Object.values(this.data.vehicleJourneys)
       .filter(trip => trip.journeyPattern === journeyPattern);
 
-    console.log(trips);
-
     // Create trips list with essential information for the Marey diagram
     const tripsProcessed = trips.map(trip => ({
       code: trip.code,
