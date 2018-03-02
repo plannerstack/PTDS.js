@@ -133,7 +133,8 @@ export default class VehicleJourney {
   getPositionsAtTime(time, stopsLinks) {
     const getDistanceGivenSchedule = (schedule) => {
       // Special case: the time requested is the time of the last stop
-      if (time === schedule[schedule.length - 1].time) {
+      // or there is only one stop
+      if (schedule.length === 1 || time === schedule[schedule.length - 1].time) {
         return schedule[schedule.length - 1].distance;
       }
 
