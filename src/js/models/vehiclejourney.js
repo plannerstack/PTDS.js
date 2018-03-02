@@ -41,7 +41,7 @@ export default class VehicleJourney {
    * @return {boolean} - True if real time data is available, false otherwise
    */
   get isRealTime() {
-    return typeof this.realtime !== 'undefined';
+    return typeof this.realtime !== 'undefined' && Object.keys(this.realtime).length !== 0;
   }
 
   /**
@@ -132,13 +132,18 @@ export default class VehicleJourney {
    */
   getPositionsAtTime(time, stopsLinks) {
     const getDistanceGivenSchedule = (schedule) => {
+      // Special case: the time requested is the time of the last stop
+      if (time === schedule[schedule.length - 1].time) {
+        return schedule[schedule.length - 1].distance;
+      }
+
       let previousStopSchedule;
       let nextStopSchedule;
 
       for (let i = 0; i < schedule.length - 1; i += 1) {
+        previousStopSchedule = schedule[i];
         nextStopSchedule = schedule[i + 1];
-        if (nextStopSchedule.time >= time) {
-          previousStopSchedule = schedule[i];
+        if (previousStopSchedule.time <= time && time < nextStopSchedule.time) {
           break;
         }
       }
