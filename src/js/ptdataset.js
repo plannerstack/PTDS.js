@@ -155,14 +155,23 @@ export default class PTDataset {
   computeVehicleJourneys(_vehicleJourneys) {
     return keyBy(
       Object.entries(_vehicleJourneys)
-        .map(([code, { times, journeyPatternRef, realtime, cancelled }]) =>
-          new VehicleJourney(
+        .map(([code, { times, journeyPatternRef, realtime, cancelled }]) => {
+          const vehicleJourney = new VehicleJourney(
             code,
             this.journeyPatterns[journeyPatternRef],
             times,
             realtime,
             cancelled,
-          )),
+          );
+
+          if (typeof this.journeyPatterns[journeyPatternRef].vehicleJourneys === 'undefined') {
+            this.journeyPatterns[journeyPatternRef].vehicleJourneys = [vehicleJourney];
+          } else {
+            this.journeyPatterns[journeyPatternRef].vehicleJourneys.push(vehicleJourney);
+          }
+
+          return vehicleJourney;
+        }),
       vehicleJourney => vehicleJourney.code,
     );
   }

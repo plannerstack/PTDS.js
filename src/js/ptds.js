@@ -279,8 +279,7 @@ export default class PTDS {
     const journeyPattern = this.data.journeyPatterns[journeyPatternCode];
 
     // Trips that belong to the chosen journey pattern(s)
-    const trips = Object.values(this.data.vehicleJourneys)
-      .filter(trip => trip.journeyPattern === journeyPattern);
+    const trips = journeyPattern.vehicleJourneys;
 
     // Create trips list with essential information for the Marey diagram
     const tripsProcessed = trips.map(trip => ({

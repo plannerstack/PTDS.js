@@ -7,7 +7,7 @@ export default class Stop {
    * @param  {string} code - Reference code
    * @param  {string} name - Name
    * @param  {Point} position - Position of the stop
-   * @param  {?(StopArea|string)} area - Stop area which the stop belongs to
+   * @param  {(StopArea|string)} area - Stop area which the stop belongs to
    */
   constructor(code, name, position, area) {
     this.code = code;
