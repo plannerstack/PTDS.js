@@ -78,12 +78,12 @@ export default class VehicleJourney {
       if (distanceStop1 <= distance && distance <= distanceStop2) {
         // Compute the theoretical time that the vehicle should have to be on time
         // having traveled the current distance
-        const thTime = (((timeStop2 - timeStop1) / (distanceStop2 - distanceStop1)) *
-                        (distance - distanceStop1)) + timeStop1;
+        const theoreticalTime = (((timeStop2 - timeStop1) / (distanceStop2 - distanceStop1)) *
+                                 (distance - distanceStop1)) + timeStop1;
         // Compare theoretical time with actual time and decide the status of the vehicle
-        if (time < (thTime - 15)) {
+        if (time < theoreticalTime - 15) {
           return VehicleStatus.EARLY;
-        } else if (thTime <= time && time <= (thTime + 120)) {
+        } else if (theoreticalTime - 15 <= time && time <= theoreticalTime + 120) {
           return VehicleStatus.ONTIME;
         }
         return VehicleStatus.LATE;
