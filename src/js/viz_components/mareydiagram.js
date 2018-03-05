@@ -254,6 +254,19 @@ export default class MareyDiagram {
       .append('path')
       .attr('d', ({ schedule }) => tripLineGenerator(schedule));
 
+    // Trip enter > circle selection
+    const tripsScheduledStopsSel = tripsEnterSel
+      .selectAll('circle.scheduledStop')
+      .data(({ schedule }) => schedule);
+
+    // Trip enter > circle
+    tripsScheduledStopsSel.enter()
+      .append('circle')
+      .attr('class', 'scheduledStop')
+      .attr('r', '2')
+      .attr('cx', ({ distance }) => this.xScale(distance))
+      .attr('cy', ({ time }) => this.yScale(this.tripTimeParse(time)));
+
     // Trip enter > vehicle selection
     const vehiclesSel = tripsEnterSel.selectAll('g.vehicle')
       .data(({ vehicles }) => vehicles, ({ vehicleNumber }) => vehicleNumber);
