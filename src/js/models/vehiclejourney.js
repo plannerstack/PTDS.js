@@ -132,12 +132,23 @@ export default class VehicleJourney {
    */
   getPositionsAtTime(time, stopsLinks) {
     const getDistanceGivenSchedule = (schedule) => {
-      // Special case: the time requested is the time of the last stop
-      // or there is only one stop
-      if (schedule.length === 1 || time === schedule[schedule.length - 1].time) {
+      // Special cases:
+      // - if there is only one stop in the schedule, use the distance of that stop as approximation
+      if (schedule.length === 1) {
+        return schedule[0].distance;
+      // - if the time asked for is smaller than the time of departure at the first stop of the
+      //   trip, approximate the distance with the distance of the first stop
+      } else if (time <= schedule[0].time) {
+        return schedule[0].distance;
+      // - if the time asked for is smaller than the time of arrival at the last stop of the trip,
+      //   approximate  the distance with the distance of the last stop
+      } else if (time >= schedule[schedule.length - 1].time) {
         return schedule[schedule.length - 1].distance;
       }
 
+      // If we didn't fall in one of the previous cases, it means that the time asked is the
+      // between the time of departure at the first stop and time of arrival at the last stop,
+      // and there are at least 2 stops in the schedule
       let previousStopSchedule;
       let nextStopSchedule;
 
@@ -145,20 +156,21 @@ export default class VehicleJourney {
         previousStopSchedule = schedule[i];
         nextStopSchedule = schedule[i + 1];
         if (previousStopSchedule.time <= time && time < nextStopSchedule.time) {
-          break;
+          // Compute percentage of time between previous and next stop by interpolation
+          const percentage = (time - previousStopSchedule.time) /
+                             (nextStopSchedule.time - previousStopSchedule.time);
+
+          // Use the percentage to compute the actual distance of the vehicle by correspondence
+          // to the distance list
+          const distance = previousStopSchedule.distance +
+            (percentage * (nextStopSchedule.distance - previousStopSchedule.distance));
+
+          return distance;
         }
       }
 
-      // Compute percentage of time between previous and next stop by interpolation
-      const percentage = (time - previousStopSchedule.time) /
-                         (nextStopSchedule.time - previousStopSchedule.time);
-
-      // Use the percentage to compute the actual distance of the vehicle by correspondence
-      // to the distance list
-      const currentDistance = previousStopSchedule.distance +
-        (percentage * (nextStopSchedule.distance - previousStopSchedule.distance));
-
-      return currentDistance;
+      // We should never get here, it's just to make the linter happy
+      return 0;
     };
 
     if (this.isRealTime) {
