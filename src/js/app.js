@@ -31,13 +31,24 @@ const options = {
   },
 };
 
-const processIndex = (indexData) => {
+let indexData = {};
+
+const processIndex = () => {
   const publications = indexData.publications.reverse();
 
   const daySelect = document.getElementById('day');
   for (const publication of publications) {
     daySelect.innerHTML += `<option value="${publication.date}">${publication.date}</option>`;
   }
+  daySelect.onchange = () => {
+    const linesGroupsSelect = document.getElementById('lines-groups');
+    const dayDatasets = publications.find(pub => pub.date === daySelect.value).datasets;
+    linesGroupsSelect.innerHTML = '';
+    for (const dataset of dayDatasets) {
+      const lines = dataset.lines.join(', ');
+      linesGroupsSelect.innerHTML += `<option value="${dataset.filename}">${lines}</option>`;
+    }
+  };
 
   const linesGroupsSelect = document.getElementById('lines-groups');
   for (const dataset of publications[0].datasets) {
@@ -52,6 +63,10 @@ const processIndex = (indexData) => {
 };
 
 $(document).ready(() => {
+  const indexFileURL = 'https://services.opengeo.nl/ptds/index.json';
+  fetch(indexFileURL).then(r => r.json())
+    .then((data) => { indexData = data; processIndex(); });
+
   $('#sidebar').simplerSidebar({
     init: 'opened',
     selectors: {
@@ -59,13 +74,17 @@ $(document).ready(() => {
     },
   });
 
-  const indexFileURL = 'https://services.opengeo.nl/ptds/index.json';
-  fetch(indexFileURL).then(r => r.json())
-    .then(data => processIndex(data));
-
   document.getElementById('sidebar').style.visibility = 'visible';
   document.getElementById('navbar').style.visibility = 'visible';
   document.getElementById('options').onsubmit = (event) => {
     event.preventDefault();
+    const publicationInUse = indexData.publications
+      .find(pub => pub.date === document.getElementById('day').value);
+    const datasetInUse = publicationInUse.datasets
+      .find(dataset => dataset.filename === document.getElementById('lines-groups').value);
+    const urlLinesGroupsSelected = `${publicationInUse.url}${datasetInUse.filename}`;
+
+    fetch(urlLinesGroupsSelected).then(r => r.json())
+      .then((data) => { document.getElementById('main').innerHTML = ''; new PTDS(data, options); });
   };
 });
