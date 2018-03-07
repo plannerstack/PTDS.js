@@ -121,15 +121,15 @@ export default class PTDS {
    */
   createSimulationWidget() {
     const gui = new dat.GUI();
-    this.guiOptions = Object.assign({}, this.options.spiral, { time: ' ' });
+    const guiOptions = Object.assign({}, this.options.spiral, { time: ' ' });
 
     const sliders = [
-      gui.add(this.guiOptions, 'timeMultiplier', 0, 500),
-      gui.add(this.guiOptions, 'paramA', 0, 200),
-      gui.add(this.guiOptions, 'paramB', 0, 200),
+      gui.add(guiOptions, 'timeMultiplier', 0, 500),
+      gui.add(guiOptions, 'paramA', 0, 200),
+      gui.add(guiOptions, 'paramB', 0, 200),
     ];
 
-    const timeCallback = (time) => { this.guiOptions.time = time; };
+    const timeCallback = (time) => { guiOptions.time = time; };
     let simulationRunning = false;
 
     // Refresh of the simulation when one of the sliders is changed
@@ -137,11 +137,11 @@ export default class PTDS {
       if (simulationRunning) {
         this.stopSpiralSimulation();
         this.startSpiralSimulation(
-          this.guiOptions.timeMultiplier,
-          this.guiOptions.paramA,
-          this.guiOptions.paramB,
+          guiOptions.timeMultiplier,
+          guiOptions.paramA,
+          guiOptions.paramB,
           timeCallback,
-          this.guiOptions.time,
+          guiOptions.time,
         );
       }
     };
@@ -156,19 +156,19 @@ export default class PTDS {
         simulationRunning = false;
       } else {
         this.startSpiralSimulation(
-          this.guiOptions.timeMultiplier,
-          this.guiOptions.paramA,
-          this.guiOptions.paramB,
+          guiOptions.timeMultiplier,
+          guiOptions.paramA,
+          guiOptions.paramB,
           timeCallback,
-          this.guiOptions.time,
+          guiOptions.time,
         );
         simulationRunning = true;
       }
     };
-    Object.assign(this.guiOptions, { 'start/stop': startStopViz });
+    Object.assign(guiOptions, { 'start/stop': startStopViz });
 
-    gui.add(this.guiOptions, 'time').listen();
-    gui.add(this.guiOptions, 'start/stop');
+    gui.add(guiOptions, 'time').listen();
+    gui.add(guiOptions, 'start/stop');
   }
 
   /**
