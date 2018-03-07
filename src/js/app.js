@@ -21,7 +21,7 @@ const options = {
   spiral: {
     timeMultiplier: 30,
     paramA: 30,
-    paramB: 15,
+    paramB: 0,
   },
   // dual specific options
   dual: {
@@ -71,6 +71,7 @@ $(document).ready(() => {
     init: 'opened',
     selectors: {
       trigger: '#toggle-sidebar',
+      quitter: '.close-sidebar',
     },
   });
 
