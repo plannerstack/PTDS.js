@@ -155,3 +155,15 @@ svg {
   }
 }
 
+.sidebar-wrapper {
+  position: relative;
+  height: 100%;
+  overflow: auto;
+  background-color: white;
+}
+
+#navbar {
+  position: absolute;
+  top: 0;
+  right: 0;
+}

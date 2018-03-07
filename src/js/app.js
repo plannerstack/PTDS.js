@@ -1,6 +1,8 @@
 import { queue } from 'd3-queue';
 import { json } from 'd3-request';
 import * as log from 'loglevel';
+import $ from 'jquery';
+import 'simpler-sidebar';
 
 import PTDS from './ptds';
 
@@ -61,8 +63,18 @@ const options = {
   },
 };
 
+$(document).ready(() => {
+  $('#sidebar').simplerSidebar({
+    init: 'opened',
+    selectors: {
+      trigger: '#toggle-sidebar',
+    },
+  });
+});
+
 // Load JSON data asynchronously, when finished create the visualization
 /* eslint no-new: "off" */
 d3.queue()
   .defer(d3.json, 'data/2018-03-01_1-9-11-12-16-17.min.json')
   .await((error, data) => { new PTDS(data, options); });
+
