@@ -11,6 +11,8 @@ $map-trip-color: green;
 // Marey variables
 $marey-stop-lines-stroke: lightgray;
 
+@import 'milligram.mod.scss';
+
 // Remove margins from the body, set base font
 html, body {
   margin: 0;
@@ -167,3 +169,5 @@ svg {
   top: 0;
   right: 0;
 }
+
+#gui { position: absolute; top: 2px; left: 2px }

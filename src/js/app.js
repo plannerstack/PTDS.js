@@ -1,5 +1,3 @@
-import { queue } from 'd3-queue';
-import { json } from 'd3-request';
 import * as log from 'loglevel';
 import $ from 'jquery';
 import 'simpler-sidebar';
@@ -8,36 +6,6 @@ import PTDS from './ptds';
 
 // Enable logging at all levels
 log.enableAll();
-
-const d3 = Object.assign({}, {
-  queue,
-  json,
-});
-
-/**
- * Get a parameter from the URL
- * @param  {String} name - Name of the parameter
- * @return {String} - Retrieved value of the parameter
- */
-const getURLParameter = name =>
-  /* eslint no-restricted-globals: "off" */
-  decodeURIComponent((new RegExp(`[?|&]${name}=([^&;]+?)(&|#|;|$)`).exec(location.search) ||
-    [null, ''])[1].replace(/\+/g, '%20')) || null;
-
-// Get the mode of the visualization from the URL parameter
-let mode = getURLParameter('mode');
-// If no mode was specified, prompt the user asking for one.
-// Keep on asking till he inputs a valid one.
-if (mode === null) {
-  do {
-    /* eslint no-alert: "off" */
-    const defaultMode = 'dual';
-    mode = prompt(
-      'You have to choose a mode. It has to be either "dual" or "spiralSimulation":',
-      defaultMode,
-    );
-  } while (mode !== 'dual' && mode !== 'spiralSimulation');
-}
 
 const options = {
   stopRadius: 1,
@@ -48,7 +16,7 @@ const options = {
   showLinks: true,
   // mode can be either 'dual' or 'spiralSimulation'
   // dual = marey + linked map, spiralSimulation = spiral simulation
-  mode,
+  mode: 'spiralSimulation',
   // spiralSimulation specific options
   spiral: {
     timeMultiplier: 30,
@@ -63,6 +31,26 @@ const options = {
   },
 };
 
+const processIndex = (indexData) => {
+  const publications = indexData.publications.reverse();
+
+  const daySelect = document.getElementById('day');
+  for (const publication of publications) {
+    daySelect.innerHTML += `<option value="${publication.date}">${publication.date}</option>`;
+  }
+
+  const linesGroupsSelect = document.getElementById('lines-groups');
+  for (const dataset of publications[0].datasets) {
+    const lines = dataset.lines.join(', ');
+    linesGroupsSelect.innerHTML += `<option value="${dataset.filename}">${lines}</option>`;
+  }
+
+  /* eslint no-new: "off" */
+  const defaultDatasetURL = `${publications[0].url}${publications[0].datasets[0].filename}`;
+  fetch(defaultDatasetURL).then(r => r.json())
+    .then((defaultData) => { new PTDS(defaultData, options); });
+};
+
 $(document).ready(() => {
   $('#sidebar').simplerSidebar({
     init: 'opened',
@@ -70,11 +58,14 @@ $(document).ready(() => {
       trigger: '#toggle-sidebar',
     },
   });
+
+  const indexFileURL = 'https://services.opengeo.nl/ptds/index.json';
+  fetch(indexFileURL).then(r => r.json())
+    .then(data => processIndex(data));
+
+  document.getElementById('sidebar').style.visibility = 'visible';
+  document.getElementById('navbar').style.visibility = 'visible';
+  document.getElementById('options').onsubmit = (event) => {
+    event.preventDefault();
+  };
 });
-
-// Load JSON data asynchronously, when finished create the visualization
-/* eslint no-new: "off" */
-d3.queue()
-  .defer(d3.json, 'data/2018-03-01_1-9-11-12-16-17.min.json')
-  .await((error, data) => { new PTDS(data, options); });
-

@@ -6,12 +6,30 @@
 </head>
 <body>
   <div class="main"></div>
-  <div id="navbar">
+  <div id="navbar" style="visibility: hidden;">
     <span id="toggle-sidebar" class="button icon">TOGGLE SIDEBAR</span>
   </div>
-  <div id="sidebar">
-    <div id="sidebar-wrapper" class="sidebar-wrapper">
-      Here goes the sidebar text
+  <div id="sidebar" style="visibility: hidden;">
+    <div id="sidebar-wrapper" class="sidebar-wrapper container">
+      <div class="row">
+        <div class="column">
+          <h3>Public Transport Decision Support System</h3>
+        </div>
+      </div>
+      <form id="options">
+        <fieldset>
+          <label for="mode">Mode</label>
+          <select id="mode">
+            <option value="spiralSimulation">Spiral simulation</option>
+            <option value="dual">Marey + Map</option>
+          </select>
+          <label for="day">Day</label>
+          <select id="day"></select>
+          <label for="lines-groups">Lines</label>
+          <select id="lines-groups"></select>
+          <input class="button-primary" type="submit" value="Load">
+        </fieldset>
+      </form>
     </div>
   </div>
 </body>
