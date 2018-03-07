@@ -121,15 +121,15 @@ export default class PTDS {
    */
   createSimulationWidget() {
     const gui = new dat.GUI();
-    const guiOptions = Object.assign({}, this.options.spiral, { time: ' ' });
+    this.guiOptions = Object.assign({}, this.options.spiral, { time: ' ' });
 
     const sliders = [
-      gui.add(guiOptions, 'timeMultiplier', 0, 500),
-      gui.add(guiOptions, 'paramA', 0, 200),
-      gui.add(guiOptions, 'paramB', 0, 200),
+      gui.add(this.guiOptions, 'timeMultiplier', 0, 500),
+      gui.add(this.guiOptions, 'paramA', 0, 200),
+      gui.add(this.guiOptions, 'paramB', 0, 200),
     ];
 
-    const timeCallback = (time) => { guiOptions.time = time; };
+    const timeCallback = (time) => { this.guiOptions.time = time; };
     let simulationRunning = false;
 
     // Refresh of the simulation when one of the sliders is changed
@@ -137,10 +137,11 @@ export default class PTDS {
       if (simulationRunning) {
         this.stopSpiralSimulation();
         this.startSpiralSimulation(
-          guiOptions.timeMultiplier,
-          guiOptions.paramA,
-          guiOptions.paramB,
+          this.guiOptions.timeMultiplier,
+          this.guiOptions.paramA,
+          this.guiOptions.paramB,
           timeCallback,
+          this.guiOptions.time,
         );
       }
     };
@@ -155,18 +156,19 @@ export default class PTDS {
         simulationRunning = false;
       } else {
         this.startSpiralSimulation(
-          guiOptions.timeMultiplier,
-          guiOptions.paramA,
-          guiOptions.paramB,
+          this.guiOptions.timeMultiplier,
+          this.guiOptions.paramA,
+          this.guiOptions.paramB,
           timeCallback,
+          this.guiOptions.time,
         );
         simulationRunning = true;
       }
     };
-    Object.assign(guiOptions, { 'start/stop': startStopViz });
+    Object.assign(this.guiOptions, { 'start/stop': startStopViz });
 
-    gui.add(guiOptions, 'time').listen();
-    gui.add(guiOptions, 'start/stop');
+    gui.add(this.guiOptions, 'time').listen();
+    gui.add(this.guiOptions, 'start/stop');
   }
 
   /**
@@ -324,14 +326,17 @@ export default class PTDS {
    * Start a 'spiral simulation' showing on the map all the trips from the current time of the day
    * till the end of the day, then go back to the start time and loop.
    * Every paramA seconds the vehicles are sent back in time by paramB seconds.
-   * @param  {Number} timeMultiplier - Conversion factor between real and visualization time
-   * @param  {Number} paramA - See above
-   * @param  {Number} paramB - See above
+   * @param  {number} timeMultiplier - Conversion factor between real and visualization time
+   * @param  {number} paramA - See above
+   * @param  {number} paramB - See above
    * @param  {Function} timeCallback - Callback to call when time is updated
+   * @param  {string} time - Start time in HH:MM:SS format
    */
-  startSpiralSimulation(timeMultiplier, paramA, paramB, timeCallback) {
+  startSpiralSimulation(timeMultiplier, paramA, paramB, timeCallback, time) {
     const currentTimeInHHMMSS = d3.timeFormat('%H:%M:%S')(new Date());
-    const startTimeViz = TimeUtils.HHMMSStoSeconds(currentTimeInHHMMSS);
+    const startTimeViz = time === ' ' ?
+      TimeUtils.HHMMSStoSeconds(currentTimeInHHMMSS) :
+      TimeUtils.HHMMSStoSeconds(time);
 
     // Store the reference to the timer in the current instance so that
     // we can stop it later
