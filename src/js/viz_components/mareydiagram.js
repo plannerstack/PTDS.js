@@ -53,6 +53,12 @@ export default class MareyDiagram {
     this.createTimeline(changeCallback);
   }
 
+  zoomed(transform) {
+    this.xAxisG.call(this.xAxis.scale(transform.rescaleX(this.xScale)));
+    this.yLeftAxisG.call(this.yLeftAxis.scale(transform.rescaleY(this.yScale)));
+    this.yRightAxisG.call(this.yRightAxis.scale(transform.rescaleY(this.yScale)));
+  }
+
   /**
    * Create x and y scales for the visualization, used to draw the axes and the trips
    */
@@ -69,14 +75,14 @@ export default class MareyDiagram {
    * Create the SVG groups containing the axes and the trips
    */
   createGroups() {
-    this.yLeftAxisGroup = this.svgObject.append('g')
+    this.yLeftAxisG = this.svgObject.append('g')
       .attr('class', 'left-axis axis');
-    this.yRightAxisGroup = this.svgObject.append('g')
+    this.yRightAxisG = this.svgObject.append('g')
       .attr('class', 'right-axis axis')
       .attr('transform', `translate(${this.dims.innerWidth},0)`);
     this.tripsGroup = this.svgObject.append('g')
       .attr('class', 'trips');
-    this.xAxisGroup = this.svgObject.append('g')
+    this.xAxisG = this.svgObject.append('g')
       .attr('class', 'top-axis axis');
   }
 
@@ -109,39 +115,33 @@ export default class MareyDiagram {
    * Vertical axes drawing, left and right
    */
   drawYAxes() {
-    const yLeftAxis = d3.axisLeft(this.yScale)
+    this.yLeftAxis = d3.axisLeft(this.yScale)
       .ticks(d3.timeMinute.every(20))
       .tickFormat(this.yAxisTimeFormat);
 
-    const yRightAxis = d3.axisRight(this.yScale)
+    this.yRightAxis = d3.axisRight(this.yScale)
       .ticks(d3.timeMinute.every(20))
       .tickFormat(this.yAxisTimeFormat);
 
-    this.yLeftAxisGroup.call(yLeftAxis);
-    this.yRightAxisGroup.call(yRightAxis);
+    this.yLeftAxisG.call(this.yLeftAxis);
+    this.yRightAxisG.call(this.yRightAxis);
   }
 
   /**
    * Horizontal axis drawing
    */
   drawXAxis() {
-    const xAxis = d3.axisTop(this.xScale)
+    this.xAxis = d3.axisTop(this.xScale)
       .tickSize(-this.dims.innerHeight)
       .tickValues(this.data.stopsDistances.map(({ distance }) => distance))
       .tickFormat((_, index) => this.data.stopsDistances[index].stop.code);
 
-    this.xAxisGroup.call(xAxis);
+    this.xAxisG.call(this.xAxis);
 
-    this.xAxisGroup.selectAll('text')
+    this.xAxisG.selectAll('text')
       .attr('y', 0)
       .attr('x', 5)
       .attr('dy', '.35em');
-
-    const mareyContainerDOM = document.getElementById('marey-container');
-
-    mareyContainerDOM.addEventListener('scroll', () => {
-      this.xAxisGroup.node().setAttribute('transform', `translate(0,${mareyContainerDOM.scrollTop})`);
-    }, false);
   }
 
   /**
