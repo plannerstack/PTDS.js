@@ -110,7 +110,7 @@ export default class PTDS {
       .attr('height', this.dims.map.outerHeight)
       .call(d3.zoom()
         .scaleExtent([1, 15])
-        .translateExtent([[0, 0], [this.dims.map.innerWidth, this.dims.map.innerHeight]])
+        .translateExtent([[0, 0], [this.dims.map.outerWidth, this.dims.map.outerHeight]])
         .on('zoom', () =>
           this.mapSVG.attr('transform', require('d3-selection').event.transform)))
       .append('g')
