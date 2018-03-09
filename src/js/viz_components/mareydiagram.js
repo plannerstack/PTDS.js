@@ -45,6 +45,10 @@ export default class MareyDiagram {
     this.yAxisTimeFormat = d3.timeFormat('%H:%M');
     this.timelineTimeFormat = d3.timeFormat('%H:%M:%S');
 
+    // Add 10 min offset to improve readability
+    this.minTime = d3.timeMinute.offset(this.tripTimeParse(this.data.timeBoundaries.first), -10);
+    this.maxTime = d3.timeMinute.offset(this.tripTimeParse(this.data.timeBoundaries.last), +10);
+
     // Rectangle that clips the trips, so that when we zoom they don't
     // end up out of the main graph
     this.svgObject.append('clipPath')
@@ -61,7 +65,6 @@ export default class MareyDiagram {
       .x(({ distance }) => this.xScale(distance))
       .y(({ time }) => this.yScale(this.tripTimeParse(time)));
 
-    this.computeMinMaxTime();
     this.createScales();
     this.createGroups();
     this.drawXAxis();
@@ -122,31 +125,6 @@ export default class MareyDiagram {
       .attr('clip-path', 'url(#clip-path)');
     this.xAxisG = this.svgObject.append('g')
       .attr('class', 'top-axis axis');
-  }
-
-  /**
-   * Compute the minimum and maximum time of the trips contained in the dataset,
-   * to know the domain of the y axis
-   */
-  computeMinMaxTime() {
-    // As base values for min and max time we use the first and
-    // last time in the schedule of the first trip
-    const firstTripSchedule = this.data.trips[0].schedule;
-    let [minTimeParsed, maxTimeParsed] = [
-      this.tripTimeParse(firstTripSchedule[0].time),
-      this.tripTimeParse(firstTripSchedule[firstTripSchedule.length - 1].time),
-    ];
-
-    // Iterate over all the trips to find minimum and maximum time
-    for (const { schedule } of this.data.trips) {
-      const firstTimeParsed = this.tripTimeParse(schedule[0].time);
-      const lastTimeParsed = this.tripTimeParse(schedule[schedule.length - 1].time);
-      if (firstTimeParsed < minTimeParsed) minTimeParsed = firstTimeParsed;
-      if (lastTimeParsed > maxTimeParsed) maxTimeParsed = lastTimeParsed;
-    }
-
-    this.minTime = minTimeParsed;
-    this.maxTime = maxTimeParsed;
   }
 
   /**
