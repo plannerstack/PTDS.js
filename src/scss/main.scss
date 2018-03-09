@@ -18,9 +18,16 @@ html, body {
 }
 
 #marey-container {
-  float: left;
-  display: block;
   overflow-y: scroll;
+  position: fixed;
+  left: 0;
+  top: 0;
+}
+
+#map-container {
+  position: fixed;
+  right: 0;
+  top: 0;
 }
 
 // Base styling for all lines and paths
