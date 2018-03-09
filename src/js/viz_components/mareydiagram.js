@@ -287,7 +287,6 @@ export default class MareyDiagram {
       .attr('class', 'scheduledStop')
       .attr('r', '2')
       .attr('cx', ({ distance }) => this.xScale(distance))
-      .merge(tripsScheduledStopsSel)
       .attr('cy', ({ time }) => this.yScale(this.tripTimeParse(time)));
 
     // Trip enter > vehicle selection
