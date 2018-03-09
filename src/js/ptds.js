@@ -102,13 +102,13 @@ export default class PTDS {
         .on('focus', () => {})
         // If the ALT key modifier is pressed, attach the zoom behaviour to the SVG
         .on('keydown', () => {
-          if (require('d3-selection').event.keyCode === 18) {
+          if (require('d3-selection').event.keyCode === 16) {
             mareySVG.call(this.mareyZoomBehaviour);
           }
         })
         // If the ALT key modifier is released, remove all the zoom behaviours from the SVG
         .on('keyup', () => {
-          if (require('d3-selection').event.keyCode === 18) {
+          if (require('d3-selection').event.keyCode === 16) {
             mareySVG.on('.zoom', null);
           }
         });
