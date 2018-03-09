@@ -78,10 +78,8 @@ export default class PTDS {
 
       this.mareyZoomBehaviour = d3.zoom()
         .scaleExtent([1, 20])
-        .translateExtent([
-          [margins.marey.left + margins.marey.right, 0],
-          [this.dims.marey.innerWidth, this.dims.marey.innerHeight],
-        ])
+        .extent([[0, 0], [this.dims.marey.innerWidth, this.dims.marey.innerHeight]])
+        .translateExtent([[0, 0], [this.dims.marey.innerWidth, this.dims.marey.innerHeight]])
         .on('zoom', () => { this.marey.zoomed(require('d3-selection').event.transform); });
 
       // Create main marey SVG element applying the margins
@@ -115,7 +113,16 @@ export default class PTDS {
       .attr('height', this.dims.map.outerHeight)
       .call(d3.zoom()
         .scaleExtent([1, 15])
-        .translateExtent([[0, 0], [this.dims.map.outerWidth, this.dims.map.outerHeight]])
+        .translateExtent([
+          [
+            -margins.map.left,
+            -margins.map.top,
+          ],
+          [
+            this.dims.map.innerWidth + margins.map.right,
+            this.dims.map.innerHeight + margins.map.bottom,
+          ],
+        ])
         .on('zoom', () => {
           this.mapSVG.attr('transform', require('d3-selection').event.transform);
         }))

@@ -71,7 +71,8 @@ d3.queue()
     const body = document.getElementsByTagName('BODY')[0];
     body.onkeydown = (event) => {
       if (event.keyCode === 18) {
-        ptds.mareySVG.call(ptds.mareyZoomBehaviour);
+        ptds.mareySVG
+          .call(ptds.mareyZoomBehaviour);
       }
     };
     body.onkeyup = (event) => {
