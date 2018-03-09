@@ -45,13 +45,18 @@ export default class MareyDiagram {
     this.yAxisTimeFormat = d3.timeFormat('%H:%M');
     this.timelineTimeFormat = d3.timeFormat('%H:%M:%S');
 
+    // Rectangle that clips the trips, so that when we zoom they don't
+    // end up out of the main graph
     this.svgObject.append('clipPath')
       .attr('id', 'clip-path')
       .append('rect')
+      // Use a 5px margin on the sides so that the circles representing the stops
+      // are entirely visible
       .attr('x', -5)
       .attr('width', this.dims.innerWidth + 5)
       .attr('height', this.dims.innerHeight);
 
+    // Line generator for the static schedule of a trip
     this.tripLineGenerator = d3.line()
       .x(({ distance }) => this.xScale(distance))
       .y(({ time }) => this.yScale(this.tripTimeParse(time)));
@@ -64,21 +69,26 @@ export default class MareyDiagram {
     this.createTimeline(changeCallback);
   }
 
+  /**
+   * Handle diagram zoom
+   * @param  {Transform} transform - Transform object
+   */
   zoomed(transform) {
+    // Compute new y scale, rescaling the original one
     this.yScale = transform.rescaleY(this.originalYscale);
+
+    // Update y axes (left and right)
     this.yLeftAxisG.call(this.yLeftAxis.scale(this.yScale));
     this.yRightAxisG.call(this.yRightAxis.scale(this.yScale));
 
+    // Update stops, trips, links, etc
     this.tripsG.selectAll('circle.scheduledStop')
       .attr('cy', ({ time }) => this.yScale(this.tripTimeParse(time)));
-
     this.tripsG.selectAll('g.trip').select('path')
       .attr('d', ({ schedule }) => this.tripLineGenerator(schedule));
-
     this.tripsG.selectAll('line.pos-link')
       .attr('y1', ({ timeA }) => this.yScale(this.tripTimeParse(timeA)))
       .attr('y2', ({ timeB }) => this.yScale(this.tripTimeParse(timeB)));
-
     this.tripsG.selectAll('circle.position')
       .attr('cy', ({ time }) => this.yScale(this.tripTimeParse(time)));
   }
@@ -93,6 +103,8 @@ export default class MareyDiagram {
     this.yScale = d3.scaleTime()
       .domain([this.minTime, this.maxTime])
       .range([0, this.dims.innerHeight]);
+    // Keep a separate copy of the y scale which will never be modified,
+    // to use in the zoom handling
     this.originalYscale = this.yScale.copy();
   }
 
