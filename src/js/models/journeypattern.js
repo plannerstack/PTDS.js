@@ -23,4 +23,17 @@ export default class JourneyPattern {
       distance: this.distances[index],
     }));
   }
+
+  /**
+   * Compute the minimum and maximum time of the trips in the vehicle journey
+   */
+  get firstAndLastTimes() {
+    const combinedFirstAndLast = Object.values(this.vehicleJourneys)
+      .map(trip => trip.firstAndLastTimes);
+
+    return {
+      first: Math.min(...combinedFirstAndLast.map(tripCombinedFL => tripCombinedFL.first)),
+      last: Math.max(...combinedFirstAndLast.map(tripCombinedFL => tripCombinedFL.last)),
+    };
+  }
 }

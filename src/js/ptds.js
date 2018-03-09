@@ -326,7 +326,14 @@ export default class PTDS {
       vehicles: trip.getVehiclePositions(),
     }));
 
-    return { trips: tripsProcessed, stopsDistances: journeyPattern.stopsDistances };
+    return {
+      trips: tripsProcessed,
+      stopsDistances: journeyPattern.stopsDistances,
+      timeBoundaries: {
+        first: TimeUtils.secondsToHHMMSS(journeyPattern.firstAndLastTimes.first),
+        last: TimeUtils.secondsToHHMMSS(journeyPattern.firstAndLastTimes.last),
+      },
+    };
   }
 
   /**
