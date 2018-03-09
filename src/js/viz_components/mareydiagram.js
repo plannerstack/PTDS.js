@@ -48,7 +48,8 @@ export default class MareyDiagram {
     this.svgObject.append('clipPath')
       .attr('id', 'clip-path')
       .append('rect')
-      .attr('width', this.dims.innerWidth)
+      .attr('x', -5)
+      .attr('width', this.dims.innerWidth + 5)
       .attr('height', this.dims.innerHeight);
 
     this.tripLineGenerator = d3.line()
