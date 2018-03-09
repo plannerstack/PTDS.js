@@ -45,12 +45,52 @@ export default class MareyDiagram {
     this.yAxisTimeFormat = d3.timeFormat('%H:%M');
     this.timelineTimeFormat = d3.timeFormat('%H:%M:%S');
 
+    // Rectangle that clips the trips, so that when we zoom they don't
+    // end up out of the main graph
+    this.svgObject.append('clipPath')
+      .attr('id', 'clip-path')
+      .append('rect')
+      // Use a 5px margin on the sides so that the circles representing the stops
+      // are entirely visible
+      .attr('x', -5)
+      .attr('width', this.dims.innerWidth + 5)
+      .attr('height', this.dims.innerHeight);
+
+    // Line generator for the static schedule of a trip
+    this.tripLineGenerator = d3.line()
+      .x(({ distance }) => this.xScale(distance))
+      .y(({ time }) => this.yScale(this.tripTimeParse(time)));
+
     this.computeMinMaxTime();
     this.createScales();
     this.createGroups();
     this.drawXAxis();
     this.drawYAxes();
     this.createTimeline(changeCallback);
+  }
+
+  /**
+   * Handle diagram zoom
+   * @param  {Transform} transform - Transform object
+   */
+  zoomed(transform) {
+    // Compute new y scale, rescaling the original one
+    this.yScale = transform.rescaleY(this.originalYscale);
+
+    // Update y axes (left and right)
+    this.yLeftAxisG.call(this.yLeftAxis.scale(this.yScale));
+    this.yRightAxisG.call(this.yRightAxis.scale(this.yScale));
+
+    // Update stops, trips, links, etc
+    this.tripsG.selectAll('circle.scheduledStop')
+      .attr('cy', ({ time }) => this.yScale(this.tripTimeParse(time)));
+    this.tripsG.selectAll('g.trip').select('path')
+      .attr('d', ({ schedule }) => this.tripLineGenerator(schedule));
+    this.tripsG.selectAll('line.pos-link')
+      .attr('y1', ({ timeA }) => this.yScale(this.tripTimeParse(timeA)))
+      .attr('y2', ({ timeB }) => this.yScale(this.tripTimeParse(timeB)));
+    this.tripsG.selectAll('circle.position')
+      .attr('cy', ({ time }) => this.yScale(this.tripTimeParse(time)));
   }
 
   /**
@@ -63,20 +103,24 @@ export default class MareyDiagram {
     this.yScale = d3.scaleTime()
       .domain([this.minTime, this.maxTime])
       .range([0, this.dims.innerHeight]);
+    // Keep a separate copy of the y scale which will never be modified,
+    // to use in the zoom handling
+    this.originalYscale = this.yScale.copy();
   }
 
   /**
    * Create the SVG groups containing the axes and the trips
    */
   createGroups() {
-    this.yLeftAxisGroup = this.svgObject.append('g')
+    this.yLeftAxisG = this.svgObject.append('g')
       .attr('class', 'left-axis axis');
-    this.yRightAxisGroup = this.svgObject.append('g')
+    this.yRightAxisG = this.svgObject.append('g')
       .attr('class', 'right-axis axis')
       .attr('transform', `translate(${this.dims.innerWidth},0)`);
-    this.tripsGroup = this.svgObject.append('g')
-      .attr('class', 'trips');
-    this.xAxisGroup = this.svgObject.append('g')
+    this.tripsG = this.svgObject.append('g')
+      .attr('class', 'trips')
+      .attr('clip-path', 'url(#clip-path)');
+    this.xAxisG = this.svgObject.append('g')
       .attr('class', 'top-axis axis');
   }
 
@@ -109,39 +153,33 @@ export default class MareyDiagram {
    * Vertical axes drawing, left and right
    */
   drawYAxes() {
-    const yLeftAxis = d3.axisLeft(this.yScale)
-      .ticks(d3.timeMinute.every(20))
+    this.yLeftAxis = d3.axisLeft(this.yScale)
+      .ticks(this.options.dual.mareyHeightMultiplier * 20)
       .tickFormat(this.yAxisTimeFormat);
 
-    const yRightAxis = d3.axisRight(this.yScale)
-      .ticks(d3.timeMinute.every(20))
+    this.yRightAxis = d3.axisRight(this.yScale)
+      .ticks(this.options.dual.mareyHeightMultiplier * 20)
       .tickFormat(this.yAxisTimeFormat);
 
-    this.yLeftAxisGroup.call(yLeftAxis);
-    this.yRightAxisGroup.call(yRightAxis);
+    this.yLeftAxisG.call(this.yLeftAxis);
+    this.yRightAxisG.call(this.yRightAxis);
   }
 
   /**
    * Horizontal axis drawing
    */
   drawXAxis() {
-    const xAxis = d3.axisTop(this.xScale)
+    this.xAxis = d3.axisTop(this.xScale)
       .tickSize(-this.dims.innerHeight)
       .tickValues(this.data.stopsDistances.map(({ distance }) => distance))
       .tickFormat((_, index) => this.data.stopsDistances[index].stop.code);
 
-    this.xAxisGroup.call(xAxis);
+    this.xAxisG.call(this.xAxis);
 
-    this.xAxisGroup.selectAll('text')
+    this.xAxisG.selectAll('text')
       .attr('y', 0)
       .attr('x', 5)
       .attr('dy', '.35em');
-
-    const mareyContainerDOM = document.getElementById('marey-container');
-
-    mareyContainerDOM.addEventListener('scroll', () => {
-      this.xAxisGroup.node().setAttribute('transform', `translate(0,${mareyContainerDOM.scrollTop})`);
-    }, false);
   }
 
   /**
@@ -234,12 +272,8 @@ export default class MareyDiagram {
    */
   drawTrips() {
     // Trip selection
-    const tripsSel = this.tripsGroup.selectAll('g.trip')
+    const tripsSel = this.tripsG.selectAll('g.trip')
       .data(this.data.trips, ({ code }) => code);
-
-    const tripLineGenerator = d3.line()
-      .x(({ distance }) => this.xScale(distance))
-      .y(({ time }) => this.yScale(this.tripTimeParse(time)));
 
     // Trip exit
     tripsSel.exit().remove();
@@ -252,7 +286,7 @@ export default class MareyDiagram {
     // Trip enter > path
     tripsEnterSel
       .append('path')
-      .attr('d', ({ schedule }) => tripLineGenerator(schedule));
+      .attr('d', ({ schedule }) => this.tripLineGenerator(schedule));
 
     // Trip enter > circle selection
     const tripsScheduledStopsSel = tripsEnterSel

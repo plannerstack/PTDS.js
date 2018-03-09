@@ -14,11 +14,6 @@ const d3 = Object.assign({}, {
   zoom,
   timeFormat,
   timer,
-  // very ugly hack to solve a problem that d3 and webpack have
-  // https://github.com/d3/d3/issues/2733
-  /* eslint-disable */
-  event: (() => require('d3-selection').event).bind(this),
-  /* eslint-enable */
 });
 
 /**
@@ -38,6 +33,7 @@ export default class PTDS {
    * Create the SVG elements
    */
   createSVGObjects() {
+    /* eslint global-require: "off" */
     // Get browser dimensions
     // The correction factors are needed because the actual size
     // available is less than the one returned by the browser due to scrollbars
@@ -80,16 +76,42 @@ export default class PTDS {
                                     margins.marey.bottom;
       this.dims.map.innerWidth = this.dims.map.outerWidth - margins.map.left - margins.map.right;
 
+      // Zoom behaviour for the Marey diagram
+      this.mareyZoomBehaviour = d3.zoom()
+        .scaleExtent([1, 20])
+        .extent([[0, 0], [this.dims.marey.innerWidth, this.dims.marey.innerHeight]])
+        .translateExtent([[0, 0], [this.dims.marey.innerWidth, this.dims.marey.innerHeight]])
+        .on('zoom', () => { this.marey.zoomed(require('d3-selection').event.transform); });
+
       // Create main marey SVG element applying the margins
-      this.mareySVG = d3.select('div.main').append('div')
+      const mareySVG = d3.select('div.main')
+        .append('div')
         .attr('id', 'marey-container')
         .style('height', `${windowHeight}px`)
         .append('svg')
         .attr('id', 'marey')
         .attr('width', this.dims.marey.outerWidth)
-        .attr('height', this.dims.marey.outerHeight)
-        .append('g')
+        .attr('height', this.dims.marey.outerHeight);
+
+      // Create transformed group and store in 'this'
+      this.mareySVGgroup = mareySVG.append('g')
         .attr('transform', `translate(${margins.marey.left},${margins.marey.top})`);
+
+      // Register listeners for zoom behaviour enabling/disabling
+      mareySVG
+        .on('focus', () => {})
+        // If the ALT key modifier is pressed, attach the zoom behaviour to the SVG
+        .on('keydown', () => {
+          if (require('d3-selection').event.keyCode === 18) {
+            mareySVG.call(this.mareyZoomBehaviour);
+          }
+        })
+        // If the ALT key modifier is released, remove all the zoom behaviours from the SVG
+        .on('keyup', () => {
+          if (require('d3-selection').event.keyCode === 18) {
+            mareySVG.on('.zoom', null);
+          }
+        });
     } else {
       this.dims = {
         map: {
@@ -110,7 +132,19 @@ export default class PTDS {
       .attr('height', this.dims.map.outerHeight)
       .call(d3.zoom()
         .scaleExtent([1, 15])
-        .on('zoom', () => this.mapSVG.attr('transform', d3.event().transform)))
+        .translateExtent([
+          [
+            -margins.map.left,
+            -margins.map.top,
+          ],
+          [
+            this.dims.map.innerWidth + margins.map.right,
+            this.dims.map.innerHeight + margins.map.bottom,
+          ],
+        ])
+        .on('zoom', () => {
+          this.mapSVG.attr('transform', require('d3-selection').event.transform);
+        }))
       .append('g')
       .attr('transform', `translate(${margins.map.left},${margins.map.top})`);
   }
@@ -200,7 +234,7 @@ export default class PTDS {
       // Creation of the Marey diagram
       this.marey = new MareyDiagram(
         this.getMareyData(),
-        this.mareySVG,
+        this.mareySVGgroup,
         this.dims.marey,
         this.options,
         timelineChangeCallback,

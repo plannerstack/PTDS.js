@@ -17,11 +17,17 @@ html, body {
   font: 10px sans-serif;
 }
 
-// Make the container containing the Marey diagram scrollable
 #marey-container {
   overflow-y: scroll;
-  float: left;
-  display: block;
+  position: fixed;
+  left: 0;
+  top: 0;
+}
+
+#map-container {
+  position: fixed;
+  right: 0;
+  top: 0;
 }
 
 // Base styling for all lines and paths
