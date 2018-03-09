@@ -45,6 +45,28 @@ export default class VehicleJourney {
   }
 
   /**
+   * Compute the minimum and maximum time of the trip
+   */
+  get firstAndLastTimes() {
+    if (this.isRealTime) {
+      // Extract first and last time for each vehicle
+      const combinedFirstAndLast = Object.values(this.realtime).map(({ times }) =>
+        ({ first: times[0], last: times[times.length - 1] }));
+      // Compute first and last time for all vehicles
+      return {
+        first: Math.min(...combinedFirstAndLast.map(vehicleCombinedFL => vehicleCombinedFL.first)),
+        last: Math.max(...combinedFirstAndLast.map(vehicleCombinedFL => vehicleCombinedFL.last)),
+      };
+    }
+
+    // If no realtime data is available, use static data
+    return {
+      first: this.times[0],
+      last: this.times[this.times.length - 1],
+    };
+  }
+
+  /**
    * Check if given a specific time in seconds, the journey is active
    * @param  {number}  time - Time in seconds since noon minus 12h
    * @return {boolean} - True if the journey is active, false otherwise
