@@ -98,8 +98,7 @@ export default class PTDS {
         .attr('transform', `translate(${margins.marey.left},${margins.marey.top})`);
 
       // Register listeners for zoom behaviour enabling/disabling
-      mareySVG
-        .on('focus', () => {})
+      d3.select('body')
         // If the ALT key modifier is pressed, attach the zoom behaviour to the SVG
         .on('keydown', () => {
           if (require('d3-selection').event.keyCode === 16) {
