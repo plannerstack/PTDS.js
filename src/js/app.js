@@ -57,7 +57,7 @@ const options = {
   dual: {
     verticalSplitPercentage: (Math.sqrt(5) - 1) / 2,
     journeyPatterns: ['HTM:17:139'],
-    mareyHeightMultiplier: 1,
+    mareyHeightMultiplier: 5,
   },
 };
 
@@ -65,4 +65,18 @@ const options = {
 /* eslint no-new: "off" */
 d3.queue()
   .defer(d3.json, 'data/2018-03-01_1-9-11-12-16-17.min.json')
-  .await((error, data) => { new PTDS(data, options); });
+  .await((error, data) => {
+    const ptds = new PTDS(data, options);
+
+    const body = document.getElementsByTagName('BODY')[0];
+    body.onkeydown = (event) => {
+      if (event.keyCode === 18) {
+        ptds.mareySVG.call(ptds.mareyZoomBehaviour);
+      }
+    };
+    body.onkeyup = (event) => {
+      if (event.keyCode === 18) {
+        ptds.mareySVG.on('.zoom', null);
+      }
+    };
+  });

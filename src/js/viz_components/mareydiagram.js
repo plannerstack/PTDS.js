@@ -45,6 +45,16 @@ export default class MareyDiagram {
     this.yAxisTimeFormat = d3.timeFormat('%H:%M');
     this.timelineTimeFormat = d3.timeFormat('%H:%M:%S');
 
+    this.svgObject.append('clipPath')
+      .attr('id', 'clip-path')
+      .append('rect')
+      .attr('width', this.dims.innerWidth)
+      .attr('height', this.dims.innerHeight);
+
+    this.tripLineGenerator = d3.line()
+      .x(({ distance }) => this.xScale(distance))
+      .y(({ time }) => this.yScale(this.tripTimeParse(time)));
+
     this.computeMinMaxTime();
     this.createScales();
     this.createGroups();
@@ -54,9 +64,22 @@ export default class MareyDiagram {
   }
 
   zoomed(transform) {
-    this.xAxisG.call(this.xAxis.scale(transform.rescaleX(this.xScale)));
-    this.yLeftAxisG.call(this.yLeftAxis.scale(transform.rescaleY(this.yScale)));
-    this.yRightAxisG.call(this.yRightAxis.scale(transform.rescaleY(this.yScale)));
+    this.yScale = transform.rescaleY(this.originalYscale);
+    this.yLeftAxisG.call(this.yLeftAxis.scale(this.yScale));
+    this.yRightAxisG.call(this.yRightAxis.scale(this.yScale));
+
+    this.tripsG.selectAll('circle.scheduledStop')
+      .attr('cy', ({ time }) => this.yScale(this.tripTimeParse(time)));
+
+    this.tripsG.selectAll('g.trip').select('path')
+      .attr('d', ({ schedule }) => this.tripLineGenerator(schedule));
+
+    this.tripsG.selectAll('line.pos-link')
+      .attr('y1', ({ timeA }) => this.yScale(this.tripTimeParse(timeA)))
+      .attr('y2', ({ timeB }) => this.yScale(this.tripTimeParse(timeB)));
+
+    this.tripsG.selectAll('circle.position')
+      .attr('cy', ({ time }) => this.yScale(this.tripTimeParse(time)));
   }
 
   /**
@@ -69,6 +92,7 @@ export default class MareyDiagram {
     this.yScale = d3.scaleTime()
       .domain([this.minTime, this.maxTime])
       .range([0, this.dims.innerHeight]);
+    this.originalYscale = this.yScale.copy();
   }
 
   /**
@@ -80,8 +104,9 @@ export default class MareyDiagram {
     this.yRightAxisG = this.svgObject.append('g')
       .attr('class', 'right-axis axis')
       .attr('transform', `translate(${this.dims.innerWidth},0)`);
-    this.tripsGroup = this.svgObject.append('g')
-      .attr('class', 'trips');
+    this.tripsG = this.svgObject.append('g')
+      .attr('class', 'trips')
+      .attr('clip-path', 'url(#clip-path)');
     this.xAxisG = this.svgObject.append('g')
       .attr('class', 'top-axis axis');
   }
@@ -116,11 +141,11 @@ export default class MareyDiagram {
    */
   drawYAxes() {
     this.yLeftAxis = d3.axisLeft(this.yScale)
-      .ticks(d3.timeMinute.every(20))
+      .ticks(this.options.dual.mareyHeightMultiplier * 20)
       .tickFormat(this.yAxisTimeFormat);
 
     this.yRightAxis = d3.axisRight(this.yScale)
-      .ticks(d3.timeMinute.every(20))
+      .ticks(this.options.dual.mareyHeightMultiplier * 20)
       .tickFormat(this.yAxisTimeFormat);
 
     this.yLeftAxisG.call(this.yLeftAxis);
@@ -234,12 +259,8 @@ export default class MareyDiagram {
    */
   drawTrips() {
     // Trip selection
-    const tripsSel = this.tripsGroup.selectAll('g.trip')
+    const tripsSel = this.tripsG.selectAll('g.trip')
       .data(this.data.trips, ({ code }) => code);
-
-    const tripLineGenerator = d3.line()
-      .x(({ distance }) => this.xScale(distance))
-      .y(({ time }) => this.yScale(this.tripTimeParse(time)));
 
     // Trip exit
     tripsSel.exit().remove();
@@ -252,7 +273,7 @@ export default class MareyDiagram {
     // Trip enter > path
     tripsEnterSel
       .append('path')
-      .attr('d', ({ schedule }) => tripLineGenerator(schedule));
+      .attr('d', ({ schedule }) => this.tripLineGenerator(schedule));
 
     // Trip enter > circle selection
     const tripsScheduledStopsSel = tripsEnterSel
@@ -265,6 +286,7 @@ export default class MareyDiagram {
       .attr('class', 'scheduledStop')
       .attr('r', '2')
       .attr('cx', ({ distance }) => this.xScale(distance))
+      .merge(tripsScheduledStopsSel)
       .attr('cy', ({ time }) => this.yScale(this.tripTimeParse(time)));
 
     // Trip enter > vehicle selection

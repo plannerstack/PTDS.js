@@ -76,6 +76,14 @@ export default class PTDS {
                                     margins.marey.bottom;
       this.dims.map.innerWidth = this.dims.map.outerWidth - margins.map.left - margins.map.right;
 
+      this.mareyZoomBehaviour = d3.zoom()
+        .scaleExtent([1, 20])
+        .translateExtent([
+          [margins.marey.left + margins.marey.right, 0],
+          [this.dims.marey.innerWidth, this.dims.marey.innerHeight],
+        ])
+        .on('zoom', () => { this.marey.zoomed(require('d3-selection').event.transform); });
+
       // Create main marey SVG element applying the margins
       this.mareySVG = d3.select('div.main').append('div')
         .attr('id', 'marey-container')
@@ -83,12 +91,9 @@ export default class PTDS {
         .append('svg')
         .attr('id', 'marey')
         .attr('width', this.dims.marey.outerWidth)
-        .attr('height', this.dims.marey.outerHeight)
-        .call(d3.zoom()
-          .scaleExtent([1, 20])
-          .translateExtent([[0, 0], [this.dims.marey.innerWidth, this.dims.marey.innerHeight]])
-          .on('zoom', () => this.marey.zoomed(require('d3-selection').event.transform)))
-        .append('g')
+        .attr('height', this.dims.marey.outerHeight);
+
+      this.mareySVGgroup = this.mareySVG.append('g')
         .attr('transform', `translate(${margins.marey.left},${margins.marey.top})`);
     } else {
       this.dims = {
@@ -111,8 +116,9 @@ export default class PTDS {
       .call(d3.zoom()
         .scaleExtent([1, 15])
         .translateExtent([[0, 0], [this.dims.map.outerWidth, this.dims.map.outerHeight]])
-        .on('zoom', () =>
-          this.mapSVG.attr('transform', require('d3-selection').event.transform)))
+        .on('zoom', () => {
+          this.mapSVG.attr('transform', require('d3-selection').event.transform);
+        }))
       .append('g')
       .attr('transform', `translate(${margins.map.left},${margins.map.top})`);
   }
@@ -202,7 +208,7 @@ export default class PTDS {
       // Creation of the Marey diagram
       this.marey = new MareyDiagram(
         this.getMareyData(),
-        this.mareySVG,
+        this.mareySVGgroup,
         this.dims.marey,
         this.options,
         timelineChangeCallback,
