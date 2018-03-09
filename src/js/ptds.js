@@ -174,6 +174,7 @@ export default class PTDS {
           guiOptions.paramA,
           guiOptions.paramB,
           timeCallback,
+          guiOptions.time,
         );
       }
     };
@@ -192,6 +193,7 @@ export default class PTDS {
           guiOptions.paramA,
           guiOptions.paramB,
           timeCallback,
+          guiOptions.time,
         );
         simulationRunning = true;
       }
@@ -357,14 +359,17 @@ export default class PTDS {
    * Start a 'spiral simulation' showing on the map all the trips from the current time of the day
    * till the end of the day, then go back to the start time and loop.
    * Every paramA seconds the vehicles are sent back in time by paramB seconds.
-   * @param  {Number} timeMultiplier - Conversion factor between real and visualization time
-   * @param  {Number} paramA - See above
-   * @param  {Number} paramB - See above
+   * @param  {number} timeMultiplier - Conversion factor between real and visualization time
+   * @param  {number} paramA - See above
+   * @param  {number} paramB - See above
    * @param  {Function} timeCallback - Callback to call when time is updated
+   * @param  {string} time - Start time in HH:MM:SS format
    */
-  startSpiralSimulation(timeMultiplier, paramA, paramB, timeCallback) {
+  startSpiralSimulation(timeMultiplier, paramA, paramB, timeCallback, time) {
     const currentTimeInHHMMSS = d3.timeFormat('%H:%M:%S')(new Date());
-    const startTimeViz = TimeUtils.HHMMSStoSeconds(currentTimeInHHMMSS);
+    const startTimeViz = time === ' ' ?
+      TimeUtils.HHMMSStoSeconds(currentTimeInHHMMSS) :
+      TimeUtils.HHMMSStoSeconds(time);
 
     // Store the reference to the timer in the current instance so that
     // we can stop it later
