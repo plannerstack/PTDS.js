@@ -76,6 +76,7 @@ export default class PTDS {
                                     margins.marey.bottom;
       this.dims.map.innerWidth = this.dims.map.outerWidth - margins.map.left - margins.map.right;
 
+      // Zoom behaviour for the Marey diagram
       this.mareyZoomBehaviour = d3.zoom()
         .scaleExtent([1, 20])
         .extent([[0, 0], [this.dims.marey.innerWidth, this.dims.marey.innerHeight]])
@@ -83,7 +84,8 @@ export default class PTDS {
         .on('zoom', () => { this.marey.zoomed(require('d3-selection').event.transform); });
 
       // Create main marey SVG element applying the margins
-      this.mareySVG = d3.select('div.main').append('div')
+      const mareySVG = d3.select('div.main')
+        .append('div')
         .attr('id', 'marey-container')
         .style('height', `${windowHeight}px`)
         .append('svg')
@@ -91,8 +93,25 @@ export default class PTDS {
         .attr('width', this.dims.marey.outerWidth)
         .attr('height', this.dims.marey.outerHeight);
 
-      this.mareySVGgroup = this.mareySVG.append('g')
+      // Create transformed group and store in 'this'
+      this.mareySVGgroup = mareySVG.append('g')
         .attr('transform', `translate(${margins.marey.left},${margins.marey.top})`);
+
+      // Register listeners for zoom behaviour enabling/disabling
+      mareySVG
+        .on('focus', () => {})
+        // If the ALT key modifier is pressed, attach the zoom behaviour to the SVG
+        .on('keydown', () => {
+          if (require('d3-selection').event.keyCode === 18) {
+            mareySVG.call(this.mareyZoomBehaviour);
+          }
+        })
+        // If the ALT key modifier is released, remove all the zoom behaviours from the SVG
+        .on('keyup', () => {
+          if (require('d3-selection').event.keyCode === 18) {
+            mareySVG.on('.zoom', null);
+          }
+        });
     } else {
       this.dims = {
         map: {
