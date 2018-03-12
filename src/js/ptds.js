@@ -158,7 +158,7 @@ export default class PTDS {
 
     const sliders = [
       gui.add(guiOptions, 'timeMultiplier', 0, 500),
-      gui.add(guiOptions, 'paramA', 0, 200),
+      gui.add(guiOptions, 'paramA', 1, 200),
       gui.add(guiOptions, 'paramB', 0, 200),
     ];
 
