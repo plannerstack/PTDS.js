@@ -8,6 +8,8 @@ import Line from './models/line';
 import VehicleJourney from './models/vehiclejourney';
 import Point from './models/point';
 
+import TimeUtils from './timeutils';
+
 /**
  * Class representing a public transport dataset
  */
@@ -156,10 +158,15 @@ export default class PTDataset {
     return keyBy(
       Object.entries(_vehicleJourneys)
         .map(([code, { times, journeyPatternRef, realtime, cancelled }]) => {
+          // Convert time in seconds since noon minus 12h to Date object
+          for (const rtVehicle of Object.values(realtime)) {
+            rtVehicle.times = rtVehicle.times.map(time => TimeUtils.secondsToDateObject(time));
+          }
+
           const vehicleJourney = new VehicleJourney(
             code,
             this.journeyPatterns[journeyPatternRef],
-            times,
+            times.map(time => TimeUtils.secondsToDateObject(time)),
             realtime,
             cancelled,
           );

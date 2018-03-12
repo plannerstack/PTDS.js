@@ -41,13 +41,12 @@ export default class MareyDiagram {
    * @param  {Function} changeCallback - Callback for the timeline change event
    */
   initialSetup(changeCallback) {
-    this.tripTimeParse = d3.timeParse('%H:%M:%S');
     this.yAxisTimeFormat = d3.timeFormat('%H:%M');
     this.timelineTimeFormat = d3.timeFormat('%H:%M:%S');
 
     // Add 10 min offset to improve readability
-    this.minTime = d3.timeMinute.offset(this.tripTimeParse(this.data.timeBoundaries.first), -10);
-    this.maxTime = d3.timeMinute.offset(this.tripTimeParse(this.data.timeBoundaries.last), +10);
+    this.minTime = d3.timeMinute.offset(this.data.timeBoundaries.first, -10);
+    this.maxTime = d3.timeMinute.offset(this.data.timeBoundaries.last, +10);
 
     // Rectangle that clips the trips, so that when we zoom they don't
     // end up out of the main graph
@@ -63,7 +62,7 @@ export default class MareyDiagram {
     // Line generator for the static schedule of a trip
     this.tripLineGenerator = d3.line()
       .x(({ distance }) => this.xScale(distance))
-      .y(({ time }) => this.yScale(this.tripTimeParse(time)));
+      .y(({ time }) => this.yScale(time));
 
     this.createScales();
     this.createGroups();
@@ -86,14 +85,14 @@ export default class MareyDiagram {
 
     // Update stops, trips, links, etc
     this.tripsG.selectAll('circle.scheduledStop')
-      .attr('cy', ({ time }) => this.yScale(this.tripTimeParse(time)));
+      .attr('cy', ({ time }) => this.yScale(time));
     this.tripsG.selectAll('g.trip').select('path')
       .attr('d', ({ schedule }) => this.tripLineGenerator(schedule));
     this.tripsG.selectAll('line.pos-link')
-      .attr('y1', ({ timeA }) => this.yScale(this.tripTimeParse(timeA)))
-      .attr('y2', ({ timeB }) => this.yScale(this.tripTimeParse(timeB)));
+      .attr('y1', ({ timeA }) => this.yScale(timeA))
+      .attr('y2', ({ timeB }) => this.yScale(timeB));
     this.tripsG.selectAll('circle.position')
-      .attr('cy', ({ time }) => this.yScale(this.tripTimeParse(time)));
+      .attr('cy', ({ time }) => this.yScale(time));
   }
 
   /**
@@ -198,25 +197,13 @@ export default class MareyDiagram {
         // Get the time corresponding to the actual mouse position
         // and format it
         const time = this.yScale.invert(yPos);
-        const hhmmssTime = this.timelineTimeFormat(time);
 
-        // If the schedule extends to the next day, we need to handle
-        // manually the time conversion.
-        // This should be considered a hack and the whole time handling
-        // should be revised ASAP.
-        if (d3.timeFormat('%j')(time) > 1) {
-          const hh = parseInt(hhmmssTime.substr(0, 2), 10);
-          const fixedHH = hh + 24;
-          const fixedHHMMSSTime = `${fixedHH}:${hhmmssTime.substr(3)}`;
-          changeCallback(fixedHHMMSSTime);
-        } else {
-          changeCallback(hhmmssTime);
-        }
+        changeCallback(time);
 
         // Update the y position of the timeline group
         d3.select('g.timeline').attr('transform', `translate(0,${yPos})`);
         // Update the text showing the time
-        d3.select('g.timeline text').text(hhmmssTime);
+        d3.select('g.timeline text').text(this.timelineTimeFormat(time));
       });
   }
 
@@ -277,7 +264,7 @@ export default class MareyDiagram {
       .attr('class', 'scheduledStop')
       .attr('r', '2')
       .attr('cx', ({ distance }) => this.xScale(distance))
-      .attr('cy', ({ time }) => this.yScale(this.tripTimeParse(time)));
+      .attr('cy', ({ time }) => this.yScale(time));
 
     // Trip enter > vehicle selection
     const vehiclesSel = tripsEnterSel.selectAll('g.vehicle')
@@ -307,7 +294,7 @@ export default class MareyDiagram {
       // Trip > vehicle > circle enter + update
       .merge(vehiclesPosSel)
       .attr('cx', ({ distance }) => this.xScale(distance))
-      .attr('cy', ({ time }) => this.yScale(this.tripTimeParse(time)));
+      .attr('cy', ({ time }) => this.yScale(time));
 
     // Trip > vehicle > line
     const vehiclesPosLinksSel = vehiclesEnterUpdateSel.selectAll('line.pos-link')
@@ -321,7 +308,7 @@ export default class MareyDiagram {
       .merge(vehiclesPosLinksSel)
       .attr('x1', ({ distanceA }) => this.xScale(distanceA))
       .attr('x2', ({ distanceB }) => this.xScale(distanceB))
-      .attr('y1', ({ timeA }) => this.yScale(this.tripTimeParse(timeA)))
-      .attr('y2', ({ timeB }) => this.yScale(this.tripTimeParse(timeB)));
+      .attr('y1', ({ timeA }) => this.yScale(timeA))
+      .attr('y2', ({ timeB }) => this.yScale(timeB));
   }
 }

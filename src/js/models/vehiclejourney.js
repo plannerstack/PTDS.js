@@ -12,7 +12,7 @@ export default class VehicleJourney {
    * @param  {Array.<number>} times - List of times of arrival at each stop
    * @param  {Object.<string, {
    *   distances: Array.<number>,
-   *   times: Array.<number>,
+   *   times: Array.<Date>,
    *   vehicleNumber: number
    *  }>} realtime - Realtime data of the journey for each vehicle
    * @param  {boolean} cancelled - Whether the journey was cancelled
@@ -95,17 +95,22 @@ export default class VehicleJourney {
       const { time: timeStop1, distance: distanceStop1 } = this.staticSchedule[i];
       const { time: timeStop2, distance: distanceStop2 } = this.staticSchedule[i + 1];
 
+      const timeSeconds = time.getTime() / 1000;
+      const timeStop1Seconds = timeStop1.getTime() / 1000;
+      const timeStop2Seconds = timeStop2.getTime() / 1000;
+
       // If the distance traveled by the vehicle is between the start and end distances
       // of the current segment, we can decide its status
       if (distanceStop1 <= distance && distance <= distanceStop2) {
         // Compute the theoretical time that the vehicle should have to be on time
         // having traveled the current distance
-        const theoreticalTime = (((timeStop2 - timeStop1) / (distanceStop2 - distanceStop1)) *
-                                 (distance - distanceStop1)) + timeStop1;
+        const theoreticalTime = (((timeStop2Seconds - timeStop1Seconds) /
+                                  (distanceStop2 - distanceStop1)) * (distance - distanceStop1)) +
+                                timeStop1Seconds;
         // Compare theoretical time with actual time and decide the status of the vehicle
-        if (time < theoreticalTime - 15) {
+        if (timeSeconds < theoreticalTime - 15) {
           return VehicleStatus.EARLY;
-        } else if (theoreticalTime - 15 <= time && time <= theoreticalTime + 120) {
+        } else if (theoreticalTime - 15 <= timeSeconds && timeSeconds <= theoreticalTime + 120) {
           return VehicleStatus.ONTIME;
         }
         return VehicleStatus.LATE;
@@ -121,7 +126,7 @@ export default class VehicleJourney {
    * Computes the realtime positions information of a the vehicles belonging to this journey
    * @return {Array.<{
    *           vehichleNumber: number,
-   *           positions: {time: number, distance: number, status: string, prognosed: boolean}
+   *           positions: {time: Date, distance: number, status: string, prognosed: boolean}
    *          }>} - List of enriched realtime position info
    */
   getVehiclePositions() {
@@ -132,10 +137,10 @@ export default class VehicleJourney {
       // For each vehicle, enrich its positions information by computing the "on time"
       // status at each position
       positions: times.map((time, index) => ({
-        time: TimeUtils.secondsToHHMMSS(time),
+        time,
         distance: distances[index],
         status: this.vehicleStatusComparedToSchedule(time, distances[index]),
-        prognosed: TimeUtils.isInTheFuture(time),
+        prognosed: time > TimeUtils.timeNow(),
       })),
     }));
   }
@@ -205,7 +210,7 @@ export default class VehicleJourney {
           position: this.getPositionFromDistance(distance, stopsLinks),
           distance,
           status: this.vehicleStatusComparedToSchedule(time, distance),
-          prognosed: TimeUtils.isInTheFuture(time),
+          prognosed: time > TimeUtils.timeNow(),
         };
       });
     }
