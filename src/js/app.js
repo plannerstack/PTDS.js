@@ -36,6 +36,36 @@ let indexData = {};
 const processIndex = () => {
   const publications = indexData.publications.reverse();
 
+  const showJourneyPatterns = () => {
+    const publicationInUse = indexData.publications
+      .find(pub => pub.date === document.getElementById('day').value);
+    const datasetInUse = publicationInUse.datasets
+      .find(dataset => dataset.filename === document.getElementById('lines-groups').value);
+    const urlLinesGroupsSelected = `${publicationInUse.url}${datasetInUse.filename}`;
+
+    fetch(urlLinesGroupsSelected)
+      .then(r => r.json())
+      .then((data) => {
+        const jpSelect = document.getElementById('journeyPattern');
+        jpSelect.innerHTML = '';
+        for (const journeyPattern of Object.keys(data.journeyPatterns)) {
+          jpSelect.innerHTML += `<option value="${journeyPattern}">${journeyPattern}</option>`;
+        }
+        document.getElementsByClassName('jpSelect')[0].style.display = 'block';
+      });
+  };
+
+  const modeSelect = document.getElementById('mode');
+  modeSelect.onchange = () => {
+    const { value } = modeSelect;
+
+    if (value === 'dual') {
+      showJourneyPatterns();
+    } else {
+      document.getElementsByClassName('jpSelect')[0].style.display = 'none';
+    }
+  };
+
   const daySelect = document.getElementById('day');
   for (const publication of publications) {
     daySelect.innerHTML += `<option value="${publication.date}">${publication.date}</option>`;
@@ -55,6 +85,9 @@ const processIndex = () => {
     const lines = dataset.lines.join(', ');
     linesGroupsSelect.innerHTML += `<option value="${dataset.filename}">${lines}</option>`;
   }
+  linesGroupsSelect.onchange = () => {
+    showJourneyPatterns();
+  };
 
   /* eslint no-new: "off" */
   const defaultDatasetURL = `${publications[0].url}${publications[0].datasets[0].filename}`;
@@ -86,6 +119,15 @@ $(document).ready(() => {
     const urlLinesGroupsSelected = `${publicationInUse.url}${datasetInUse.filename}`;
 
     fetch(urlLinesGroupsSelected).then(r => r.json())
-      .then((data) => { document.getElementById('main').innerHTML = ''; new PTDS(data, options); });
+      .then((data) => {
+        document.getElementById('main').innerHTML = '';
+        if (document.getElementById('mode').value === 'dual') {
+          options.mode = 'dual';
+          options.dual.journeyPatterns = [document.getElementById('journeyPattern').value];
+        } else {
+          options.mode = 'spiralSimulation';
+        }
+        new PTDS(data, options);
+      });
   };
 });
