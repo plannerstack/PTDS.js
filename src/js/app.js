@@ -86,7 +86,9 @@ const processIndex = () => {
     linesGroupsSelect.innerHTML += `<option value="${dataset.filename}">${lines}</option>`;
   }
   linesGroupsSelect.onchange = () => {
-    showJourneyPatterns();
+    if (document.getElementById('mode').value === 'dual') {
+      showJourneyPatterns();
+    }
   };
 
   /* eslint no-new: "off" */
@@ -124,6 +126,8 @@ $(document).ready(() => {
         if (document.getElementById('mode').value === 'dual') {
           options.mode = 'dual';
           options.dual.journeyPatterns = [document.getElementById('journeyPattern').value];
+          const dg = document.getElementById('gui');
+          if (dg) dg.remove();
         } else {
           options.mode = 'spiralSimulation';
         }
