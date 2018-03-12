@@ -123,11 +123,12 @@ $(document).ready(() => {
     fetch(urlLinesGroupsSelected).then(r => r.json())
       .then((data) => {
         document.getElementById('main').innerHTML = '';
+        for (const dg of document.getElementsByClassName('dg main')) {
+          dg.remove();
+        }
         if (document.getElementById('mode').value === 'dual') {
           options.mode = 'dual';
           options.dual.journeyPatterns = [document.getElementById('journeyPattern').value];
-          const dg = document.getElementById('gui');
-          if (dg) dg.remove();
         } else {
           options.mode = 'spiralSimulation';
         }
