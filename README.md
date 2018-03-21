@@ -16,9 +16,7 @@ Build distribution
     $ yarn build
 
 ## Live demo
-[**Spiral simulation mode**](https://plannerstack-ptds.netlify.com/?mode=spiralSimulation)
-
-[**Dual mode**](https://plannerstack-ptds.netlify.com/?mode=dual)
+[**Here**](https://plannerstack-ptds.netlify.com/)
 
 ## License
 See `LICENSE`.
