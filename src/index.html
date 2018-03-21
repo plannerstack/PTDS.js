@@ -6,27 +6,29 @@
 </head>
 <body>
   <div id="main" class="main"></div>
+  <!-- Make navbar initially invisible -->
   <div id="navbar" style="visibility: hidden;">
     <span id="toggle-sidebar" class="button icon">TOGGLE SIDEBAR</span>
   </div>
+  <!-- Make sidebar initially invisible -->
   <div id="sidebar" style="visibility: hidden;">
     <div id="sidebar-wrapper" class="sidebar-wrapper container">
-      <div class="row">
-        <div class="column">
-          <h3>Public Transport Decision Support System</h3>
-        </div>
-      </div>
-      <form id="options">
+      <h3>Public Transport Decision Support System</h3>
+      <form id="viz-options">
         <fieldset>
           <label for="mode">Mode</label>
           <select id="mode">
             <option value="spiralSimulation">Spiral simulation</option>
             <option value="dual">Marey + Map</option>
           </select>
+
           <label for="day">Day</label>
           <select id="day"></select>
+
           <label for="lines-groups">Lines</label>
           <select id="lines-groups"></select>
+
+          <!-- Make journey pattern selector initially invisible -->
           <div class="jpSelect" style="display: none;">
             <label for="journeyPattern">Journey Pattern</label>
             <select id="journeyPattern"></select>
