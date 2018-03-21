@@ -34,6 +34,10 @@ module.exports = {
         }],
       },
       {
+        test: /simpler-sidebar[\/\\]dist/,
+        use: 'imports-loader?jQuery=jquery,$=jquery,this=>window',
+      },
+      {
         test: /\.js$/,
         exclude: /node_modules/,
         loader: 'eslint-loader',
