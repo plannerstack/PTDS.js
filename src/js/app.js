@@ -55,7 +55,9 @@ const loadAvailableJourneyPatterns = () => {
       jpSelect.innerHTML = '';
       // Add the new journey patterns
       for (const journeyPattern of Object.keys(data.journeyPatterns)) {
-        jpSelect.innerHTML += `<option value="${journeyPattern}">${journeyPattern}</option>`;
+        const nTrips = Object.entries(data.vehicleJourneys).filter(([, VJdata]) =>
+          VJdata.journeyPatternRef === journeyPattern).length;
+        jpSelect.innerHTML += `<option value="${journeyPattern}">${journeyPattern} - ${nTrips}</option>`;
       }
     });
 };
