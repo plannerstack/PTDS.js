@@ -1,9 +1,7 @@
 const path = require('path');
-const webpack = require('webpack');
 
 const CleanWebpackPlugin = require('clean-webpack-plugin');
 const ExtractTextPlugin = require('extract-text-webpack-plugin');
-const CopyWebpackPlugin = require('copy-webpack-plugin');
 const HtmlWebPackPlugin = require('html-webpack-plugin');
 
 const paths = {
@@ -34,6 +32,10 @@ module.exports = {
         }],
       },
       {
+        test: /simpler-sidebar[\/\\]dist/,
+        use: 'imports-loader?jQuery=jquery,$=jquery,this=>window',
+      },
+      {
         test: /\.js$/,
         exclude: /node_modules/,
         loader: 'eslint-loader',
@@ -61,11 +63,5 @@ module.exports = {
       filename: 'main.bundle.css',
       allChunks: true,
     }),
-    new CopyWebpackPlugin([
-      {
-        from: paths.data,
-        to: `${paths.dist}/data`,
-      },
-    ]),
   ],
 };
