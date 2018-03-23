@@ -14,11 +14,18 @@ import TimeUtils from './timeutils';
  * Class representing a public transport dataset
  */
 export default class PTDataset {
-  constructor(inputData) {
+  constructor(inputData, referenceDate) {
+    this.referenceDate = referenceDate;
     Object.assign(this, PTDataset.computeStopsAndStopAreas(inputData.scheduledStopPoints));
     Object.assign(this, this.computeLinesJourneyPatterns(inputData.journeyPatterns));
     this.vehicleJourneys = this.computeVehicleJourneys(inputData.vehicleJourneys);
     this.stopsLinks = this.computeLinks();
+
+    // Compute times of the first and last stop of any journey in the dataset
+    this.earliestTime = Math.min(...Object.values(this.journeyPatterns).map(jp =>
+      jp.firstAndLastTimes.first));
+    this.latestTime = Math.max(...Object.values(this.journeyPatterns).map(jp =>
+      jp.firstAndLastTimes.last));
   }
 
   /**
@@ -160,13 +167,14 @@ export default class PTDataset {
         .map(([code, { times, journeyPatternRef, realtime, cancelled }]) => {
           // Convert time in seconds since noon minus 12h to Date object
           for (const rtVehicle of Object.values(realtime)) {
-            rtVehicle.times = rtVehicle.times.map(time => TimeUtils.secondsToDateObject(time));
+            rtVehicle.times = rtVehicle.times.map(time =>
+              TimeUtils.secondsToDateObject(time, this.referenceDate));
           }
 
           const vehicleJourney = new VehicleJourney(
             code,
             this.journeyPatterns[journeyPatternRef],
-            times.map(time => TimeUtils.secondsToDateObject(time)),
+            times.map(time => TimeUtils.secondsToDateObject(time, this.referenceDate)),
             realtime,
             cancelled,
           );

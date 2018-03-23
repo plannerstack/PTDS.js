@@ -5,7 +5,6 @@ import { timer } from 'd3-timer';
 import dat from 'dat.gui';
 
 import PTDataset from './ptdataset';
-import TimeUtils from './timeutils';
 import InteractiveMap from './viz_components/interactivemap';
 import MareyDiagram from './viz_components/mareydiagram';
 
@@ -21,10 +20,10 @@ const d3 = Object.assign({}, {
  */
 export default class PTDS {
   constructor(inputData, options) {
-    this.data = new PTDataset(inputData);
+    this.data = new PTDataset(inputData, options.selectedDate);
     this.options = options;
 
-    this.widgetTimeFormat = d3.timeFormat('%H:%M:%S');
+    this.widgetTimeFormat = d3.timeFormat('%Y-%m-%d %H:%M:%S');
 
     if (options.mode === 'spiralSimulation') { this.createSimulationWidget(); }
 
@@ -158,7 +157,7 @@ export default class PTDS {
     const gui = new dat.GUI();
     gui.domElement.id = 'gui';
     const guiOptions = Object.assign({}, this.options.spiral, {
-      time: this.widgetTimeFormat(TimeUtils.timeNow()),
+      time: this.widgetTimeFormat(this.data.earliestTime),
     });
 
     const sliders = [
@@ -371,12 +370,9 @@ export default class PTDS {
   startSpiralSimulation(timeMultiplier, paramA, paramB, timeCallback) {
     // Start time of the simulation. If it was already started earlier and then stopped,
     // start again from when it was left. Otherwise, start from the current time in the day.
-    const startTimeViz = typeof this.lastTime === 'undefined' ? TimeUtils.timeNow() : this.lastTime;
-    // Compute times of the first and last stop of any journey in the dataset
-    const firstDatasetTime = Math.min(...Object.values(this.data.journeyPatterns).map(jp =>
-      jp.firstAndLastTimes.first));
-    const lastDatasetTime = Math.max(...Object.values(this.data.journeyPatterns).map(jp =>
-      jp.firstAndLastTimes.last));
+    const startTimeViz = typeof this.lastTime === 'undefined' ?
+      this.data.earliestTime :
+      this.lastTime;
 
     // Store the reference to the timer in the current instance so that
     // we can stop it later
@@ -392,11 +388,11 @@ export default class PTDS {
 
       // If we exceeded the last time in the dataset, stop the simulation and
       // set the default time for the next run
-      if (vizTime >= lastDatasetTime) {
+      if (vizTime >= this.data.latestTime) {
         this.spiralTimer.stop();
         this.simulationRunning = false;
-        this.lastTime = firstDatasetTime;
-        timeCallback(this.widgetTimeFormat(firstDatasetTime));
+        this.lastTime = this.data.earliestTime;
+        timeCallback(this.widgetTimeFormat(this.data.earliestTime));
       } else {
         this.lastTime = vizTime;
         this.map.updateData({ trips: this.getTripsAtTime(vizTime) });

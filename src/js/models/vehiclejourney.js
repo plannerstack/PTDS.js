@@ -1,5 +1,4 @@
 import VehicleStatus from '../vehiclestatus';
-import TimeUtils from '../timeutils';
 
 /**
  * Class representing the journey of a vehicle
@@ -142,7 +141,7 @@ export default class VehicleJourney {
         time,
         distance: distances[index],
         status: this.vehicleStatusComparedToSchedule(time, distances[index]),
-        prognosed: time > TimeUtils.timeNow(),
+        prognosed: time > new Date(),
       })),
     }));
   }
@@ -212,7 +211,7 @@ export default class VehicleJourney {
           position: this.getPositionFromDistance(distance, stopsLinks),
           distance,
           status: this.vehicleStatusComparedToSchedule(time, distance),
-          prognosed: time > TimeUtils.timeNow(),
+          prognosed: time > new Date(),
         };
       });
     }
