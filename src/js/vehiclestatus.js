@@ -1,3 +1,4 @@
+// Enum to represent the status of the vehicle
 const VehicleStatus = Object.freeze({
   EARLY: 'early',
   ONTIME: 'ontime',

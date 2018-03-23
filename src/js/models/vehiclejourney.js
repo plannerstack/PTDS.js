@@ -9,7 +9,7 @@ export default class VehicleJourney {
    * Vehicle journey constructor
    * @param  {string} code - Reference code
    * @param  {JourneyPattern} journeyPattern - Journey pattern which the journey belongs to
-   * @param  {Array.<number>} times - List of times of arrival at each stop
+   * @param  {Array.<Date>} times - List of times of arrival at each stop
    * @param  {Object.<string, {
    *   distances: Array.<number>,
    *   times: Array.<Date>,
@@ -46,6 +46,8 @@ export default class VehicleJourney {
 
   /**
    * Compute the minimum and maximum time of the trip
+   * @return {{first: Date, last: Date}} - First and last times of this journey
+
    */
   get firstAndLastTimes() {
     if (this.isRealTime) {
@@ -67,8 +69,8 @@ export default class VehicleJourney {
   }
 
   /**
-   * Check if given a specific time in seconds, the journey is active
-   * @param  {number}  time - Time in seconds since noon minus 12h
+   * Check if given a specific time, the journey is active
+   * @param  {Date}  time - Time
    * @return {boolean} - True if the journey is active, false otherwise
    */
   isActive(time) {
@@ -84,7 +86,7 @@ export default class VehicleJourney {
 
   /**
    * Given a distance and a time, decided the status of the vehicle compared to the static schedule
-   * @param  {number} time - Time in seconds since noon minus 12h
+   * @param  {Date} time - Time
    * @param  {number} distance - Distance along route
    * @return {string} - Status of the vehicle
    */
@@ -147,7 +149,7 @@ export default class VehicleJourney {
 
   /**
    * Get the position information of the vehicles of the trip at a given time
-   * @param  {number} time - Time in seconds since noon minus 12h
+   * @param  {Date} time - Time
    * @param  {Object.<string, StopsLink>} stopsLinks - Network project definition
    * @return {Array.<{
    *   vehicleNumber: number,

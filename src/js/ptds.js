@@ -157,7 +157,9 @@ export default class PTDS {
   createSimulationWidget() {
     const gui = new dat.GUI();
     gui.domElement.id = 'gui';
-    const guiOptions = Object.assign({}, this.options.spiral, { time: ' ' });
+    const guiOptions = Object.assign({}, this.options.spiral, {
+      time: this.widgetTimeFormat(TimeUtils.timeNow()),
+    });
 
     const sliders = [
       gui.add(guiOptions, 'timeMultiplier', 0, 500),

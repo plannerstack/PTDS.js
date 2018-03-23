@@ -209,8 +209,8 @@ export default class MareyDiagram {
 
   /**
    * Given a list of vehicle positions, get the links between them
-   * @param  {Array.<{time: number, distance: number, status: string}>} positions - Positions info
-   * @return {Array.<{timeA: number, timeB: number,
+   * @param  {Array.<{time: Date, distance: number, status: string}>} positions - Positions info
+   * @return {Array.<{timeA: Date, timeB: Date,
    *           distanceA: number, distanceB: number,
    *           status: string, prognosed: boolean}>} - Positions links information
    */
