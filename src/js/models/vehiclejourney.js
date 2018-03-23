@@ -204,18 +204,20 @@ export default class VehicleJourney {
     };
 
     if (this.isRealTime) {
-      return Object.values(this.realtime).map(({ vehicleNumber, times, distances }) => {
-        const distance = getDistanceGivenSchedule(times.map((_time, index) =>
-          ({ time: _time, distance: distances[index] })));
+      return Object.values(this.realtime)
+        .filter(({ times, distances }) => times.length > 0 && distances.length > 0)
+        .map(({ vehicleNumber, times, distances }) => {
+          const distance = getDistanceGivenSchedule(times.map((_time, index) =>
+            ({ time: _time, distance: distances[index] })));
 
-        return {
-          vehicleNumber,
-          position: this.getPositionFromDistance(distance, stopsLinks),
-          distance,
-          status: this.vehicleStatusComparedToSchedule(time, distance),
-          prognosed: time > new Date(),
-        };
-      });
+          return {
+            vehicleNumber,
+            position: this.getPositionFromDistance(distance, stopsLinks),
+            distance,
+            status: this.vehicleStatusComparedToSchedule(time, distance),
+            prognosed: time > new Date(),
+          };
+        });
     }
 
     const distance = getDistanceGivenSchedule(this.staticSchedule);
