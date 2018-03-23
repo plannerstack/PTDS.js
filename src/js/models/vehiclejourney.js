@@ -51,8 +51,10 @@ export default class VehicleJourney {
   get firstAndLastTimes() {
     if (this.isRealTime) {
       // Extract first and last time for each vehicle
-      const combinedFirstAndLast = Object.values(this.realtime).map(({ times }) =>
-        ({ first: times[0], last: times[times.length - 1] }));
+      const combinedFirstAndLast = Object.values(this.realtime)
+        .filter(({ times }) => times.length > 0)
+        .map(({ times }) => ({ first: times[0], last: times[times.length - 1] }));
+
       // Compute first and last time for all vehicles
       return {
         first: Math.min(...combinedFirstAndLast.map(vehicleCombinedFL => vehicleCombinedFL.first)),
