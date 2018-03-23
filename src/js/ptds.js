@@ -5,7 +5,6 @@ import { timer } from 'd3-timer';
 import dat from 'dat.gui';
 
 import PTDataset from './ptdataset';
-import TimeUtils from './timeutils';
 import InteractiveMap from './viz_components/interactivemap';
 import MareyDiagram from './viz_components/mareydiagram';
 
@@ -21,8 +20,10 @@ const d3 = Object.assign({}, {
  */
 export default class PTDS {
   constructor(inputData, options) {
-    this.data = new PTDataset(inputData);
+    this.data = new PTDataset(inputData, options.selectedDate);
     this.options = options;
+
+    this.widgetTimeFormat = d3.timeFormat('%Y-%m-%d %H:%M:%S');
 
     if (options.mode === 'spiralSimulation') { this.createSimulationWidget(); }
 
@@ -155,7 +156,9 @@ export default class PTDS {
   createSimulationWidget() {
     const gui = new dat.GUI();
     gui.domElement.id = 'gui';
-    const guiOptions = Object.assign({}, this.options.spiral, { time: ' ' });
+    const guiOptions = Object.assign({}, this.options.spiral, {
+      time: this.widgetTimeFormat(this.data.earliestTime),
+    });
 
     const sliders = [
       gui.add(guiOptions, 'timeMultiplier', 0, 500),
@@ -164,18 +167,17 @@ export default class PTDS {
     ];
 
     const timeCallback = (time) => { guiOptions.time = time; };
-    let simulationRunning = false;
+    this.simulationRunning = false;
 
     // Refresh of the simulation when one of the sliders is changed
     const refreshViz = () => {
-      if (simulationRunning) {
+      if (this.simulationRunning) {
         this.stopSpiralSimulation();
         this.startSpiralSimulation(
           guiOptions.timeMultiplier,
           guiOptions.paramA,
           guiOptions.paramB,
           timeCallback,
-          guiOptions.time,
         );
       }
     };
@@ -185,18 +187,17 @@ export default class PTDS {
 
     // Start/stop the spiral simulation
     const startStopViz = () => {
-      if (simulationRunning) {
+      if (this.simulationRunning) {
         this.stopSpiralSimulation();
-        simulationRunning = false;
+        this.simulationRunning = false;
       } else {
         this.startSpiralSimulation(
           guiOptions.timeMultiplier,
           guiOptions.paramA,
           guiOptions.paramB,
           timeCallback,
-          guiOptions.time,
         );
-        simulationRunning = true;
+        this.simulationRunning = true;
       }
     };
     Object.assign(guiOptions, { 'start/stop': startStopViz });
@@ -226,7 +227,7 @@ export default class PTDS {
       const timelineChangeCallback = (time) => {
         this.map.updateData({
           trips: this.getTripsAtTime(
-            TimeUtils.HHMMSStoSeconds(time),
+            time,
             trip => this.options.dual.journeyPatterns.includes(trip.journeyPattern.code),
           ),
         });
@@ -300,10 +301,10 @@ export default class PTDS {
    * @return {{
    *   trips: Array.<{
    *     code: string,
-   *     schedule: Array.<{time: string, distance: number}>,
+   *     schedule: Array.<{time: Date, distance: number}>,
    *     vehicles: Array.<{
    *       vehichleNumber: number,
-   *       positions: {time: number, distance: number, status: string, prognosed: boolean}
+   *       positions: {time: Date, distance: number, status: string, prognosed: boolean}
    *     }>
    *   }>,
    *   stopsDistances: Array.<{stop: Stop, distance: number}>
@@ -320,26 +321,20 @@ export default class PTDS {
     // Create trips list with essential information for the Marey diagram
     const tripsProcessed = trips.map(trip => ({
       code: trip.code,
-      schedule: trip.staticSchedule.map(({ time, distance }) => ({
-        time: TimeUtils.secondsToHHMMSS(time),
-        distance,
-      })),
+      schedule: trip.staticSchedule,
       vehicles: trip.getVehiclePositions(),
     }));
 
     return {
       trips: tripsProcessed,
       stopsDistances: journeyPattern.stopsDistances,
-      timeBoundaries: {
-        first: TimeUtils.secondsToHHMMSS(journeyPattern.firstAndLastTimes.first),
-        last: TimeUtils.secondsToHHMMSS(journeyPattern.firstAndLastTimes.last),
-      },
+      timeBoundaries: journeyPattern.firstAndLastTimes,
     };
   }
 
   /**
    * Get all the trips active at a given time. It supports a filter
-   * @param  {number} time - Time in seconds since noon minus 12h
+   * @param  {Date} time - Time
    * @param  {Function} filterFunc - Function applied to a VehicleJourney to filter it
    * @return {Array.<{
    *   code: string,
@@ -365,37 +360,45 @@ export default class PTDS {
 
   /**
    * Start a 'spiral simulation' showing on the map all the trips from the current time of the day
-   * till the end of the day, then go back to the start time and loop.
+   * till the end of the day.
    * Every paramA seconds the vehicles are sent back in time by paramB seconds.
    * @param  {number} timeMultiplier - Conversion factor between real and visualization time
    * @param  {number} paramA - See above
    * @param  {number} paramB - See above
    * @param  {Function} timeCallback - Callback to call when time is updated
-   * @param  {string} time - Start time in HH:MM:SS format
    */
-  startSpiralSimulation(timeMultiplier, paramA, paramB, timeCallback, time) {
-    const currentTimeInHHMMSS = d3.timeFormat('%H:%M:%S')(new Date());
-    const startTimeViz = time === ' ' ?
-      TimeUtils.HHMMSStoSeconds(currentTimeInHHMMSS) :
-      TimeUtils.HHMMSStoSeconds(time);
+  startSpiralSimulation(timeMultiplier, paramA, paramB, timeCallback) {
+    // Start time of the simulation. If it was already started earlier and then stopped,
+    // start again from when it was left. Otherwise, start from the current time in the day.
+    const startTimeViz = typeof this.lastTime === 'undefined' ?
+      this.data.earliestTime :
+      this.lastTime;
 
     // Store the reference to the timer in the current instance so that
     // we can stop it later
     this.spiralTimer = d3.timer((elapsedMilliseconds) => {
       // Compute elapsed seconds in the visualization
       const elapsedSecondsInViz = (elapsedMilliseconds * timeMultiplier) / 1000;
-      // Compute 'spiral' negative offset.
+      // Compute 'spiral' negative offset
       const spiralOffset = Math.floor(elapsedSecondsInViz / paramA) * paramB;
 
-      // When the time of the visualization reaches the end of the day,
-      // go back to the initial start time
-      const vizTime = startTimeViz +
-        ((elapsedSecondsInViz - spiralOffset) % (115200 - startTimeViz));
+      // Compute time currently represented in the visualization
+      const vizTime = new Date(startTimeViz);
+      vizTime.setSeconds(vizTime.getSeconds() + (elapsedSecondsInViz - spiralOffset));
 
-      timeCallback(TimeUtils.secondsToHHMMSS(vizTime));
-
-      this.map.updateData({ trips: this.getTripsAtTime(vizTime) });
-      this.map.drawTrips();
+      // If we exceeded the last time in the dataset, stop the simulation and
+      // set the default time for the next run
+      if (vizTime >= this.data.latestTime) {
+        this.spiralTimer.stop();
+        this.simulationRunning = false;
+        this.lastTime = this.data.earliestTime;
+        timeCallback(this.widgetTimeFormat(this.data.earliestTime));
+      } else {
+        this.lastTime = vizTime;
+        this.map.updateData({ trips: this.getTripsAtTime(vizTime) });
+        this.map.drawTrips();
+        timeCallback(this.widgetTimeFormat(vizTime));
+      }
     });
   }
 
@@ -408,3 +411,4 @@ export default class PTDS {
     }
   }
 }
+

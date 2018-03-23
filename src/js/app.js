@@ -108,6 +108,7 @@ const processIndex = () => {
   /* eslint no-new: "off" */
   // Fetch default dataset and create its corresponding visualization
   const defaultDatasetURL = `${publications[0].url}${publications[0].datasets[0].filename}`;
+  Object.assign(options, { selectedDate: publications[0].date });
   fetch(defaultDatasetURL).then(r => r.json())
     .then((defaultData) => { new PTDS(defaultData, options); });
 };
@@ -136,6 +137,7 @@ const formSubmit = (event) => {
       } else {
         options.mode = 'spiralSimulation';
       }
+      Object.assign(options, { selectedDate: document.getElementById('day').value });
       new PTDS(data, options);
     });
 };

@@ -1,5 +1,4 @@
 import VehicleStatus from '../vehiclestatus';
-import TimeUtils from '../timeutils';
 
 /**
  * Class representing the journey of a vehicle
@@ -9,10 +8,10 @@ export default class VehicleJourney {
    * Vehicle journey constructor
    * @param  {string} code - Reference code
    * @param  {JourneyPattern} journeyPattern - Journey pattern which the journey belongs to
-   * @param  {Array.<number>} times - List of times of arrival at each stop
+   * @param  {Array.<Date>} times - List of times of arrival at each stop
    * @param  {Object.<string, {
    *   distances: Array.<number>,
-   *   times: Array.<number>,
+   *   times: Array.<Date>,
    *   vehicleNumber: number
    *  }>} realtime - Realtime data of the journey for each vehicle
    * @param  {boolean} cancelled - Whether the journey was cancelled
@@ -46,12 +45,16 @@ export default class VehicleJourney {
 
   /**
    * Compute the minimum and maximum time of the trip
+   * @return {{first: Date, last: Date}} - First and last times of this journey
+
    */
   get firstAndLastTimes() {
     if (this.isRealTime) {
       // Extract first and last time for each vehicle
-      const combinedFirstAndLast = Object.values(this.realtime).map(({ times }) =>
-        ({ first: times[0], last: times[times.length - 1] }));
+      const combinedFirstAndLast = Object.values(this.realtime)
+        .filter(({ times }) => times.length > 0)
+        .map(({ times }) => ({ first: times[0], last: times[times.length - 1] }));
+
       // Compute first and last time for all vehicles
       return {
         first: Math.min(...combinedFirstAndLast.map(vehicleCombinedFL => vehicleCombinedFL.first)),
@@ -67,8 +70,8 @@ export default class VehicleJourney {
   }
 
   /**
-   * Check if given a specific time in seconds, the journey is active
-   * @param  {number}  time - Time in seconds since noon minus 12h
+   * Check if given a specific time, the journey is active
+   * @param  {Date}  time - Time
    * @return {boolean} - True if the journey is active, false otherwise
    */
   isActive(time) {
@@ -84,7 +87,7 @@ export default class VehicleJourney {
 
   /**
    * Given a distance and a time, decided the status of the vehicle compared to the static schedule
-   * @param  {number} time - Time in seconds since noon minus 12h
+   * @param  {Date} time - Time
    * @param  {number} distance - Distance along route
    * @return {string} - Status of the vehicle
    */
@@ -95,17 +98,22 @@ export default class VehicleJourney {
       const { time: timeStop1, distance: distanceStop1 } = this.staticSchedule[i];
       const { time: timeStop2, distance: distanceStop2 } = this.staticSchedule[i + 1];
 
+      const timeSeconds = time.getTime() / 1000;
+      const timeStop1Seconds = timeStop1.getTime() / 1000;
+      const timeStop2Seconds = timeStop2.getTime() / 1000;
+
       // If the distance traveled by the vehicle is between the start and end distances
       // of the current segment, we can decide its status
       if (distanceStop1 <= distance && distance <= distanceStop2) {
         // Compute the theoretical time that the vehicle should have to be on time
         // having traveled the current distance
-        const theoreticalTime = (((timeStop2 - timeStop1) / (distanceStop2 - distanceStop1)) *
-                                 (distance - distanceStop1)) + timeStop1;
+        const theoreticalTime = (((timeStop2Seconds - timeStop1Seconds) /
+                                  (distanceStop2 - distanceStop1)) * (distance - distanceStop1)) +
+                                timeStop1Seconds;
         // Compare theoretical time with actual time and decide the status of the vehicle
-        if (time < theoreticalTime - 15) {
+        if (timeSeconds < theoreticalTime - 15) {
           return VehicleStatus.EARLY;
-        } else if (theoreticalTime - 15 <= time && time <= theoreticalTime + 120) {
+        } else if (theoreticalTime - 15 <= timeSeconds && timeSeconds <= theoreticalTime + 120) {
           return VehicleStatus.ONTIME;
         }
         return VehicleStatus.LATE;
@@ -121,7 +129,7 @@ export default class VehicleJourney {
    * Computes the realtime positions information of a the vehicles belonging to this journey
    * @return {Array.<{
    *           vehichleNumber: number,
-   *           positions: {time: number, distance: number, status: string, prognosed: boolean}
+   *           positions: {time: Date, distance: number, status: string, prognosed: boolean}
    *          }>} - List of enriched realtime position info
    */
   getVehiclePositions() {
@@ -132,17 +140,17 @@ export default class VehicleJourney {
       // For each vehicle, enrich its positions information by computing the "on time"
       // status at each position
       positions: times.map((time, index) => ({
-        time: TimeUtils.secondsToHHMMSS(time),
+        time,
         distance: distances[index],
         status: this.vehicleStatusComparedToSchedule(time, distances[index]),
-        prognosed: TimeUtils.isInTheFuture(time),
+        prognosed: time > new Date(),
       })),
     }));
   }
 
   /**
    * Get the position information of the vehicles of the trip at a given time
-   * @param  {number} time - Time in seconds since noon minus 12h
+   * @param  {Date} time - Time
    * @param  {Object.<string, StopsLink>} stopsLinks - Network project definition
    * @return {Array.<{
    *   vehicleNumber: number,
@@ -196,18 +204,20 @@ export default class VehicleJourney {
     };
 
     if (this.isRealTime) {
-      return Object.values(this.realtime).map(({ vehicleNumber, times, distances }) => {
-        const distance = getDistanceGivenSchedule(times.map((_time, index) =>
-          ({ time: _time, distance: distances[index] })));
+      return Object.values(this.realtime)
+        .filter(({ times, distances }) => times.length > 0 && distances.length > 0)
+        .map(({ vehicleNumber, times, distances }) => {
+          const distance = getDistanceGivenSchedule(times.map((_time, index) =>
+            ({ time: _time, distance: distances[index] })));
 
-        return {
-          vehicleNumber,
-          position: this.getPositionFromDistance(distance, stopsLinks),
-          distance,
-          status: this.vehicleStatusComparedToSchedule(time, distance),
-          prognosed: TimeUtils.isInTheFuture(time),
-        };
-      });
+          return {
+            vehicleNumber,
+            position: this.getPositionFromDistance(distance, stopsLinks),
+            distance,
+            status: this.vehicleStatusComparedToSchedule(time, distance),
+            prognosed: time > new Date(),
+          };
+        });
     }
 
     const distance = getDistanceGivenSchedule(this.staticSchedule);

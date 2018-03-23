@@ -26,6 +26,7 @@ export default class JourneyPattern {
 
   /**
    * Compute the minimum and maximum time of the trips in the vehicle journey
+   * @return {{first: Date, last: Date}} - First and last times of the journeys in this pattern
    */
   get firstAndLastTimes() {
     const combinedFirstAndLast = Object.values(this.vehicleJourneys)
