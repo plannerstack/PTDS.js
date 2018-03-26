@@ -1,9 +1,11 @@
 import { timeParse, timeFormat } from 'd3-time-format';
 import { scaleLinear, scaleTime } from 'd3-scale';
 import { axisLeft, axisTop, axisRight } from 'd3-axis';
-import { timeMinute } from 'd3-time';
-import { select, mouse } from 'd3-selection';
+import { timeMinute, timeHour } from 'd3-time';
+import { select, mouse, event as d3event } from 'd3-selection';
 import { line } from 'd3-shape';
+import { zoom, zoomIdentity } from 'd3-zoom';
+import { brushY } from 'd3-brush';
 
 const d3 = Object.assign({}, {
   timeParse,
@@ -17,6 +19,10 @@ const d3 = Object.assign({}, {
   mouse,
   select,
   line,
+  zoom,
+  brushY,
+  timeHour,
+  zoomIdentity,
 });
 
 /**
@@ -25,9 +31,10 @@ const d3 = Object.assign({}, {
  * only the essential information needed to draw it is stored.
  */
 export default class MareyDiagram {
-  constructor(data, svgObject, dims, options, changeCallback) {
+  constructor(data, diagGroup, scrollGroup, dims, options, changeCallback) {
     this.data = data;
-    this.svgObject = svgObject;
+    this.diagGroup = diagGroup;
+    this.scrollGroup = scrollGroup;
     this.dims = dims;
     this.options = options;
 
@@ -50,14 +57,14 @@ export default class MareyDiagram {
 
     // Rectangle that clips the trips, so that when we zoom they don't
     // end up out of the main graph
-    this.svgObject.append('clipPath')
+    this.diagGroup.append('clipPath')
       .attr('id', 'clip-path')
       .append('rect')
       // Use a 5px margin on the sides so that the circles representing the stops
       // are entirely visible
       .attr('x', -5)
-      .attr('width', this.dims.innerWidth + 5)
-      .attr('height', this.dims.innerHeight);
+      .attr('width', this.dims.marey.innerWidth + 5)
+      .attr('height', this.dims.marey.innerHeight);
 
     // Line generator for the static schedule of a trip
     this.tripLineGenerator = d3.line()
@@ -69,30 +76,77 @@ export default class MareyDiagram {
     this.drawXAxis();
     this.drawYAxes();
     this.createTimeline(changeCallback);
+
+    /* eslint global-require: "off" */
+    this.zoomBehaviour = d3.zoom()
+      .scaleExtent([1, Infinity])
+      .extent([[0, 0], [this.dims.marey.innerWidth, this.dims.marey.innerHeight]])
+      .translateExtent([[0, 0], [this.dims.marey.innerWidth, this.dims.marey.innerHeight]])
+      // We encapsulate this.zoomed in a closure so that we don't lose the "this" context
+      .on('zoom', () => { this.zoomed(); });
+
+    this.diagGroup.call(this.zoomBehaviour);
+
+    this.brushBehaviour = d3.brushY()
+      .extent([[-20, 0], [0, this.dims.mareyScroll.height]])
+      // Same as this.zoomed
+      .on('brush end', () => { this.brushed(); });
+
+    this.scrollGroup.append('g')
+      .attr('class', 'brush')
+      .call(this.brushBehaviour)
+      .call(this.brushBehaviour.move, [0, this.yScrollScale.range()[1] / 4]);
   }
 
-  /**
-   * Handle diagram zoom
-   * @param  {Transform} transform - Transform object
-   */
-  zoomed(transform) {
-    // Compute new y scale, rescaling the original one
-    this.yScale = transform.rescaleY(this.originalYscale);
+  brushed() {
+    // Ignore brush-by-zoom
+    if (d3event.sourceEvent && d3event.sourceEvent.type === 'zoom') return;
+    const selection = d3event.selection || this.yScrollScale.range();
+    this.yScale.domain(selection.map(this.yScrollScale.invert, this.yScrollScale));
+    this.yLeftAxisG.call(this.yLeftAxis);
+    this.yRightAxisG.call(this.yRightAxis);
+    this.drawTrips();
+    this.diagGroup.call(this.zoomBehaviour.transform, d3.zoomIdentity
+      .scale(this.dims.mareyScroll.height / (selection[1] - selection[0]))
+      .translate(0, -selection[0]));
+    this.lastK = this.dims.mareyScroll.height / (selection[1] - selection[0]);
+  }
 
-    // Update y axes (left and right)
-    this.yLeftAxisG.call(this.yLeftAxis.scale(this.yScale));
-    this.yRightAxisG.call(this.yRightAxis.scale(this.yScale));
+  zoomed() {
+    if (typeof this.lastK === 'undefined') this.lastK = d3event.transform.k;
 
-    // Update stops, trips, links, etc
-    this.tripsG.selectAll('circle.scheduledStop')
-      .attr('cy', ({ time }) => this.yScale(time));
-    this.tripsG.selectAll('g.trip').select('path')
-      .attr('d', ({ schedule }) => this.tripLineGenerator(schedule));
-    this.tripsG.selectAll('line.pos-link')
-      .attr('y1', ({ timeA }) => this.yScale(timeA))
-      .attr('y2', ({ timeB }) => this.yScale(timeB));
-    this.tripsG.selectAll('circle.position')
-      .attr('cy', ({ time }) => this.yScale(time));
+    if (d3event.sourceEvent) {
+      // Ignore zoom-by-brush
+      if (['brush', 'end'].includes(d3event.sourceEvent.type)) return;
+
+      if (d3event.sourceEvent.type === 'wheel' && !d3event.sourceEvent.shiftKey) {
+        // Panning
+        const currentDomain = this.yScale.domain();
+        const step = d3event.sourceEvent.deltaY > 0 ? +2 : -2;
+        const newDomain = [
+          d3.timeMinute.offset(currentDomain[0], step),
+          d3.timeMinute.offset(currentDomain[1], step),
+        ];
+        const originalDomain = this.yScrollScale.domain();
+        if (newDomain[0] >= originalDomain[0] &&
+            newDomain[1] <= originalDomain[1]) this.yScale.domain(newDomain);
+
+        this.diagGroup.call(this.zoomBehaviour.transform, d3.zoomIdentity
+          .scale(this.lastK)
+          .translate(0, -this.yScrollScale(this.yScale.domain()[0])));
+      } else {
+        // Zooming
+        this.lastK = d3event.transform.k;
+        this.yScale.domain(d3event.transform.rescaleY(this.yScrollScale).domain());
+      }
+    }
+
+    this.scrollGroup.select('.brush')
+      .call(this.brushBehaviour.move, this.yScale.domain().map(this.yScrollScale));
+
+    this.yLeftAxisG.call(this.yLeftAxis);
+    this.yRightAxisG.call(this.yRightAxis);
+    this.drawTrips();
   }
 
   /**
@@ -101,28 +155,30 @@ export default class MareyDiagram {
   createScales() {
     this.xScale = d3.scaleLinear()
       .domain([0, this.data.stopsDistances[this.data.stopsDistances.length - 1].distance])
-      .range([0, this.dims.innerWidth]);
+      .range([0, this.dims.marey.innerWidth]);
     this.yScale = d3.scaleTime()
       .domain([this.minTime, this.maxTime])
-      .range([0, this.dims.innerHeight]);
-    // Keep a separate copy of the y scale which will never be modified,
-    // to use in the zoom handling
-    this.originalYscale = this.yScale.copy();
+      .range([0, this.dims.marey.innerHeight]);
+    this.yScrollScale = d3.scaleTime()
+      .domain([this.minTime, this.maxTime])
+      .range([0, this.dims.mareyScroll.height]);
   }
 
   /**
    * Create the SVG groups containing the axes and the trips
    */
   createGroups() {
-    this.yLeftAxisG = this.svgObject.append('g')
+    this.yLeftAxisG = this.diagGroup.append('g')
       .attr('class', 'left-axis axis');
-    this.yRightAxisG = this.svgObject.append('g')
+    this.yRightAxisG = this.diagGroup.append('g')
       .attr('class', 'right-axis axis')
-      .attr('transform', `translate(${this.dims.innerWidth},0)`);
-    this.tripsG = this.svgObject.append('g')
+      .attr('transform', `translate(${this.dims.marey.innerWidth},0)`);
+    this.yScrollAxisG = this.scrollGroup.append('g')
+      .attr('class', 'scroll-axis axis');
+    this.tripsG = this.diagGroup.append('g')
       .attr('class', 'trips')
       .attr('clip-path', 'url(#clip-path)');
-    this.xAxisG = this.svgObject.append('g')
+    this.xAxisG = this.diagGroup.append('g')
       .attr('class', 'top-axis axis');
   }
 
@@ -131,15 +187,20 @@ export default class MareyDiagram {
    */
   drawYAxes() {
     this.yLeftAxis = d3.axisLeft(this.yScale)
-      .ticks(this.options.dual.mareyHeightMultiplier * 20)
+      .ticks(20)
       .tickFormat(this.yAxisTimeFormat);
 
     this.yRightAxis = d3.axisRight(this.yScale)
-      .ticks(this.options.dual.mareyHeightMultiplier * 20)
+      .ticks(20)
+      .tickFormat(this.yAxisTimeFormat);
+
+    this.yScrollAxis = d3.axisRight(this.yScrollScale)
+      .ticks(20)
       .tickFormat(this.yAxisTimeFormat);
 
     this.yLeftAxisG.call(this.yLeftAxis);
     this.yRightAxisG.call(this.yRightAxis);
+    this.yScrollAxisG.call(this.yScrollAxis);
   }
 
   /**
@@ -147,7 +208,7 @@ export default class MareyDiagram {
    */
   drawXAxis() {
     this.xAxis = d3.axisTop(this.xScale)
-      .tickSize(-this.dims.innerHeight)
+      .tickSize(-this.dims.marey.innerHeight)
       .tickValues(this.data.stopsDistances.map(({ distance }) => distance))
       .tickFormat((_, index) => this.data.stopsDistances[index].stop.code);
 
@@ -169,14 +230,14 @@ export default class MareyDiagram {
     const initialTimelineYpos = this.yScale(this.minTime);
 
     // Timeline group creation
-    const timeline = this.svgObject.append('g')
+    const timeline = this.diagGroup.append('g')
       .attr('class', 'timeline')
       .attr('transform', `translate(0,${initialTimelineYpos})`);
 
     // Horizontal line
     timeline.append('line')
       .attr('x1', 0)
-      .attr('x2', this.dims.innerWidth);
+      .attr('x2', this.dims.marey.innerWidth);
 
     // Label with the time
     timeline.append('text')
@@ -185,10 +246,10 @@ export default class MareyDiagram {
       .attr('y', -5);
 
     // Create overlay to handle timeline movement with mouse
-    this.svgObject.append('rect')
+    this.diagGroup.append('rect')
       .attr('id', 'mouse-move-overlay')
-      .attr('width', this.dims.innerWidth)
-      .attr('height', this.dims.innerHeight)
+      .attr('width', this.dims.marey.innerWidth)
+      .attr('height', this.dims.marey.innerHeight)
       .on('mousemove', () => {
         // d3.mouse wants a DOM element, so get it by its ID
         const overlay = document.getElementById('mouse-move-overlay');
@@ -238,7 +299,17 @@ export default class MareyDiagram {
   drawTrips() {
     // Trip selection
     const tripsSel = this.tripsG.selectAll('g.trip')
-      .data(this.data.trips, ({ code }) => code);
+      .data(
+        this.data.trips.filter((trip) => {
+          const [minShownTime, maxShownTime] = this.yScale.domain();
+          const { first: firstTripTime, last: lastTripTime } = trip.timeBoundaries;
+
+          return (firstTripTime < minShownTime && lastTripTime > maxShownTime) ||
+            (minShownTime < firstTripTime && firstTripTime < maxShownTime) ||
+            (minShownTime < lastTripTime && lastTripTime < maxShownTime);
+        }),
+        ({ code }) => code,
+      );
 
     // Trip exit
     tripsSel.exit().remove();
@@ -251,10 +322,11 @@ export default class MareyDiagram {
     // Trip enter > path
     tripsEnterSel
       .append('path')
+      .merge(tripsSel.select('path'))
       .attr('d', ({ schedule }) => this.tripLineGenerator(schedule));
 
     // Trip enter > circle selection
-    const tripsScheduledStopsSel = tripsEnterSel
+    const tripsScheduledStopsSel = tripsEnterSel.merge(tripsSel)
       .selectAll('circle.scheduledStop')
       .data(({ schedule }) => schedule);
 
@@ -264,10 +336,14 @@ export default class MareyDiagram {
       .attr('class', 'scheduledStop')
       .attr('r', '2')
       .attr('cx', ({ distance }) => this.xScale(distance))
+      .merge(tripsScheduledStopsSel)
+      .attr('cy', ({ time }) => this.yScale(time));
+
+    this.tripsG.selectAll('circle.scheduledStop')
       .attr('cy', ({ time }) => this.yScale(time));
 
     // Trip enter > vehicle selection
-    const vehiclesSel = tripsEnterSel.selectAll('g.vehicle')
+    const vehiclesSel = tripsSel.selectAll('g.vehicle')
       .data(({ vehicles }) => vehicles, ({ vehicleNumber }) => vehicleNumber);
 
     // Trip > vehicle exit
@@ -287,7 +363,7 @@ export default class MareyDiagram {
       .data(({ positions }) => positions, ({ index }) => index);
 
     // Trip > vehicle > circle enter
-    vehiclesPosSel.enter()
+    vehiclesSel.selectAll('circle.position').enter()
       .append('circle')
       .attr('class', ({ status, prognosed }) => `position ${status} ${prognosed ? 'prognosed' : ''}`)
       .attr('r', '1')

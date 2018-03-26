@@ -46,7 +46,7 @@ export default class PTDS {
     const margins = {
       marey: {
         top: 80,
-        right: 50,
+        right: 150,
         bottom: 20,
         left: 50,
       },
@@ -63,7 +63,7 @@ export default class PTDS {
       this.dims = {
         marey: {
           outerWidth: windowWidth * this.options.dual.verticalSplitPercentage,
-          outerHeight: windowHeight * this.options.dual.mareyHeightMultiplier,
+          outerHeight: windowHeight,
         },
         map: {
           outerWidth: windowWidth * (1 - this.options.dual.verticalSplitPercentage),
@@ -77,12 +77,17 @@ export default class PTDS {
                                     margins.marey.bottom;
       this.dims.map.innerWidth = this.dims.map.outerWidth - margins.map.left - margins.map.right;
 
-      // Zoom behaviour for the Marey diagram
-      this.mareyZoomBehaviour = d3.zoom()
-        .scaleExtent([1, 20])
-        .extent([[0, 0], [this.dims.marey.innerWidth, this.dims.marey.innerHeight]])
-        .translateExtent([[0, 0], [this.dims.marey.innerWidth, this.dims.marey.innerHeight]])
-        .on('zoom', () => { this.marey.zoomed(require('d3-selection').event.transform); });
+      Object.assign(margins, { mareyScroll: {
+        top: 80,
+        right: 50,
+        bottom: 20,
+        left: margins.marey.left + this.dims.marey.innerWidth + 100,
+      } });
+
+      this.dims.mareyScroll = {
+        width: this.dims.marey.outerWidth - margins.mareyScroll.left,
+        height: this.dims.marey.innerHeight,
+      };
 
       // Create main marey SVG element applying the margins
       const mareySVG = d3.select('div.main')
@@ -97,21 +102,8 @@ export default class PTDS {
       // Create transformed group and store in 'this'
       this.mareySVGgroup = mareySVG.append('g')
         .attr('transform', `translate(${margins.marey.left},${margins.marey.top})`);
-
-      // Register listeners for zoom behaviour enabling/disabling
-      d3.select('body')
-        // If the ALT key modifier is pressed, attach the zoom behaviour to the SVG
-        .on('keydown', () => {
-          if (require('d3-selection').event.keyCode === 16) {
-            mareySVG.call(this.mareyZoomBehaviour);
-          }
-        })
-        // If the ALT key modifier is released, remove all the zoom behaviours from the SVG
-        .on('keyup', () => {
-          if (require('d3-selection').event.keyCode === 16) {
-            mareySVG.on('.zoom', null);
-          }
-        });
+      this.scrollSVGgroup = mareySVG.append('g')
+        .attr('transform', `translate(${margins.mareyScroll.left},${margins.mareyScroll.top})`);
     } else {
       this.dims = {
         map: {
@@ -238,7 +230,8 @@ export default class PTDS {
       this.marey = new MareyDiagram(
         this.getMareyData(),
         this.mareySVGgroup,
-        this.dims.marey,
+        this.scrollSVGgroup,
+        this.dims,
         this.options,
         timelineChangeCallback,
       );
@@ -323,6 +316,7 @@ export default class PTDS {
       code: trip.code,
       schedule: trip.staticSchedule,
       vehicles: trip.getVehiclePositions(),
+      timeBoundaries: trip.firstAndLastTimes,
     }));
 
     return {
