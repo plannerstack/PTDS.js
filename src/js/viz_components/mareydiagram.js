@@ -1,7 +1,7 @@
 import { timeParse, timeFormat } from 'd3-time-format';
 import { scaleLinear, scaleTime } from 'd3-scale';
 import { axisLeft, axisTop, axisRight } from 'd3-axis';
-import { timeMinute, timeHour } from 'd3-time';
+import { timeMinute, timeSecond } from 'd3-time';
 import { select, mouse, event as d3event } from 'd3-selection';
 import { line } from 'd3-shape';
 import { zoom, zoomIdentity } from 'd3-zoom';
@@ -21,7 +21,7 @@ const d3 = Object.assign({}, {
   line,
   zoom,
   brushY,
-  timeHour,
+  timeSecond,
   zoomIdentity,
 });
 
@@ -122,10 +122,11 @@ export default class MareyDiagram {
       if (d3event.sourceEvent.type === 'wheel' && !d3event.sourceEvent.shiftKey) {
         // Panning
         const currentDomain = this.yScale.domain();
-        const step = d3event.sourceEvent.deltaY > 0 ? +2 : -2;
+        const secondsDomain = (currentDomain[1] - currentDomain[0]) / 1000;
+        const step = Math.floor((d3event.sourceEvent.deltaY * secondsDomain) / 1000);
         const newDomain = [
-          d3.timeMinute.offset(currentDomain[0], step),
-          d3.timeMinute.offset(currentDomain[1], step),
+          d3.timeSecond.offset(currentDomain[0], step),
+          d3.timeSecond.offset(currentDomain[1], step),
         ];
         const originalDomain = this.yScrollScale.domain();
         if (newDomain[0] >= originalDomain[0] &&
