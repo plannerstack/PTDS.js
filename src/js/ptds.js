@@ -103,6 +103,7 @@ export default class PTDS {
       this.mareySVGgroup = mareySVG.append('g')
         .attr('transform', `translate(${margins.marey.left},${margins.marey.top})`);
       this.scrollSVGgroup = mareySVG.append('g')
+        .attr('class', 'brush')
         .attr('transform', `translate(${margins.mareyScroll.left},${margins.mareyScroll.top})`);
     } else {
       this.dims = {

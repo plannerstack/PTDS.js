@@ -75,9 +75,14 @@ export default class MareyDiagram {
     this.createGroups();
     this.drawXAxis();
     this.drawYAxes();
+    this.zoomAndBrushSetup();
     this.createTimeline(changeCallback);
+  }
 
-    /* eslint global-require: "off" */
+  /**
+   * Set up the zoom and brush behaviours
+   */
+  zoomAndBrushSetup() {
     this.zoomBehaviour = d3.zoom()
       .scaleExtent([1, Infinity])
       .extent([[0, 0], [this.dims.marey.innerWidth, this.dims.marey.innerHeight]])
@@ -92,61 +97,124 @@ export default class MareyDiagram {
       // Same as this.zoomed
       .on('brush end', () => { this.brushed(); });
 
-    this.scrollGroup.append('g')
-      .attr('class', 'brush')
+    this.scrollGroup
       .call(this.brushBehaviour)
       .call(this.brushBehaviour.move, [0, this.yScrollScale.range()[1] / 4]);
   }
 
+  /**
+   * Handle the brush selection
+   */
   brushed() {
-    // Ignore brush-by-zoom
+    // When the zoom event is triggered, the zoom handler
+    // triggers a brush event to sync the two parts,
+    // but we don't want to handle the brush in that case.
     if (d3event.sourceEvent && d3event.sourceEvent.type === 'zoom') return;
+
+    // Get the brush selection
     const selection = d3event.selection || this.yScrollScale.range();
-    this.yScale.domain(selection.map(this.yScrollScale.invert, this.yScrollScale));
+
+    // Update the marey y scale domain
+    this.yScale.domain(selection.map(this.yScrollScale.invert));
+
+    // Update marey axes
     this.yLeftAxisG.call(this.yLeftAxis);
     this.yRightAxisG.call(this.yRightAxis);
+
+    // Update the trips
     this.drawTrips();
-    this.diagGroup.call(this.zoomBehaviour.transform, d3.zoomIdentity
+
+    // Sync the zoom transform
+    const zoomTransform = d3.zoomIdentity
       .scale(this.dims.mareyScroll.height / (selection[1] - selection[0]))
-      .translate(0, -selection[0]));
+      .translate(0, -selection[0]);
+    this.diagGroup.call(this.zoomBehaviour.transform, zoomTransform);
+
+    // Update the transform scale
     this.lastK = this.dims.mareyScroll.height / (selection[1] - selection[0]);
   }
 
+  /**
+   * Handle the zoom/pan events on the diagram
+   */
   zoomed() {
-    if (typeof this.lastK === 'undefined') this.lastK = d3event.transform.k;
-
     if (d3event.sourceEvent) {
-      // Ignore zoom-by-brush
+      // When the brush event is triggered, the brush handler
+      // triggers a zoom event to sync the two parts,
+      // but we don't want to handle the zoom in that case.
       if (['brush', 'end'].includes(d3event.sourceEvent.type)) return;
 
+      // If the event is triggered by the scroll of the mouse wheel and the shift key
+      // is not pressed, we interpret it as PAN
       if (d3event.sourceEvent.type === 'wheel' && !d3event.sourceEvent.shiftKey) {
-        // Panning
-        const currentDomain = this.yScale.domain();
-        const secondsDomain = (currentDomain[1] - currentDomain[0]) / 1000;
-        const step = Math.floor((d3event.sourceEvent.deltaY * secondsDomain) / 1000);
+        // Get the current domain in the marey diagram y axis
+        const selectedDomain = this.yScale.domain();
+        // Compute number of seconds in the selected domain
+        const secondsInSelectedDomain = (selectedDomain[1] - selectedDomain[0]) / 1000;
+        // Get the delta (= amount of scroll) of the event
+        let delta = d3event.sourceEvent.deltaY;
+        // If deltaMode = 1, the delta amount is given in lines and not pixels. (Firefox specific)
+        // The conversion factor between lines and pixels is roughly 18. (1 line = 18 pixels)
+        delta *= d3event.sourceEvent.deltaMode === 1 ? 18 : 1;
+        // Constant setting the scroll speed. The bigger the constant, the faster.
+        const scrollFactor = 0.001;
+        // Compute the number of seconds by which the selected domain will be panned/moved
+        const step = Math.floor(delta * secondsInSelectedDomain * scrollFactor);
+        // The tentative new selected domain
         const newDomain = [
-          d3.timeSecond.offset(currentDomain[0], step),
-          d3.timeSecond.offset(currentDomain[1], step),
+          d3.timeSecond.offset(selectedDomain[0], step),
+          d3.timeSecond.offset(selectedDomain[1], step),
         ];
-        const originalDomain = this.yScrollScale.domain();
-        if (newDomain[0] >= originalDomain[0] &&
-            newDomain[1] <= originalDomain[1]) this.yScale.domain(newDomain);
 
-        this.diagGroup.call(this.zoomBehaviour.transform, d3.zoomIdentity
+        // The original domain, i.e. first and last times in the dataset
+        const originalDomain = this.yScrollScale.domain();
+
+        // If we're trying to pan back in time and we're already on the upper border,
+        // or forward in time and we're at the lower border, stop
+        if ((newDomain[0] === originalDomain[0] && delta < 0) ||
+            (newDomain[1] === originalDomain[1] && delta > 0)) return;
+
+        // If the new domain is outside of the upper bound, set its start at the upper border
+        if (newDomain[0] < originalDomain[0]) {
+          [newDomain[0]] = originalDomain;
+          newDomain[1] = d3.timeSecond.offset(newDomain[0], secondsInSelectedDomain);
+        }
+        // If the new domain is outside of the lower bound, set its start at the lower border
+        if (newDomain[1] > originalDomain[1]) {
+          [, newDomain[1]] = originalDomain;
+          newDomain[0] = d3.timeSecond.offset(newDomain[1], -secondsInSelectedDomain);
+        }
+
+        // Update the selected domain
+        this.yScale.domain(newDomain);
+
+        // Update the zoom transform information. By default mouse wheel is used for zoom
+        // so the transform will be updated by d3 as if we zoomed into the graph. Since
+        // we are instead mapping the mouse wheel event to the panning, we have to manually
+        // force update the zoom transform information.
+        // The scale does not change (we're only panning, not zooming) and we therefore force
+        // to the scale value the last known one (lastK).
+        const zoomTransform = d3.zoomIdentity
           .scale(this.lastK)
-          .translate(0, -this.yScrollScale(this.yScale.domain()[0])));
+          .translate(0, -this.yScrollScale(newDomain[0]));
+        this.diagGroup.call(this.zoomBehaviour.transform, zoomTransform);
       } else {
-        // Zooming
+        // If shift key is pressed, ZOOM.
+        // Update the last known scale K value
         this.lastK = d3event.transform.k;
-        this.yScale.domain(d3event.transform.rescaleY(this.yScrollScale).domain());
+        this.yScale = d3event.transform.rescaleY(this.yScrollScale);
       }
     }
 
-    this.scrollGroup.select('.brush')
+    // Update the brush selection
+    this.scrollGroup
       .call(this.brushBehaviour.move, this.yScale.domain().map(this.yScrollScale));
 
+    // Update the marey y axes
     this.yLeftAxisG.call(this.yLeftAxis);
     this.yRightAxisG.call(this.yRightAxis);
+
+    // Update the trips
     this.drawTrips();
   }
 
@@ -298,19 +366,19 @@ export default class MareyDiagram {
    * Draw the trips on the diagram
    */
   drawTrips() {
+    // Get the trips that are visible in the currently selected domain.
+    const tripsInSelectedDomain = this.data.trips.filter((trip) => {
+      const [minShownTime, maxShownTime] = this.yScale.domain();
+      const { first: firstTripTime, last: lastTripTime } = trip.timeBoundaries;
+
+      return (firstTripTime < minShownTime && lastTripTime > maxShownTime) ||
+        (minShownTime < firstTripTime && firstTripTime < maxShownTime) ||
+        (minShownTime < lastTripTime && lastTripTime < maxShownTime);
+    });
+
     // Trip selection
     const tripsSel = this.tripsG.selectAll('g.trip')
-      .data(
-        this.data.trips.filter((trip) => {
-          const [minShownTime, maxShownTime] = this.yScale.domain();
-          const { first: firstTripTime, last: lastTripTime } = trip.timeBoundaries;
-
-          return (firstTripTime < minShownTime && lastTripTime > maxShownTime) ||
-            (minShownTime < firstTripTime && firstTripTime < maxShownTime) ||
-            (minShownTime < lastTripTime && lastTripTime < maxShownTime);
-        }),
-        ({ code }) => code,
-      );
+      .data(tripsInSelectedDomain, ({ code }) => code);
 
     // Trip exit
     tripsSel.exit().remove();
