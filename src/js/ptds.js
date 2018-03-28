@@ -299,9 +299,11 @@ export default class PTDS {
    *     vehicles: Array.<{
    *       vehichleNumber: number,
    *       positions: {time: Date, distance: number, status: string, prognosed: boolean}
-   *     }>
+   *     }>,
+   *     timeBoundaries: {first: Date, last: Date}
    *   }>,
-   *   stopsDistances: Array.<{stop: Stop, distance: number}>
+   *   stopsDistances: Array.<{stop: Stop, distance: number}>,
+   *   timeBoundaries: {first: Date, last: Date}
    * }} - Data for the Marey diagram
    */
   getMareyData() {
