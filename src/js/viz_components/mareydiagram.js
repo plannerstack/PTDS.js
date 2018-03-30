@@ -426,9 +426,6 @@ export default class MareyDiagram {
       .merge(tripsScheduledStopsSel)
       .attr('cy', ({ time }) => this.yScale(time));
 
-    this.tripsG.selectAll('circle.scheduledStop')
-      .attr('cy', ({ time }) => this.yScale(time));
-
     // Trip enter > vehicle selection
     const vehiclesSel = tripsSel.selectAll('g.vehicle')
       .data(({ vehicles }) => vehicles, ({ vehicleNumber }) => vehicleNumber);
@@ -468,9 +465,9 @@ export default class MareyDiagram {
       .append('line')
       .attr('class', ({ status, prognosed }) => `pos-link ${status} ${prognosed ? 'prognosed' : ''}`)
       // Trip > vehicle > line enter + update
-      .merge(vehiclesPosLinksSel)
       .attr('x1', ({ distanceA }) => this.xScale(distanceA))
       .attr('x2', ({ distanceB }) => this.xScale(distanceB))
+      .merge(vehiclesPosLinksSel)
       .attr('y1', ({ timeA }) => this.yScale(timeA))
       .attr('y2', ({ timeB }) => this.yScale(timeB));
   }
