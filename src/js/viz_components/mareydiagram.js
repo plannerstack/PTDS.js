@@ -83,7 +83,7 @@ export default class MareyDiagram {
 
     this.brushBehaviour = d3.brushY()
       .extent([[-20, 0], [0, this.dims.mareyScroll.height]])
-      // Same as this.zoomed
+      // Same as above
       .on('brush end', () => { this.brushed(); });
 
     this.scrollGroup
@@ -107,8 +107,8 @@ export default class MareyDiagram {
     this.yScale.domain(selection.map(this.yScrollScale.invert));
 
     // Update marey axes
-    this.yLeftAxisG.call(this.yLeftAxis);
-    this.yRightAxisG.call(this.yRightAxis);
+    this.yLeftAxisG.call(this.yLeftAxis.scale(this.yScale));
+    this.yRightAxisG.call(this.yRightAxis.scale(this.yScale));
 
     // Update the trips
     this.drawTrips();
@@ -200,8 +200,8 @@ export default class MareyDiagram {
       .call(this.brushBehaviour.move, this.yScale.domain().map(this.yScrollScale));
 
     // Update the marey y axes
-    this.yLeftAxisG.call(this.yLeftAxis);
-    this.yRightAxisG.call(this.yRightAxis);
+    this.yLeftAxisG.call(this.yLeftAxis.scale(this.yScale));
+    this.yRightAxisG.call(this.yRightAxis.scale(this.yScale));
 
     // Update the trips
     this.drawTrips();
