@@ -39,11 +39,12 @@ svg {
   }
 }
 
+// Make invisible the overlays used to handle zoom and mouse movement
+.overlay {
+  fill-opacity: 0;
+}
+
 #marey {
-  // Make invisible the overlay used to capture cursor position
-  #mouse-move-overlay {
-    fill-opacity: 0;
-  }
 
   .brush rect {
     stroke: none;

@@ -1,6 +1,13 @@
 import * as log from 'loglevel';
+import { zoom } from 'd3-zoom';
+import { select, event as d3event } from 'd3-selection';
 
 import Point from '../models/point';
+
+const d3 = Object.assign({}, {
+  zoom,
+  select,
+});
 
 /**
  * This class manages the map visualization.
@@ -8,16 +15,46 @@ import Point from '../models/point';
  * only the essential information needed to draw it is stored.
  */
 export default class InteractiveMap {
-  constructor(data, svgObject, dims, options) {
+  constructor(data, mapGroup, dims, options) {
     this.data = data;
-    this.svgObject = svgObject;
+    this.mapGroup = mapGroup;
     this.dims = dims;
     this.options = options;
 
+    // Clip the map elements so that margins are respected
+    this.mapGroup.append('clipPath')
+      .attr('id', 'clip-path-map')
+      .append('rect')
+      .attr('width', this.dims.innerWidth)
+      .attr('height', this.dims.innerHeight);
+    this.mapGroup.attr('clip-path', 'url(#clip-path-map)');
+
     this.createGroups();
     this.computeCoordinatesMapping();
+    this.setupZoom();
 
     this.draw();
+  }
+
+  /**
+   * Set up zoom behaviour
+   */
+  setupZoom() {
+    // Overlay to listen to the zoom events
+    const overlay = this.mapGroup.append('rect')
+      .attr('class', 'overlay')
+      .attr('width', this.dims.innerWidth)
+      .attr('height', this.dims.innerHeight);
+
+    const zoomBehaviour = d3.zoom()
+      .scaleExtent([1, 20])
+      // Keep a 20px margin
+      .extent([[-20, -20], [this.dims.innerWidth + 20, this.dims.innerHeight + 20]])
+      .translateExtent([[-20, -20], [this.dims.innerWidth + 20, this.dims.innerHeight + 20]])
+      // Zoom only the elements group
+      .on('zoom', () => { this.elementsGroup.attr('transform', d3event.transform); });
+
+    overlay.call(zoomBehaviour);
   }
 
   /**
@@ -42,13 +79,19 @@ export default class InteractiveMap {
    * Create the SVG groups for links, stops, stopAreas and trips
    */
   createGroups() {
-    this.linksGroup = this.svgObject.append('g')
+    // We group all the map elements in a single group, which will be the
+    // one that will be affected by the zoom behaviour.
+    // The idea is that the overlay that listens to the zoom events should
+    // be separated from the elements on which the zoom is applied, to avoid a feedback loop.
+    this.elementsGroup = this.mapGroup.append('g');
+
+    this.linksGroup = this.elementsGroup.append('g')
       .attr('id', 'links');
-    this.stopsGroup = this.svgObject.append('g')
+    this.stopsGroup = this.elementsGroup.append('g')
       .attr('id', 'stops');
-    this.stopAreasGroup = this.svgObject.append('g')
+    this.stopAreasGroup = this.elementsGroup.append('g')
       .attr('id', 'stopAreas');
-    this.tripsGroup = this.svgObject.append('g')
+    this.tripsGroup = this.elementsGroup.append('g')
       .attr('id', 'trips');
   }
 

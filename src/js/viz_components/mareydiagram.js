@@ -75,8 +75,16 @@ export default class MareyDiagram {
     this.createGroups();
     this.drawXAxis();
     this.drawYAxes();
-    this.zoomAndBrushSetup();
+
+    // Overlay to listen to mouse movement (and update the timeline)
+    // and listen to zoom/pan events
+    this.overlay = this.diagGroup.append('rect')
+      .attr('class', 'overlay')
+      .attr('width', this.dims.marey.innerWidth)
+      .attr('height', this.dims.marey.innerHeight);
+
     this.createTimeline(changeCallback);
+    this.zoomAndBrushSetup();
   }
 
   /**
@@ -90,7 +98,7 @@ export default class MareyDiagram {
       // We encapsulate this.zoomed in a closure so that we don't lose the "this" context
       .on('zoom', () => { this.zoomed(); });
 
-    this.diagGroup.call(this.zoomBehaviour);
+    this.overlay.call(this.zoomBehaviour);
 
     this.brushBehaviour = d3.brushY()
       .extent([[-20, 0], [0, this.dims.mareyScroll.height]])
@@ -114,6 +122,15 @@ export default class MareyDiagram {
     // Get the brush selection
     const selection = d3event.selection || this.yScrollScale.range();
 
+    // Make it impossible to select a null extent
+    if (selection[0] === selection[1]) {
+      this.scrollGroup.call(
+        this.brushBehaviour.move,
+        [selection[0], selection[0] + 1],
+      );
+      return;
+    }
+
     // Update the marey y scale domain
     this.yScale.domain(selection.map(this.yScrollScale.invert));
 
@@ -128,7 +145,7 @@ export default class MareyDiagram {
     const zoomTransform = d3.zoomIdentity
       .scale(this.dims.mareyScroll.height / (selection[1] - selection[0]))
       .translate(0, -selection[0]);
-    this.diagGroup.call(this.zoomBehaviour.transform, zoomTransform);
+    this.overlay.call(this.zoomBehaviour.transform, zoomTransform);
 
     // Update the transform scale
     this.lastK = this.dims.mareyScroll.height / (selection[1] - selection[0]);
@@ -197,7 +214,7 @@ export default class MareyDiagram {
         const zoomTransform = d3.zoomIdentity
           .scale(this.lastK)
           .translate(0, -this.yScrollScale(newDomain[0]));
-        this.diagGroup.call(this.zoomBehaviour.transform, zoomTransform);
+        this.overlay.call(this.zoomBehaviour.transform, zoomTransform);
       } else {
         // If shift key is pressed, ZOOM.
         // Update the last known scale K value
@@ -207,8 +224,10 @@ export default class MareyDiagram {
     }
 
     // Update the brush selection
-    this.scrollGroup
-      .call(this.brushBehaviour.move, this.yScale.domain().map(this.yScrollScale));
+    this.scrollGroup.call(
+      this.brushBehaviour.move,
+      this.yScale.domain().map(this.yScrollScale),
+    );
 
     // Update the marey y axes
     this.yLeftAxisG.call(this.yLeftAxis.scale(this.yScale));
@@ -234,7 +253,9 @@ export default class MareyDiagram {
   }
 
   /**
-   * Create the SVG groups containing the axes and the trips
+   * Create the SVG groups for the elements of the visualization.
+   * In SVG the order of painting determines the "z-index" of the elements
+   * so by changing the order of group creation we can adjust their "z-index".
    */
   createGroups() {
     this.yLeftAxisG = this.diagGroup.append('g')
@@ -249,6 +270,8 @@ export default class MareyDiagram {
       .attr('clip-path', 'url(#clip-path)');
     this.xAxisG = this.diagGroup.append('g')
       .attr('class', 'top-axis axis');
+    this.timelineG = this.diagGroup.append('g')
+      .attr('class', 'timeline');
   }
 
   /**
@@ -298,43 +321,38 @@ export default class MareyDiagram {
     // Initial position of the timeline
     const initialTimelineYpos = this.yScale(this.minTime);
 
-    // Timeline group creation
-    const timeline = this.diagGroup.append('g')
-      .attr('class', 'timeline')
-      .attr('transform', `translate(0,${initialTimelineYpos})`);
+    // Timeline initial position
+    this.timelineG.attr('transform', `translate(0,${initialTimelineYpos})`);
 
     // Horizontal line
-    timeline.append('line')
+    this.timelineG.append('line')
       .attr('x1', 0)
       .attr('x2', this.dims.marey.innerWidth);
 
     // Label with the time
-    timeline.append('text')
+    this.timelineG.append('text')
       .text(this.timelineTimeFormat(this.minTime))
       .attr('x', 5)
       .attr('y', -5);
 
-    // Create overlay to handle timeline movement with mouse
-    this.diagGroup.append('rect')
-      .attr('id', 'mouse-move-overlay')
-      .attr('width', this.dims.marey.innerWidth)
-      .attr('height', this.dims.marey.innerHeight)
-      .on('mousemove', () => {
-        // d3.mouse wants a DOM element, so get it by its ID
-        const overlay = document.getElementById('mouse-move-overlay');
-        // Get the mouse position relative to the overlay
-        const yPos = d3.mouse(overlay)[1];
-        // Get the time corresponding to the actual mouse position
-        // and format it
-        const time = this.yScale.invert(yPos);
+    // Register mouse movement listener on overlay
+    this.overlay.on('mousemove', () => {
+      // Using a closure we maintain the "this" context as the class instance,
+      // but we don't have the DOM element reference so we have to get that manually.
 
-        changeCallback(time);
+      // Get the mouse position relative to the overlay
+      const yPos = d3.mouse(this.overlay.node())[1];
+      // Get the time corresponding to the actual mouse position
+      // and format it
+      const time = this.yScale.invert(yPos);
 
-        // Update the y position of the timeline group
-        d3.select('g.timeline').attr('transform', `translate(0,${yPos})`);
-        // Update the text showing the time
-        d3.select('g.timeline text').text(this.timelineTimeFormat(time));
-      });
+      changeCallback(time);
+
+      // Update the y position of the timeline group
+      this.timelineG.attr('transform', `translate(0,${yPos})`);
+      // Update the text showing the time
+      this.timelineG.select('text').text(this.timelineTimeFormat(time));
+    });
   }
 
   /**

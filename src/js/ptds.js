@@ -1,5 +1,4 @@
 import { select } from 'd3-selection';
-import { zoom } from 'd3-zoom';
 import { timeFormat } from 'd3-time-format';
 import { timer } from 'd3-timer';
 import dat from 'dat.gui';
@@ -10,7 +9,6 @@ import MareyDiagram from './viz_components/mareydiagram';
 
 const d3 = Object.assign({}, {
   select,
-  zoom,
   timeFormat,
   timer,
 });
@@ -123,21 +121,6 @@ export default class PTDS {
       .attr('id', 'map')
       .attr('width', this.dims.map.outerWidth)
       .attr('height', this.dims.map.outerHeight)
-      .call(d3.zoom()
-        .scaleExtent([1, 15])
-        .translateExtent([
-          [
-            -margins.map.left,
-            -margins.map.top,
-          ],
-          [
-            this.dims.map.innerWidth + margins.map.right,
-            this.dims.map.innerHeight + margins.map.bottom,
-          ],
-        ])
-        .on('zoom', () => {
-          this.mapSVG.attr('transform', require('d3-selection').event.transform);
-        }))
       .append('g')
       .attr('transform', `translate(${margins.map.left},${margins.map.top})`);
   }
