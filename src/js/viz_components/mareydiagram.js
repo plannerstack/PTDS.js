@@ -55,17 +55,6 @@ export default class MareyDiagram {
     this.minTime = d3.timeMinute.offset(this.data.timeBoundaries.first, -10);
     this.maxTime = d3.timeMinute.offset(this.data.timeBoundaries.last, +10);
 
-    // Rectangle that clips the trips, so that when we zoom they don't
-    // end up out of the main graph
-    this.diagGroup.append('clipPath')
-      .attr('id', 'clip-path')
-      .append('rect')
-      // Use a 5px margin on the sides so that the circles representing the stops
-      // are entirely visible
-      .attr('x', -5)
-      .attr('width', this.dims.marey.innerWidth + 5)
-      .attr('height', this.dims.marey.innerHeight);
-
     // Line generator for the static schedule of a trip
     this.tripLineGenerator = d3.line()
       .x(({ distance }) => this.xScale(distance))
