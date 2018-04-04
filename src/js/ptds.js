@@ -46,7 +46,7 @@ export default class PTDS {
         top: 80,
         right: 150,
         bottom: 20,
-        left: 50,
+        left: 60,
       },
       map: {
         top: 20,

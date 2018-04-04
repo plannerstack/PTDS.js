@@ -48,7 +48,6 @@ export default class MareyDiagram {
    * @param  {Function} changeCallback - Callback for the timeline change event
    */
   initialSetup(changeCallback) {
-    this.yAxisTimeFormat = d3.timeFormat('%H:%M');
     this.timelineTimeFormat = d3.timeFormat('%H:%M:%S');
 
     // Add 10 min offset to improve readability
@@ -88,11 +87,25 @@ export default class MareyDiagram {
   }
 
   /**
+   * Time formatter for the ticks of the y axis
+   * By default formats the time in HH:MM but when zoomed in
+   * so that the time interval shown is smaller than 15 minutes
+   * it formats it in HH:MM:SS, i.e. displaying also the seconds.
+   * @return {Function} - Time formatter
+   */
+  get yAxisTimeFormatter() {
+    const yDomain = this.yScale.domain();
+    const secondsInDomain = (yDomain[1] - yDomain[0]) / 1000;
+    if (secondsInDomain < 15 * 60) return d3.timeFormat('%H:%M:%S');
+    return d3.timeFormat('%H:%M');
+  }
+
+  /**
    * Set up the zoom and brush behaviours
    */
   zoomAndBrushSetup() {
     this.zoomBehaviour = d3.zoom()
-      .scaleExtent([1, Infinity])
+      .scaleExtent([1, 2000])
       .extent([[0, 0], [this.dims.marey.innerWidth, this.dims.marey.innerHeight]])
       .translateExtent([[0, 0], [this.dims.marey.innerWidth, this.dims.marey.innerHeight]])
       // We encapsulate this.zoomed in a closure so that we don't lose the "this" context
@@ -230,6 +243,8 @@ export default class MareyDiagram {
     );
 
     // Update the marey y axes
+    this.yLeftAxis.tickFormat(this.yAxisTimeFormatter);
+    this.yRightAxis.tickFormat(this.yAxisTimeFormatter);
     this.yLeftAxisG.call(this.yLeftAxis.scale(this.yScale));
     this.yRightAxisG.call(this.yRightAxis.scale(this.yScale));
 
@@ -280,15 +295,15 @@ export default class MareyDiagram {
   drawYAxes() {
     this.yLeftAxis = d3.axisLeft(this.yScale)
       .ticks(20)
-      .tickFormat(this.yAxisTimeFormat);
+      .tickFormat(this.yAxisTimeFormatter);
 
     this.yRightAxis = d3.axisRight(this.yScale)
       .ticks(20)
-      .tickFormat(this.yAxisTimeFormat);
+      .tickFormat(this.yAxisTimeFormatter);
 
     this.yScrollAxis = d3.axisRight(this.yScrollScale)
       .ticks(20)
-      .tickFormat(this.yAxisTimeFormat);
+      .tickFormat(this.yAxisTimeFormatter);
 
     this.yLeftAxisG.call(this.yLeftAxis);
     this.yRightAxisG.call(this.yRightAxis);
