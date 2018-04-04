@@ -13,10 +13,8 @@ $marey-stop-lines-stroke: lightgray;
 
 @import 'milligram.mod.scss';
 
-// Remove margins from the body, set base font
-html, body {
-  margin: 0;
-  font: 10px sans-serif;
+select {
+  font-size: 12pt;
 }
 
 #marey-container {
@@ -45,7 +43,6 @@ svg {
 }
 
 #marey {
-
   .brush rect {
     stroke: none;
   }
@@ -70,6 +67,14 @@ svg {
     g.tick:not(:nth-child(2)):not(:last-child) {
       line {
         stroke: $marey-stop-lines-stroke;
+      }
+    }
+    g.tick.selected {
+      line {
+        stroke-width: 4;
+      }
+      text {
+        font-weight: bold;
       }
     }
   }

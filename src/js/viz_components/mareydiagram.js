@@ -82,6 +82,7 @@ export default class MareyDiagram {
       .attr('width', this.dims.marey.innerWidth)
       .attr('height', this.dims.marey.innerHeight);
 
+    this.selectedStop = null;
     this.createTimeline(changeCallback);
     this.zoomAndBrushSetup();
   }
@@ -327,6 +328,10 @@ export default class MareyDiagram {
 
     this.xAxisG.call(this.xAxis);
 
+    this.xAxisG.selectAll('.tick')
+      .data(this.data.stopsDistances.map(({ stop }) => stop))
+      .attr('data-stop-code', ({ code }) => code);
+
     this.xAxisG.selectAll('text')
       .attr('y', 0)
       .attr('x', 5)
@@ -358,11 +363,31 @@ export default class MareyDiagram {
 
     // Register mouse movement listener on overlay
     this.overlay.on('mousemove', () => {
+      // Get the mouse position relative to the overlay
       // Using a closure we maintain the "this" context as the class instance,
       // but we don't have the DOM element reference so we have to get that manually.
+      const [xPos, yPos] = d3.mouse(this.overlay.node());
+      const pixelsRadiusNeighborhood = 2;
 
-      // Get the mouse position relative to the overlay
-      const yPos = d3.mouse(this.overlay.node())[1];
+      let aroundAStop = false;
+      for (const { stop, distance } of this.data.stopsDistances) {
+        if (this.xScale(distance) - pixelsRadiusNeighborhood <= xPos &&
+            this.xScale(distance) + pixelsRadiusNeighborhood >= xPos) {
+          if (this.selectedStop === null || this.selectedStop !== stop.code) {
+            this.selectedStop = stop.code;
+            this.xAxisG.select(`g.tick[data-stop-code='${stop.code}']`)
+              .classed('selected', true);
+          }
+          aroundAStop = true;
+          break;
+        }
+      }
+
+      if (!aroundAStop && this.selectedStop !== null) {
+        this.xAxisG.selectAll('.tick').classed('selected', false);
+        this.selectedStop = null;
+      }
+
       // Get the time corresponding to the actual mouse position
       // and format it
       const time = this.yScale.invert(yPos);
