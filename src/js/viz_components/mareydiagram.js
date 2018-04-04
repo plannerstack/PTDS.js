@@ -148,8 +148,7 @@ export default class MareyDiagram {
     this.yScale.domain(selection.map(this.yScrollScale.invert));
 
     // Update marey axes
-    this.yLeftAxisG.call(this.yLeftAxis.scale(this.yScale));
-    this.yRightAxisG.call(this.yRightAxis.scale(this.yScale));
+    this.refreshAxes();
 
     // Update the trips
     this.drawTrips();
@@ -162,6 +161,16 @@ export default class MareyDiagram {
 
     // Update the transform scale
     this.lastK = this.dims.mareyScroll.height / (selection[1] - selection[0]);
+  }
+
+  /**
+   * Refresh the axes after changing the scale and/or the ticks
+   */
+  refreshAxes() {
+    this.yLeftAxis.tickFormat(this.yAxisTimeFormatter);
+    this.yRightAxis.tickFormat(this.yAxisTimeFormatter);
+    this.yLeftAxisG.call(this.yLeftAxis.scale(this.yScale));
+    this.yRightAxisG.call(this.yRightAxis.scale(this.yScale));
   }
 
   /**
@@ -243,10 +252,7 @@ export default class MareyDiagram {
     );
 
     // Update the marey y axes
-    this.yLeftAxis.tickFormat(this.yAxisTimeFormatter);
-    this.yRightAxis.tickFormat(this.yAxisTimeFormatter);
-    this.yLeftAxisG.call(this.yLeftAxis.scale(this.yScale));
-    this.yRightAxisG.call(this.yRightAxis.scale(this.yScale));
+    this.refreshAxes();
 
     // Update the trips
     this.drawTrips();
