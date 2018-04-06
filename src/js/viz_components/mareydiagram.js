@@ -494,7 +494,8 @@ export default class MareyDiagram {
 
     // vehiclesPosSel.enter()
     //   .append('circle')
-    //   .attr('class', ({ status, prognosed }) => `position ${status} ${prognosed ? 'prognosed' : ''}`)
+    //   .attr('class', ({ status, prognosed }) =>
+    //     `position ${status} ${prognosed ? 'prognosed' : ''}`)
     //   .attr('r', '1.5')
     //   .attr('cx', ({ distance }) => this.xScale(distance))
     //   // Trip > vehicle > circle enter + update
