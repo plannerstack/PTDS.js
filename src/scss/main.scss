@@ -13,6 +13,10 @@ $marey-stop-lines-stroke: lightgray;
 
 @import 'milligram.mod.scss';
 
+svg {
+  font-family: sans-serif;
+}
+
 select {
   font-size: 12pt;
 }
@@ -45,6 +49,14 @@ svg {
 #marey {
   .brush rect {
     stroke: none;
+  }
+
+  .timeline {
+    text {
+      stroke: white;
+      paint-order: stroke;
+      stroke-width: 5px;
+    }
   }
 
   .top-axis {

@@ -70,11 +70,6 @@ export default class MareyDiagram {
       .x(({ distance }) => this.xScale(distance))
       .y(({ time }) => this.yScale(time));
 
-    this.createScales();
-    this.createGroups();
-    this.drawXAxis();
-    this.drawYAxes();
-
     // Overlay to listen to mouse movement (and update the timeline)
     // and listen to zoom/pan events
     this.overlay = this.diagGroup.append('rect')
@@ -82,7 +77,11 @@ export default class MareyDiagram {
       .attr('width', this.dims.marey.innerWidth)
       .attr('height', this.dims.marey.innerHeight);
 
-    this.selectedStop = null;
+    this.createScales();
+    this.createGroups();
+    this.drawXAxis();
+    this.drawYAxes();
+
     this.createTimeline(changeCallback);
     this.zoomAndBrushSetup();
   }
@@ -330,7 +329,9 @@ export default class MareyDiagram {
 
     this.xAxisG.selectAll('.tick')
       .data(this.data.stopsDistances.map(({ stop }) => stop))
-      .attr('data-stop-code', ({ code }) => code);
+      .attr('data-stop-code', ({ code }) => code)
+      .on('mouseover', function f() { d3.select(this).classed('selected', true); })
+      .on('mouseout', function f() { d3.select(this).classed('selected', false); });
 
     this.xAxisG.selectAll('text')
       .attr('y', 0)
@@ -353,7 +354,11 @@ export default class MareyDiagram {
     // Horizontal line
     this.timelineG.append('line')
       .attr('x1', 0)
-      .attr('x2', this.dims.marey.innerWidth);
+      .attr('x2', this.dims.marey.innerWidth)
+      // Keep the line slightly below the mouse cursor so that it doesn't capture
+      // all the mouse events, passing them to the elements below
+      .attr('y1', 1)
+      .attr('y2', 1);
 
     // Label with the time
     this.timelineG.append('text')
@@ -361,32 +366,20 @@ export default class MareyDiagram {
       .attr('x', 5)
       .attr('y', -5);
 
-    // Register mouse movement listener on overlay
-    this.overlay.on('mousemove', () => {
+    // Register mouse movement listener.
+    // Normally we would register the listener on the overlay, which
+    // is the area that contains the timeline and the trips.
+    // Doing that, though, means that elements with a "z-index" greater than
+    // the overlay will get first the movement trigger, so that this handler would not be called.
+    // Therefore we register the listener on the main group with all the SVG elements.
+    this.diagGroup.on('mousemove', () => {
       // Get the mouse position relative to the overlay
       // Using a closure we maintain the "this" context as the class instance,
       // but we don't have the DOM element reference so we have to get that manually.
-      const [xPos, yPos] = d3.mouse(this.overlay.node());
-      const pixelsRadiusNeighborhood = 2;
-
-      let aroundAStop = false;
-      for (const { stop, distance } of this.data.stopsDistances) {
-        if (this.xScale(distance) - pixelsRadiusNeighborhood <= xPos &&
-            this.xScale(distance) + pixelsRadiusNeighborhood >= xPos) {
-          if (this.selectedStop === null || this.selectedStop !== stop.code) {
-            this.selectedStop = stop.code;
-            this.xAxisG.select(`g.tick[data-stop-code='${stop.code}']`)
-              .classed('selected', true);
-          }
-          aroundAStop = true;
-          break;
-        }
-      }
-
-      if (!aroundAStop && this.selectedStop !== null) {
-        this.xAxisG.selectAll('.tick').classed('selected', false);
-        this.selectedStop = null;
-      }
+      const [, yPos] = d3.mouse(this.overlay.node());
+      // Since this handler is triggered also when the mouse cursor is not in the overlay,
+      // we need to check that we are in it.
+      if (yPos < 0) return;
 
       // Get the time corresponding to the actual mouse position
       // and format it
