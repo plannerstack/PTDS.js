@@ -463,19 +463,18 @@ export default class MareyDiagram {
     const vehiclesEnterUpdateSel = vehiclesSel.merge(vehiclesEnterSel);
 
     // Trip > vehicle enter + update > circle
-    const vehiclesPosSel = vehiclesEnterUpdateSel
-      .selectAll('circle.position')
-      .data(({ positions }) => positions, ({ index }) => index);
+    // const vehiclesPosSel = vehiclesEnterUpdateSel
+    //   .selectAll('circle.position')
+    //   .data(({ positions }) => positions);
 
-    // Trip > vehicle > circle enter
-    vehiclesSel.selectAll('circle.position').enter()
-      .append('circle')
-      .attr('class', ({ status, prognosed }) => `position ${status} ${prognosed ? 'prognosed' : ''}`)
-      .attr('r', '1')
-      // Trip > vehicle > circle enter + update
-      .merge(vehiclesPosSel)
-      .attr('cx', ({ distance }) => this.xScale(distance))
-      .attr('cy', ({ time }) => this.yScale(time));
+    // vehiclesPosSel.enter()
+    //   .append('circle')
+    //   .attr('class', ({ status, prognosed }) => `position ${status} ${prognosed ? 'prognosed' : ''}`)
+    //   .attr('r', '1.5')
+    //   .attr('cx', ({ distance }) => this.xScale(distance))
+    //   // Trip > vehicle > circle enter + update
+    //   .merge(vehiclesPosSel)
+    //   .attr('cy', ({ time }) => this.yScale(time));
 
     // Trip > vehicle > line
     const vehiclesPosLinksSel = vehiclesEnterUpdateSel.selectAll('line.pos-link')
