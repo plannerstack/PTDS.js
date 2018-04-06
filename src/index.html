@@ -17,7 +17,11 @@
       <form id="viz-options">
         <fieldset>
           <label for="mode">Mode</label>
-          <select id="mode">
+          <!--
+          The autocomplete attribute is needed so that Firefox does not remember
+          the last option chosen after a refresh
+           -->
+          <select id="mode" autocomplete="off">
             <option value="spiralSimulation">Spiral simulation</option>
             <option value="dual">Marey + Map</option>
           </select>
