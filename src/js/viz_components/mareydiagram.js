@@ -287,11 +287,11 @@ export default class MareyDiagram {
       .attr('transform', `translate(${this.dims.marey.innerWidth},0)`);
     this.yScrollAxisG = this.scrollGroup.append('g')
       .attr('class', 'scroll-axis axis');
+    this.xAxisG = this.diagGroup.append('g')
+      .attr('class', 'top-axis axis');
     this.tripsG = this.diagGroup.append('g')
       .attr('class', 'trips')
       .attr('clip-path', 'url(#clip-path)');
-    this.xAxisG = this.diagGroup.append('g')
-      .attr('class', 'top-axis axis');
     this.timelineG = this.diagGroup.append('g')
       .attr('class', 'timeline');
   }
