@@ -111,7 +111,7 @@ export default class MareyDiagram {
       // We encapsulate this.zoomed in a closure so that we don't lose the "this" context
       .on('zoom', () => { this.zoomed(); });
 
-    this.overlay.call(this.zoomBehaviour);
+    this.diagGroup.call(this.zoomBehaviour);
 
     this.brushBehaviour = d3.brushY()
       .extent([[-20, 0], [0, this.dims.mareyScroll.height]])
@@ -157,7 +157,7 @@ export default class MareyDiagram {
     const zoomTransform = d3.zoomIdentity
       .scale(this.dims.mareyScroll.height / (selection[1] - selection[0]))
       .translate(0, -selection[0]);
-    this.overlay.call(this.zoomBehaviour.transform, zoomTransform);
+    this.diagGroup.call(this.zoomBehaviour.transform, zoomTransform);
 
     // Update the transform scale
     this.lastK = this.dims.mareyScroll.height / (selection[1] - selection[0]);
@@ -236,7 +236,7 @@ export default class MareyDiagram {
         const zoomTransform = d3.zoomIdentity
           .scale(this.lastK)
           .translate(0, -this.yScrollScale(newDomain[0]));
-        this.overlay.call(this.zoomBehaviour.transform, zoomTransform);
+        this.diagGroup.call(this.zoomBehaviour.transform, zoomTransform);
       } else {
         // If shift key is pressed, ZOOM.
         // Update the last known scale K value
