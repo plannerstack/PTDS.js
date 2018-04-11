@@ -440,10 +440,32 @@ export default class MareyDiagram {
     // Trip exit
     tripsSel.exit().remove();
 
+    const { overlay } = this;
+
     // Trip enter
     const tripsEnterSel = tripsSel.enter().append('g')
       .attr('class', 'trip')
-      .attr('data-trip-code', ({ code }) => code);
+      .attr('data-trip-code', ({ code }) => code)
+      .on('mouseover', function f(trip) {
+        const tripSel = d3.select(this);
+        const [xPos, yPos] = d3.mouse(overlay.node());
+        tripSel.append('text')
+          .attr('class', 'tripLabel')
+          .attr('x', xPos)
+          .attr('y', yPos)
+          .attr('dy', -10)
+          .text(({ code }) => code);
+        tripSel.classed('selected', true);
+        tripSel.selectAll('circle.scheduledStop').attr('r', 3);
+        d3.select(`#map g.trip[data-code='${trip.code}'] circle`).attr('r', 6);
+      })
+      .on('mouseout', function f(trip) {
+        const tripSel = d3.select(this);
+        tripSel.select('text.tripLabel').remove();
+        tripSel.classed('selected', false);
+        tripSel.selectAll('circle.scheduledStop').attr('r', 2);
+        d3.select(`#map g.trip[data-code='${trip.code}'] circle`).attr('r', 3);
+      });
 
     // Trip enter > path
     tripsEnterSel

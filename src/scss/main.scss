@@ -126,6 +126,19 @@ svg {
       stroke-dasharray: 5, 5;
     }
   }
+
+  g.trip.selected {
+    path, line {
+      stroke-width: 3;
+    }
+  }
+
+  g.trip text.tripLabel {
+    stroke: white;
+    paint-order: stroke;
+    stroke-width: 5px;
+    text-anchor: middle;
+  }
 }
 
 #map {
