@@ -327,6 +327,9 @@ export default class MareyDiagram {
 
     this.xAxisG.call(this.xAxis);
 
+    // Enhance vertical lines representing stops adding the stop code as attribute
+    // to the SVG element and adding the "selected" CSS class to them when the mouse
+    // cursor is positioned over
     this.xAxisG.selectAll('.tick')
       .data(this.data.stopsDistances.map(({ stop }) => stop))
       .attr('data-stop-code', ({ code }) => code)
@@ -334,7 +337,6 @@ export default class MareyDiagram {
       .on('mouseout', function f() { d3.select(this).classed('selected', false); });
 
     this.xAxisG.selectAll('text')
-      .attr('y', 0)
       .attr('x', 5)
       .attr('dy', '.35em');
   }
@@ -353,7 +355,6 @@ export default class MareyDiagram {
 
     // Horizontal line
     this.timelineG.append('line')
-      .attr('x1', 0)
       .attr('x2', this.dims.marey.innerWidth)
       // Keep the line slightly below the mouse cursor so that it doesn't capture
       // all the mouse events, passing them to the elements below
@@ -378,7 +379,8 @@ export default class MareyDiagram {
       // but we don't have the DOM element reference so we have to get that manually.
       const [, yPos] = d3.mouse(this.overlay.node());
       // Since this handler is triggered also when the mouse cursor is not in the overlay,
-      // we need to check that we are in it.
+      // we need to check that we are in it. It usually happens when we move the mouse
+      // over the labels of the top axis, therefore we correct for that case.
       if (yPos < 0) return;
 
       // Get the time corresponding to the actual mouse position
@@ -440,6 +442,7 @@ export default class MareyDiagram {
     // Trip exit
     tripsSel.exit().remove();
 
+    // Get the overlay element from the class instance because we'll lose the "this" reference later
     const { overlay } = this;
 
     // Trip enter
@@ -447,19 +450,25 @@ export default class MareyDiagram {
       .attr('class', 'trip')
       .attr('data-trip-code', ({ code }) => code)
       .on('mouseover', function f(trip) {
+        // Get the SVG g element corresponding to this trip
         const tripSel = d3.select(this);
+        // Get the current mouse position
         const [xPos, yPos] = d3.mouse(overlay.node());
+        // Add label with the code of the trip next to the mouse cursor
         tripSel.append('text')
           .attr('class', 'tripLabel')
           .attr('x', xPos)
           .attr('y', yPos)
           .attr('dy', -10)
           .text(({ code }) => code);
+        // Add 'selected' class to the trip SVG group
         tripSel.classed('selected', true);
         tripSel.selectAll('circle.scheduledStop').attr('r', 3);
+        // In the map, highlight the vehicle
         d3.select(`#map g.trip[data-code='${trip.code}'] circle`).attr('r', 6);
       })
       .on('mouseout', function f(trip) {
+        // Similarly as above
         const tripSel = d3.select(this);
         tripSel.select('text.tripLabel').remove();
         tripSel.classed('selected', false);
