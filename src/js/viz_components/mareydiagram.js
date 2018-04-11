@@ -333,8 +333,16 @@ export default class MareyDiagram {
     this.xAxisG.selectAll('.tick')
       .data(this.data.stopsDistances.map(({ stop }) => stop))
       .attr('data-stop-code', ({ code }) => code)
-      .on('mouseover', function f() { d3.select(this).classed('selected', true); })
-      .on('mouseout', function f() { d3.select(this).classed('selected', false); });
+      .on('mouseover', function f(stop) {
+        const stopAreaCode = stop.area.code;
+        d3.select(`#map g.stopArea[data-stop-area-code='${stopAreaCode}'] circle`).attr('r', 3);
+        d3.select(this).classed('selected', true);
+      })
+      .on('mouseout', function f(stop) {
+        const stopAreaCode = stop.area.code;
+        d3.select(`#map g.stopArea[data-stop-area-code='${stopAreaCode}'] circle`).attr('r', 1);
+        d3.select(this).classed('selected', false);
+      });
 
     this.xAxisG.selectAll('text')
       .attr('x', 5)
