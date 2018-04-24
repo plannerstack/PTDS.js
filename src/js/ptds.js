@@ -21,20 +21,22 @@ export default class PTDS {
     this.data = new PTDataset(inputData, options.selectedDate);
     this.options = options;
 
-    let maxNstops = -1;
-    let maxNstopsJP = '';
-    for (const journeyPattern of Object.values(this.data.journeyPatterns)) {
-      if (journeyPattern.stops.length > maxNstops) {
-        maxNstops = journeyPattern.stops.length;
-        maxNstopsJP = journeyPattern.code;
+    if (options.mode === 'dual') {
+      let maxNstops = -1;
+      let maxNstopsJP = '';
+      for (const journeyPattern of Object.values(this.data.journeyPatterns)) {
+        if (journeyPattern.lineRef === options.dual.lineRef &&
+            journeyPattern.direction === options.dual.direction &&
+            journeyPattern.stops.length > maxNstops) {
+          maxNstops = journeyPattern.stops.length;
+          maxNstopsJP = journeyPattern.code;
+        }
       }
+      this.options.dual.journeyPattern = maxNstopsJP;
+    } else if (options.mode === 'spiralSimulation') {
+      this.widgetTimeFormat = d3.timeFormat('%Y-%m-%d %H:%M:%S');
+      this.createSimulationWidget();
     }
-
-    this.options.dual.journeyPattern = maxNstopsJP;
-
-    this.widgetTimeFormat = d3.timeFormat('%Y-%m-%d %H:%M:%S');
-
-    if (options.mode === 'spiralSimulation') { this.createSimulationWidget(); }
 
     this.createVisualizations();
   }
