@@ -70,17 +70,17 @@ export default class MareyDiagram {
       .x(({ distance }) => this.xScale(distance))
       .y(({ time }) => this.yScale(time));
 
-    this.createScales();
-    this.createGroups();
-    this.drawXAxis();
-    this.drawYAxes();
-
     // Overlay to listen to mouse movement (and update the timeline)
     // and listen to zoom/pan events
     this.overlay = this.diagGroup.append('rect')
       .attr('class', 'overlay')
       .attr('width', this.dims.marey.innerWidth)
       .attr('height', this.dims.marey.innerHeight);
+
+    this.createScales();
+    this.createGroups();
+    this.drawXAxis();
+    this.drawYAxes();
 
     this.createTimeline(changeCallback);
     this.zoomAndBrushSetup();
@@ -111,7 +111,7 @@ export default class MareyDiagram {
       // We encapsulate this.zoomed in a closure so that we don't lose the "this" context
       .on('zoom', () => { this.zoomed(); });
 
-    this.overlay.call(this.zoomBehaviour);
+    this.diagGroup.call(this.zoomBehaviour);
 
     this.brushBehaviour = d3.brushY()
       .extent([[-20, 0], [0, this.dims.mareyScroll.height]])
@@ -157,7 +157,7 @@ export default class MareyDiagram {
     const zoomTransform = d3.zoomIdentity
       .scale(this.dims.mareyScroll.height / (selection[1] - selection[0]))
       .translate(0, -selection[0]);
-    this.overlay.call(this.zoomBehaviour.transform, zoomTransform);
+    this.diagGroup.call(this.zoomBehaviour.transform, zoomTransform);
 
     // Update the transform scale
     this.lastK = this.dims.mareyScroll.height / (selection[1] - selection[0]);
@@ -236,7 +236,7 @@ export default class MareyDiagram {
         const zoomTransform = d3.zoomIdentity
           .scale(this.lastK)
           .translate(0, -this.yScrollScale(newDomain[0]));
-        this.overlay.call(this.zoomBehaviour.transform, zoomTransform);
+        this.diagGroup.call(this.zoomBehaviour.transform, zoomTransform);
       } else {
         // If shift key is pressed, ZOOM.
         // Update the last known scale K value
@@ -327,8 +327,24 @@ export default class MareyDiagram {
 
     this.xAxisG.call(this.xAxis);
 
+    // Enhance vertical lines representing stops adding the stop code as attribute
+    // to the SVG element and adding the "selected" CSS class to them when the mouse
+    // cursor is positioned over
+    this.xAxisG.selectAll('.tick')
+      .data(this.data.stopsDistances.map(({ stop }) => stop))
+      .attr('data-stop-code', ({ code }) => code)
+      .on('mouseover', function f(stop) {
+        const stopAreaCode = stop.area.code;
+        d3.select(`#map g.stopArea[data-stop-area-code='${stopAreaCode}'] circle`).attr('r', 3);
+        d3.select(this).classed('selected', true);
+      })
+      .on('mouseout', function f(stop) {
+        const stopAreaCode = stop.area.code;
+        d3.select(`#map g.stopArea[data-stop-area-code='${stopAreaCode}'] circle`).attr('r', 1);
+        d3.select(this).classed('selected', false);
+      });
+
     this.xAxisG.selectAll('text')
-      .attr('y', 0)
       .attr('x', 5)
       .attr('dy', '.35em');
   }
@@ -347,8 +363,11 @@ export default class MareyDiagram {
 
     // Horizontal line
     this.timelineG.append('line')
-      .attr('x1', 0)
-      .attr('x2', this.dims.marey.innerWidth);
+      .attr('x2', this.dims.marey.innerWidth)
+      // Keep the line slightly below the mouse cursor so that it doesn't capture
+      // all the mouse events, passing them to the elements below
+      .attr('y1', 1)
+      .attr('y2', 1);
 
     // Label with the time
     this.timelineG.append('text')
@@ -356,13 +375,22 @@ export default class MareyDiagram {
       .attr('x', 5)
       .attr('y', -5);
 
-    // Register mouse movement listener on overlay
-    this.overlay.on('mousemove', () => {
+    // Register mouse movement listener.
+    // Normally we would register the listener on the overlay, which
+    // is the area that contains the timeline and the trips.
+    // Doing that, though, means that elements with a "z-index" greater than
+    // the overlay will get first the movement trigger, so that this handler would not be called.
+    // Therefore we register the listener on the main group with all the SVG elements.
+    this.diagGroup.on('mousemove', () => {
+      // Get the mouse position relative to the overlay
       // Using a closure we maintain the "this" context as the class instance,
       // but we don't have the DOM element reference so we have to get that manually.
+      const [, yPos] = d3.mouse(this.overlay.node());
+      // Since this handler is triggered also when the mouse cursor is not in the overlay,
+      // we need to check that we are in it. It usually happens when we move the mouse
+      // over the labels of the top axis, therefore we correct for that case.
+      if (yPos < 0) return;
 
-      // Get the mouse position relative to the overlay
-      const yPos = d3.mouse(this.overlay.node())[1];
       // Get the time corresponding to the actual mouse position
       // and format it
       const time = this.yScale.invert(yPos);
@@ -422,10 +450,39 @@ export default class MareyDiagram {
     // Trip exit
     tripsSel.exit().remove();
 
+    // Get the overlay element from the class instance because we'll lose the "this" reference later
+    const { overlay } = this;
+
     // Trip enter
     const tripsEnterSel = tripsSel.enter().append('g')
       .attr('class', 'trip')
-      .attr('data-trip-code', ({ code }) => code);
+      .attr('data-trip-code', ({ code }) => code)
+      .on('mouseover', function f(trip) {
+        // Get the SVG g element corresponding to this trip
+        const tripSel = d3.select(this);
+        // Get the current mouse position
+        const [xPos, yPos] = d3.mouse(overlay.node());
+        // Add label with the code of the trip next to the mouse cursor
+        tripSel.append('text')
+          .attr('class', 'tripLabel')
+          .attr('x', xPos)
+          .attr('y', yPos)
+          .attr('dy', -10)
+          .text(({ code }) => code);
+        // Add 'selected' class to the trip SVG group
+        tripSel.classed('selected', true);
+        tripSel.selectAll('circle.scheduledStop').attr('r', 3);
+        // In the map, highlight the vehicle
+        d3.select(`#map g.trip[data-code='${trip.code}'] circle`).attr('r', 6);
+      })
+      .on('mouseout', function f(trip) {
+        // Similarly as above
+        const tripSel = d3.select(this);
+        tripSel.select('text.tripLabel').remove();
+        tripSel.classed('selected', false);
+        tripSel.selectAll('circle.scheduledStop').attr('r', 2);
+        d3.select(`#map g.trip[data-code='${trip.code}'] circle`).attr('r', 3);
+      });
 
     // Trip enter > path
     tripsEnterSel
