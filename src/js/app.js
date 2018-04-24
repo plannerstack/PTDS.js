@@ -26,7 +26,6 @@ const options = {
   // dual specific options
   dual: {
     verticalSplitPercentage: (Math.sqrt(5) - 1) / 2,
-    journeyPatterns: [],
   },
 };
 
@@ -44,19 +43,24 @@ const getSelectedDatasetURL = () => {
   return `${publicationInUse.url}${datasetInUse.filename}`;
 };
 
-// Load the available journey patterns within this group of lines
-const loadAvailableJourneyPatterns = () => {
+// Load the available line-directions within this group of lines
+const loadAvailableLineDirections = () => {
   fetch(getSelectedDatasetURL())
     .then(r => r.json())
     .then((data) => {
-      const jpSelect = document.getElementById('journeyPattern');
-      // Remove the currently available journey patterns
-      jpSelect.innerHTML = '';
-      // Add the new journey patterns
-      for (const journeyPattern of Object.keys(data.journeyPatterns)) {
-        const nTrips = Object.entries(data.vehicleJourneys).filter(([, VJdata]) =>
-          VJdata.journeyPatternRef === journeyPattern).length;
-        jpSelect.innerHTML += `<option value="${journeyPattern}">${journeyPattern} - ${nTrips}</option>`;
+      const lineDirection = document.getElementById('line-direction');
+      // Remove the currently available line - direction pairs
+      lineDirection.innerHTML = '';
+      const lineDirectionPairs = {};
+      // Add the new line - direction pairs
+      for (const journeyPattern of Object.values(data.journeyPatterns)) {
+        const { direction, lineRef } = journeyPattern;
+        lineDirectionPairs[`${lineRef} - ${direction}`] = 1;
+      }
+      const orderedLDpairs = Array.from(Object.keys(lineDirectionPairs));
+      orderedLDpairs.sort();
+      for (const lineDirectionPair of orderedLDpairs) {
+        lineDirection.innerHTML += `<option value="${lineDirectionPair}">${lineDirectionPair}</option>`;
       }
     });
 };
@@ -69,9 +73,9 @@ const processIndex = () => {
   const modeSelect = document.getElementById('mode');
   modeSelect.onchange = () => {
     if (modeSelect.value === 'dual') {
-      document.getElementsByClassName('jpSelect')[0].style.display = 'block';
+      document.getElementsByClassName('linedirectionSel')[0].style.display = 'block';
     } else {
-      document.getElementsByClassName('jpSelect')[0].style.display = 'none';
+      document.getElementsByClassName('linedirectionSel')[0].style.display = 'none';
     }
   };
 
@@ -89,7 +93,7 @@ const processIndex = () => {
       const lines = dataset.lines.join(', ');
       linesGroupsSelect.innerHTML += `<option value="${dataset.filename}">${lines}</option>`;
     }
-    loadAvailableJourneyPatterns();
+    loadAvailableLineDirections();
   };
 
   // Populate group of lines dropdown
@@ -99,10 +103,10 @@ const processIndex = () => {
     linesGroupsSelect.innerHTML += `<option value="${dataset.filename}">${lines}</option>`;
   }
   // Update available journey patterns when group of line is picked
-  linesGroupsSelect.onchange = loadAvailableJourneyPatterns;
+  linesGroupsSelect.onchange = loadAvailableLineDirections;
 
   // Load the available journey patterns and make that dropdown visible
-  loadAvailableJourneyPatterns();
+  loadAvailableLineDirections();
 
   /* eslint no-new: "off" */
   // Fetch default dataset and create its corresponding visualization
@@ -132,7 +136,9 @@ const formSubmit = (event) => {
       const selectedMode = document.getElementById('mode').value;
       if (selectedMode === 'dual') {
         options.mode = 'dual';
-        options.dual.journeyPatterns = [document.getElementById('journeyPattern').value];
+        const [line, direction] = document.getElementById('line-direction').value.split(' - ');
+        options.dual.line = line;
+        options.dual.direction = direction;
       } else {
         options.mode = 'spiralSimulation';
       }
