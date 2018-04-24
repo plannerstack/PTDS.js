@@ -138,7 +138,7 @@ const formSubmit = (event) => {
         options.mode = 'dual';
         const [line, direction] = document.getElementById('line-direction').value.split(' - ');
         options.dual.line = line;
-        options.dual.direction = direction;
+        options.dual.direction = parseInt(direction, 10);
       } else {
         options.mode = 'spiralSimulation';
       }
