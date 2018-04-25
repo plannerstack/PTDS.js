@@ -87,6 +87,15 @@ export default class MareyDiagram {
   }
 
   /**
+   * Numer of seconds in the current domain of the Marey diagram
+   * @return {Number} - Seconds in current domain of the Marey diagram
+   */
+  get secondsInDomain() {
+    const yDomain = this.yScale.domain();
+    return (yDomain[1] - yDomain[0]) / 1000;
+  }
+
+  /**
    * Time formatter for the ticks of the y axis
    * By default formats the time in HH:MM but when zoomed in
    * so that the time interval shown is smaller than 15 minutes
@@ -94,9 +103,7 @@ export default class MareyDiagram {
    * @return {Function} - Time formatter
    */
   get yAxisTimeFormatter() {
-    const yDomain = this.yScale.domain();
-    const secondsInDomain = (yDomain[1] - yDomain[0]) / 1000;
-    if (secondsInDomain < 15 * 60) return d3.timeFormat('%H:%M:%S');
+    if (this.secondsInDomain < 15 * 60) return d3.timeFormat('%H:%M:%S');
     return d3.timeFormat('%H:%M');
   }
 
@@ -405,25 +412,49 @@ export default class MareyDiagram {
   }
 
   /**
-   * Given a list of vehicle positions, get the links between them
+   * Given a list of vehicle positions, get the links between them.
+   * Basing on the current domain of the diagram, it approximates the positions
+   * to reduce the amount of links to be drawn.
    * @param  {Array.<{time: Date, distance: number, status: string}>} positions - Positions info
    * @return {Array.<{timeA: Date, timeB: Date,
    *           distanceA: number, distanceB: number,
    *           status: string, prognosed: boolean}>} - Positions links information
    */
-  static getPositionLinks(positions) {
+  getPositionLinks(positions) {
+    // minSecondsDelta determines the approximation by estabilishing a minimum
+    // number of seconds between two positions to be drawn
+    let minSecondsDelta;
+    if (this.secondsInDomain > 120 * 60) {
+      minSecondsDelta = 120;
+    } else if (this.secondsInDomain > 60 * 60) {
+      minSecondsDelta = 30;
+    } else minSecondsDelta = 0;
+
     const posLinks = [];
-    for (let index = 0; index < positions.length - 1; index += 1) {
+    let index = 0;
+
+    while (index < positions.length - 1) {
       const posA = positions[index];
-      const posB = positions[index + 1];
+      let posB = positions[index + 1];
       const timeA = posA.time;
-      const timeB = posB.time;
+      let timeB = posB.time;
+
+      // If the current "second position" of the link is less than minSecondsDelta seconds
+      // apart from the first one, skip it and move to the next "second position"
+      while (index < positions.length - 2 &&
+             posA.prognosed === posB.prognosed &&
+             timeB - timeA < minSecondsDelta * 1000) {
+        index += 1;
+        posB = positions[index + 1];
+        timeB = posB.time;
+      }
+
       const distanceA = posA.distance;
       const distanceB = posB.distance;
-
       const prognosed = posA.prognosed || posB.prognosed;
 
       posLinks.push({ timeA, timeB, distanceA, distanceB, status: posA.status, prognosed });
+      index += 1;
     }
 
     return posLinks;
@@ -520,32 +551,34 @@ export default class MareyDiagram {
     const vehiclesEnterUpdateSel = vehiclesSel.merge(vehiclesEnterSel);
 
     // Trip > vehicle enter + update > circle
-    // const vehiclesPosSel = vehiclesEnterUpdateSel
-    //   .selectAll('circle.position')
-    //   .data(({ positions }) => positions);
+    const vehiclesPosSel = vehiclesEnterUpdateSel
+      .selectAll('circle.position')
+      .data(({ positions }) => positions);
 
-    // vehiclesPosSel.enter()
-    //   .append('circle')
-    //   .attr('class', ({ status, prognosed }) =>
-    //     `position ${status} ${prognosed ? 'prognosed' : ''}`)
-    //   .attr('r', '1.5')
-    //   .attr('cx', ({ distance }) => this.xScale(distance))
-    //   // Trip > vehicle > circle enter + update
-    //   .merge(vehiclesPosSel)
-    //   .attr('cy', ({ time }) => this.yScale(time));
+    vehiclesPosSel.enter()
+      .append('circle')
+      .attr('class', ({ status, prognosed }) =>
+        `position ${status} ${prognosed ? 'prognosed' : ''}`)
+      .attr('r', '1.5')
+      .attr('cx', ({ distance }) => this.xScale(distance))
+      // Trip > vehicle > circle enter + update
+      .merge(vehiclesPosSel)
+      .attr('cy', ({ time }) => this.yScale(time));
 
     // Trip > vehicle > line
     const vehiclesPosLinksSel = vehiclesEnterUpdateSel.selectAll('line.pos-link')
-      .data(({ positions }) => MareyDiagram.getPositionLinks(positions));
+      .data(({ positions }) => this.getPositionLinks(positions));
+
+    vehiclesPosLinksSel.exit().remove();
 
     // Trip > vehicle > line enter
     vehiclesPosLinksSel.enter()
       .append('line')
       .attr('class', ({ status, prognosed }) => `pos-link ${status} ${prognosed ? 'prognosed' : ''}`)
       // Trip > vehicle > line enter + update
+      .merge(vehiclesPosLinksSel)
       .attr('x1', ({ distanceA }) => this.xScale(distanceA))
       .attr('x2', ({ distanceB }) => this.xScale(distanceB))
-      .merge(vehiclesPosLinksSel)
       .attr('y1', ({ timeA }) => this.yScale(timeA))
       .attr('y2', ({ timeB }) => this.yScale(timeB));
   }
