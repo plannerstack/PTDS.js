@@ -118,9 +118,13 @@ export default class MareyDiagram {
       // Same as above
       .on('brush end', () => { this.brushed(); });
 
+    // Select the first two hours in the domain in the beginning
+    const initialEndTime = this.yScrollScale.domain()[0];
+    initialEndTime.setHours(initialEndTime.getHours() + 2);
+
     this.scrollGroup
       .call(this.brushBehaviour)
-      .call(this.brushBehaviour.move, [0, this.yScrollScale.range()[1] / 4]);
+      .call(this.brushBehaviour.move, [0, this.yScrollScale(initialEndTime)]);
   }
 
   /**
