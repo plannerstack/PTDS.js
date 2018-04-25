@@ -25,7 +25,7 @@ export default class PTDS {
       let maxNstops = -1;
       let maxNstopsJP = '';
       for (const journeyPattern of Object.values(this.data.journeyPatterns)) {
-        if (journeyPattern.lineRef === options.dual.lineRef &&
+        if (journeyPattern.line.code === options.dual.line &&
             journeyPattern.direction === options.dual.direction &&
             journeyPattern.stops.length > maxNstops) {
           maxNstops = journeyPattern.stops.length;
