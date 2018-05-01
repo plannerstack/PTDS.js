@@ -87,6 +87,27 @@ export default class MareyDiagram {
   }
 
   /**
+   * Establishes approximation to use in terms of poslinks approximation
+   * and showing or not the position dots
+   * @return {{minSecondsDelta: number, showPosDots: boolean}} - Object describing the approximation
+   */
+  get currentApproximation() {
+    let minSecondsDelta;
+    let showPosDots = false;
+
+    if (this.secondsInDomain > 120 * 60) {
+      minSecondsDelta = 120;
+    } else if (this.secondsInDomain > 60 * 60) {
+      minSecondsDelta = 30;
+    } else {
+      minSecondsDelta = 0;
+      showPosDots = true;
+    }
+
+    return { minSecondsDelta, showPosDots };
+  }
+
+  /**
    * Number of seconds in the current domain of the Marey diagram
    * @return {Number} - Seconds in current domain of the Marey diagram
    */
@@ -421,15 +442,6 @@ export default class MareyDiagram {
    *           status: string, prognosed: boolean}>} - Positions links information
    */
   getPositionLinks(positions) {
-    // minSecondsDelta determines the approximation by estabilishing a minimum
-    // number of seconds between two positions to be drawn
-    let minSecondsDelta;
-    if (this.secondsInDomain > 120 * 60) {
-      minSecondsDelta = 120;
-    } else if (this.secondsInDomain > 60 * 60) {
-      minSecondsDelta = 30;
-    } else minSecondsDelta = 0;
-
     const posLinks = [];
     let index = 0;
 
@@ -445,7 +457,7 @@ export default class MareyDiagram {
       // so that if a vehicle changed its status we don't skip the position
       while (index < positions.length - 2 &&
              posA.status === posB.status &&
-             timeB - timeA < minSecondsDelta * 1000) {
+             timeB - timeA < this.currentApproximation.minSecondsDelta * 1000) {
         index += 1;
         posB = positions[index + 1];
         timeB = posB.time;
@@ -556,7 +568,7 @@ export default class MareyDiagram {
     const vehiclesPosSel = vehiclesEnterUpdateSel
       .selectAll('circle.position')
       // Draw the dots representing the positions only at the maximum zoom level
-      .data(({ positions }) => (this.secondsInDomain <= 60 * 60 ? positions : []));
+      .data(({ positions }) => (this.currentApproximation.showPosDots ? positions : []));
 
     vehiclesPosSel.exit().remove();
 
