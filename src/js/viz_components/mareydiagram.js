@@ -440,9 +440,11 @@ export default class MareyDiagram {
       let timeB = posB.time;
 
       // If the current "second position" of the link is less than minSecondsDelta seconds
-      // apart from the first one, skip it and move to the next "second position"
+      // apart from the first one, skip it and move to the next "second position".
+      // Only if the first and second position of the segment have the same status,
+      // so that if a vehicle changed its status we don't skip the position
       while (index < positions.length - 2 &&
-             posA.prognosed === posB.prognosed &&
+             posA.status === posB.status &&
              timeB - timeA < minSecondsDelta * 1000) {
         index += 1;
         posB = positions[index + 1];
@@ -553,7 +555,10 @@ export default class MareyDiagram {
     // Trip > vehicle enter + update > circle
     const vehiclesPosSel = vehiclesEnterUpdateSel
       .selectAll('circle.position')
-      .data(({ positions }) => positions);
+      // Draw the dots representing the positions only at the maximum zoom level
+      .data(({ positions }) => (this.secondsInDomain <= 60 * 60 ? positions : []));
+
+    vehiclesPosSel.exit().remove();
 
     vehiclesPosSel.enter()
       .append('circle')
@@ -574,9 +579,9 @@ export default class MareyDiagram {
     // Trip > vehicle > line enter
     vehiclesPosLinksSel.enter()
       .append('line')
-      .attr('class', ({ status, prognosed }) => `pos-link ${status} ${prognosed ? 'prognosed' : ''}`)
       // Trip > vehicle > line enter + update
       .merge(vehiclesPosLinksSel)
+      .attr('class', ({ status, prognosed }) => `pos-link ${status} ${prognosed ? 'prognosed' : ''}`)
       .attr('x1', ({ distanceA }) => this.xScale(distanceA))
       .attr('x2', ({ distanceB }) => this.xScale(distanceB))
       .attr('y1', ({ timeA }) => this.yScale(timeA))
