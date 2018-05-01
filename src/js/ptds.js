@@ -29,10 +29,19 @@ export default class PTDS {
             journeyPattern.direction === options.dual.direction &&
             journeyPattern.stops.length > maxNstops) {
           maxNstops = journeyPattern.stops.length;
-          maxNstopsJP = journeyPattern.code;
+          maxNstopsJP = journeyPattern;
         }
       }
       this.options.dual.journeyPattern = maxNstopsJP;
+      console.log(`Reference journey pattern: ${maxNstopsJP.code}`);
+
+      for (const journeyPattern of Object.values(this.data.journeyPatterns)) {
+        const sharedLinks = maxNstopsJP.sharedLinks(journeyPattern);
+        if (sharedLinks.length) {
+          console.log(`Found ${sharedLinks.length} shared links with pattern ${journeyPattern.code}:`);
+          console.log(sharedLinks);
+        }
+      }
     } else if (options.mode === 'spiralSimulation') {
       this.widgetTimeFormat = d3.timeFormat('%Y-%m-%d %H:%M:%S');
       this.createSimulationWidget();
@@ -217,7 +226,7 @@ export default class PTDS {
         this.map.updateData({
           trips: this.getTripsAtTime(
             time,
-            trip => this.options.dual.journeyPattern === trip.journeyPattern.code,
+            trip => this.options.dual.journeyPattern.code === trip.journeyPattern.code,
           ),
         });
         this.map.drawTrips();
@@ -251,8 +260,8 @@ export default class PTDS {
       // If we're in dual mode, we're interested only in the data that belongs
       // to the chosen journey pattern(s). To filter the stops, stop areas and stops links
       // we first extract the stops belonging to the chosen journey pattern(s).
-      for (const journeyPatternRef of [this.options.dual.journeyPattern]) {
-        for (const stop of this.data.journeyPatterns[journeyPatternRef].stops) {
+      for (const journeyPattern of [this.options.dual.journeyPattern]) {
+        for (const stop of journeyPattern.stops) {
           validStops.push(stop);
         }
       }
@@ -303,8 +312,7 @@ export default class PTDS {
    * }} - Data for the Marey diagram
    */
   getMareyData() {
-    const journeyPatternCode = this.options.dual.journeyPattern;
-    const journeyPattern = this.data.journeyPatterns[journeyPatternCode];
+    const { journeyPattern } = this.options.dual;
 
     // Trips that belong to the chosen journey pattern(s)
     const trips = journeyPattern.vehicleJourneys;

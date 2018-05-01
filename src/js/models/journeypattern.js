@@ -37,4 +37,37 @@ export default class JourneyPattern {
       last: Math.max(...combinedFirstAndLast.map(tripCombinedFL => tripCombinedFL.last)),
     };
   }
+
+  /**
+   * Finds shared links between the journey pattern and another one.
+   * A link is shared if it's between the same two stop areas.
+   * @param  {JourneyPattern} otherJP - The other journey pattern
+   * @return {Array.<{
+     *         withinItself: [number, number],
+     *         withinOther: [number, number]
+   *         }>} - Array describing the correspondance between the links
+   *               in the two journey patterns
+   */
+  sharedLinks(otherJP) {
+    const result = [];
+
+    for (let index = 0; index < this.stops.length - 1; index += 1) {
+      const jpStopA = this.stops[index];
+      const jpStopB = this.stops[index + 1];
+
+      for (let index2 = 0; index2 < otherJP.stops.length - 1; index2 += 1) {
+        const otherJPStopA = otherJP.stops[index2];
+        const otherJPStopB = otherJP.stops[index2 + 1];
+
+        if (jpStopA.area === otherJPStopA.area && jpStopB.area === otherJPStopB.area) {
+          result.push({
+            withinItself: [index, index + 1],
+            withinOther: [index2, index2 + 1],
+          });
+        }
+      }
+    }
+
+    return result;
+  }
 }
