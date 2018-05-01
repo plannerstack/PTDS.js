@@ -21,9 +21,22 @@ export default class PTDS {
     this.data = new PTDataset(inputData, options.selectedDate);
     this.options = options;
 
-    this.widgetTimeFormat = d3.timeFormat('%Y-%m-%d %H:%M:%S');
-
-    if (options.mode === 'spiralSimulation') { this.createSimulationWidget(); }
+    if (options.mode === 'dual') {
+      let maxNstops = -1;
+      let maxNstopsJP = '';
+      for (const journeyPattern of Object.values(this.data.journeyPatterns)) {
+        if (journeyPattern.line.code === options.dual.line &&
+            journeyPattern.direction === options.dual.direction &&
+            journeyPattern.stops.length > maxNstops) {
+          maxNstops = journeyPattern.stops.length;
+          maxNstopsJP = journeyPattern.code;
+        }
+      }
+      this.options.dual.journeyPattern = maxNstopsJP;
+    } else if (options.mode === 'spiralSimulation') {
+      this.widgetTimeFormat = d3.timeFormat('%Y-%m-%d %H:%M:%S');
+      this.createSimulationWidget();
+    }
 
     this.createVisualizations();
   }
@@ -204,7 +217,7 @@ export default class PTDS {
         this.map.updateData({
           trips: this.getTripsAtTime(
             time,
-            trip => this.options.dual.journeyPatterns.includes(trip.journeyPattern.code),
+            trip => this.options.dual.journeyPattern === trip.journeyPattern.code,
           ),
         });
         this.map.drawTrips();
@@ -238,7 +251,7 @@ export default class PTDS {
       // If we're in dual mode, we're interested only in the data that belongs
       // to the chosen journey pattern(s). To filter the stops, stop areas and stops links
       // we first extract the stops belonging to the chosen journey pattern(s).
-      for (const journeyPatternRef of this.options.dual.journeyPatterns) {
+      for (const journeyPatternRef of [this.options.dual.journeyPattern]) {
         for (const stop of this.data.journeyPatterns[journeyPatternRef].stops) {
           validStops.push(stop);
         }
@@ -290,8 +303,7 @@ export default class PTDS {
    * }} - Data for the Marey diagram
    */
   getMareyData() {
-    // TODO: support multiple journey patterns
-    const journeyPatternCode = this.options.dual.journeyPatterns[0];
+    const journeyPatternCode = this.options.dual.journeyPattern;
     const journeyPattern = this.data.journeyPatterns[journeyPatternCode];
 
     // Trips that belong to the chosen journey pattern(s)
