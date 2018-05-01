@@ -87,7 +87,7 @@ export default class MareyDiagram {
   }
 
   /**
-   * Numer of seconds in the current domain of the Marey diagram
+   * Number of seconds in the current domain of the Marey diagram
    * @return {Number} - Seconds in current domain of the Marey diagram
    */
   get secondsInDomain() {
