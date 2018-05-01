@@ -132,8 +132,11 @@ export default class MareyDiagram {
    * Set up the zoom and brush behaviours
    */
   zoomAndBrushSetup() {
+    // Since we haven't selected a range yet, this will get the domain of the entire day
+    const minutesInDomain = Math.floor(this.secondsInDomain / 60);
     this.zoomBehaviour = d3.zoom()
-      .scaleExtent([1, 2000])
+      // Base maximum zoom on the number of minutes in the domain for the current day
+      .scaleExtent([1, minutesInDomain * 1.6667])
       .extent([[0, 0], [this.dims.marey.innerWidth, this.dims.marey.innerHeight]])
       .translateExtent([[0, 0], [this.dims.marey.innerWidth, this.dims.marey.innerHeight]])
       // We encapsulate this.zoomed in a closure so that we don't lose the "this" context
