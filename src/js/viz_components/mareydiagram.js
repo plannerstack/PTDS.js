@@ -150,8 +150,12 @@ export default class MareyDiagram {
       .on('brush end', () => { this.brushed(); });
 
     // Select the first two hours in the domain in the beginning
-    const initialEndTime = this.yScrollScale.domain()[0];
+    let [initialEndTime] = this.yScrollScale.domain();
     initialEndTime.setHours(initialEndTime.getHours() + 2);
+    // If the total domain is less than two hours, select the entire domain
+    if (initialEndTime > this.yScrollScale.domain()[1]) {
+      [, initialEndTime] = this.yScrollScale.domain();
+    }
 
     this.scrollGroup
       .call(this.brushBehaviour)
