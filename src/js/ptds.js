@@ -257,7 +257,7 @@ export default class PTDS {
 
       // Creation of the Marey diagram
       this.marey = new MareyDiagram(
-        this.getMareyData(),
+        this.journeyPatternMix,
         this.mareySVGgroup,
         this.scrollSVGgroup,
         this.dims,
@@ -338,26 +338,26 @@ export default class PTDS {
    *   timeBoundaries: {first: Date, last: Date}
    * }} - Data for the Marey diagram
    */
-  getMareyData() {
-    const { referenceJP } = this.journeyPatternMix;
+  // getMareyData() {
+  //   const { referenceJP } = this.journeyPatternMix;
 
-    // Trips that belong to the chosen journey pattern(s)
-    const trips = referenceJP.vehicleJourneys;
+  //   // Trips that belong to the chosen journey pattern(s)
+  //   const trips = referenceJP.vehicleJourneys;
 
-    // Create trips list with essential information for the Marey diagram
-    const tripsProcessed = trips.map(trip => ({
-      code: trip.code,
-      schedule: trip.staticSchedule,
-      vehicles: trip.getVehiclePositions(),
-      timeBoundaries: trip.firstAndLastTimes,
-    }));
+  //   // Create trips list with essential information for the Marey diagram
+  //   const tripsProcessed = trips.map(trip => ({
+  //     code: trip.code,
+  //     schedule: trip.staticSchedule,
+  //     vehicles: trip.getVehiclePositions(),
+  //     timeBoundaries: trip.firstAndLastTimes,
+  //   }));
 
-    return {
-      trips: tripsProcessed,
-      stopsDistances: referenceJP.stopsDistances,
-      timeBoundaries: referenceJP.firstAndLastTimes,
-    };
-  }
+  //   return {
+  //     trips: tripsProcessed,
+  //     stopsDistances: referenceJP.stopsDistances,
+  //     timeBoundaries: referenceJP.firstAndLastTimes,
+  //   };
+  // }
 
   /**
    * Get all the trips active at a given time. It supports a filter
