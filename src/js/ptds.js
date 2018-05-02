@@ -23,7 +23,7 @@ export default class PTDS {
 
     if (options.mode === 'dual') {
       let maxNstops = -1;
-      let maxNstopsJP = '';
+      let maxNstopsJP;
       for (const journeyPattern of Object.values(this.data.journeyPatterns)) {
         if (journeyPattern.line.code === options.dual.line &&
             journeyPattern.direction === options.dual.direction &&
@@ -32,16 +32,20 @@ export default class PTDS {
           maxNstopsJP = journeyPattern;
         }
       }
-      this.options.dual.journeyPattern = maxNstopsJP;
-      console.log(`Reference journey pattern: ${maxNstopsJP.code}`);
+
+      this.journeyPatternMix = {
+        referenceJP: maxNstopsJP,
+        otherJPs: [],
+      };
 
       for (const journeyPattern of Object.values(this.data.journeyPatterns)) {
         const sharedLinks = maxNstopsJP.sharedLinks(journeyPattern);
         if (sharedLinks.length) {
-          console.log(`Found ${sharedLinks.length} shared links with pattern ${journeyPattern.code}:`);
-          console.log(sharedLinks);
+          this.journeyPatternMix.otherJPs.push({ journeyPattern, sharedLinks });
         }
       }
+
+      console.log(this.journeyPatternMix);
     } else if (options.mode === 'spiralSimulation') {
       this.widgetTimeFormat = d3.timeFormat('%Y-%m-%d %H:%M:%S');
       this.createSimulationWidget();
@@ -226,7 +230,10 @@ export default class PTDS {
         this.map.updateData({
           trips: this.getTripsAtTime(
             time,
-            trip => this.options.dual.journeyPattern.code === trip.journeyPattern.code,
+            trip => (this.journeyPatternMix.referenceJP.code === trip.journeyPattern.code ||
+                     this.journeyPatternMix.otherJPs
+                       .map(({ journeyPattern }) => journeyPattern.code)
+                       .includes(trip.journeyPattern.code)),
           ),
         });
         this.map.drawTrips();
@@ -260,7 +267,11 @@ export default class PTDS {
       // If we're in dual mode, we're interested only in the data that belongs
       // to the chosen journey pattern(s). To filter the stops, stop areas and stops links
       // we first extract the stops belonging to the chosen journey pattern(s).
-      for (const journeyPattern of [this.options.dual.journeyPattern]) {
+      const selectedJourneyPatterns = [
+        this.journeyPatternMix.referenceJP,
+        ...this.journeyPatternMix.otherJPs.map(({ journeyPattern }) => journeyPattern),
+      ];
+      for (const journeyPattern of selectedJourneyPatterns) {
         for (const stop of journeyPattern.stops) {
           validStops.push(stop);
         }
@@ -312,10 +323,10 @@ export default class PTDS {
    * }} - Data for the Marey diagram
    */
   getMareyData() {
-    const { journeyPattern } = this.options.dual;
+    const { referenceJP } = this.journeyPatternMix;
 
     // Trips that belong to the chosen journey pattern(s)
-    const trips = journeyPattern.vehicleJourneys;
+    const trips = referenceJP.vehicleJourneys;
 
     // Create trips list with essential information for the Marey diagram
     const tripsProcessed = trips.map(trip => ({
@@ -327,8 +338,8 @@ export default class PTDS {
 
     return {
       trips: tripsProcessed,
-      stopsDistances: journeyPattern.stopsDistances,
-      timeBoundaries: journeyPattern.firstAndLastTimes,
+      stopsDistances: referenceJP.stopsDistances,
+      timeBoundaries: referenceJP.firstAndLastTimes,
     };
   }
 
