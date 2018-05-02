@@ -22,29 +22,7 @@ export default class PTDS {
     this.options = options;
 
     if (options.mode === 'dual') {
-      let maxNstops = -1;
-      let maxNstopsJP;
-      for (const journeyPattern of Object.values(this.data.journeyPatterns)) {
-        if (journeyPattern.line.code === options.dual.line &&
-            journeyPattern.direction === options.dual.direction &&
-            journeyPattern.stops.length > maxNstops) {
-          maxNstops = journeyPattern.stops.length;
-          maxNstopsJP = journeyPattern;
-        }
-      }
-
-      this.journeyPatternMix = {
-        referenceJP: maxNstopsJP,
-        otherJPs: [],
-      };
-
-      for (const journeyPattern of Object.values(this.data.journeyPatterns)) {
-        const sharedLinks = maxNstopsJP.sharedLinks(journeyPattern);
-        if (sharedLinks.length) {
-          this.journeyPatternMix.otherJPs.push({ journeyPattern, sharedLinks });
-        }
-      }
-
+      this.journeyPatternMix = this.computeJourneyPatternMix();
       console.log(this.journeyPatternMix);
     } else if (options.mode === 'spiralSimulation') {
       this.widgetTimeFormat = d3.timeFormat('%Y-%m-%d %H:%M:%S');
@@ -52,6 +30,44 @@ export default class PTDS {
     }
 
     this.createVisualizations();
+  }
+
+  /**
+   * Used in the dual visualization mode, computes the object representing the mix of journey
+   * patterns that we are going to visualize.
+   * @return {{
+   *         referenceJP: JourneyPattern,
+   *         otherJPs: {
+   *           journeyPattern: JourneyPattern,
+   *           sharedLinks: [[number, number], [number, number]]
+   *         }
+   * }} - Object representing the mix of journey patterns to display
+   */
+  computeJourneyPatternMix() {
+    let maxNstops = -1;
+    let maxNstopsJP;
+    for (const journeyPattern of Object.values(this.data.journeyPatterns)) {
+      if (journeyPattern.line.code === this.options.dual.line &&
+          journeyPattern.direction === this.options.dual.direction &&
+          journeyPattern.stops.length > maxNstops) {
+        maxNstops = journeyPattern.stops.length;
+        maxNstopsJP = journeyPattern;
+      }
+    }
+
+    const journeyPatternMix = {
+      referenceJP: maxNstopsJP,
+      otherJPs: [],
+    };
+
+    for (const journeyPattern of Object.values(this.data.journeyPatterns)) {
+      const sharedLinks = maxNstopsJP.sharedLinks(journeyPattern);
+      if (sharedLinks.length) {
+        journeyPatternMix.otherJPs.push({ journeyPattern, sharedLinks });
+      }
+    }
+
+    return journeyPatternMix;
   }
 
   /**
