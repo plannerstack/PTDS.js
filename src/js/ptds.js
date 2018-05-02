@@ -352,19 +352,18 @@ export default class PTDS {
     // start again from when it was left. Otherwise, start from the current time in the day.
     const startTimeViz = typeof this.lastTime === 'undefined' ?
       this.data.earliestTime :
-      this.lastTime;
+      this.lastTime.getTime();
 
     // Store the reference to the timer in the current instance so that
     // we can stop it later
     this.spiralTimer = d3.timer((elapsedMilliseconds) => {
       // Compute elapsed seconds in the visualization
-      const elapsedSecondsInViz = (elapsedMilliseconds * timeMultiplier) / 1000;
+      const elapsedMilliSecondsInViz = elapsedMilliseconds * timeMultiplier;
       // Compute 'spiral' negative offset
-      const spiralOffset = Math.floor(elapsedSecondsInViz / paramA) * paramB;
+      const spiralOffset = Math.floor(elapsedMilliSecondsInViz / (paramA * 1000)) * paramB * 1000;
 
       // Compute time currently represented in the visualization
-      const vizTime = new Date(startTimeViz);
-      vizTime.setSeconds(vizTime.getSeconds() + (elapsedSecondsInViz - spiralOffset));
+      const vizTime = new Date((startTimeViz + elapsedMilliSecondsInViz) - spiralOffset);
 
       // If we exceeded the last time in the dataset, stop the simulation and
       // set the default time for the next run
