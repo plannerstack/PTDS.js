@@ -396,7 +396,7 @@ export default class MareyDiagram {
     // cursor is positioned over
     this.xAxisG.selectAll('.tick')
       .data(this.journeyPatternMix.referenceJP.stops)
-      .attr('data-stop-code', ({ code }) => code)
+      .attr('data-stop-area-code', ({ area: { code } }) => code)
       .on('mouseover', function f(stop) {
         const stopAreaCode = stop.area.code;
         d3.select(`#map g.stopArea[data-stop-area-code='${stopAreaCode}'] circle`).attr('r', 3);
@@ -564,6 +564,7 @@ export default class MareyDiagram {
    * Draw the trips on the diagram
    */
   drawTrips() {
+    // Determines if a trip is in the currently selected domain
     const tripInSelectedDomain = (trip) => {
       const [minShownTime, maxShownTime] = this.yScale.domain();
       const { first: firstTripTime, last: lastTripTime } = trip.firstAndLastTimes;
@@ -573,6 +574,7 @@ export default class MareyDiagram {
         (minShownTime < lastTripTime && lastTripTime < maxShownTime);
     };
 
+    // Get all the trips in the currently selected domain
     const tripsInSelectedDomain = this.trips.filter(tripInSelectedDomain);
 
     // Trip selection
@@ -585,53 +587,85 @@ export default class MareyDiagram {
     // Get the overlay element from the class instance because we'll lose the "this" reference later
     const { overlay } = this;
 
+    // Handler mouse over trip event
+    // Classic function instead of () => {} because "this" context gets modified
+    function tripMouseOver(trip) {
+      // Get the SVG g element corresponding to this trip
+      const tripSel = d3.select(this);
+      // Get the current mouse position
+      const [xPos, yPos] = d3.mouse(overlay.node());
+      // Add label with the code of the trip next to the mouse cursor
+      tripSel.append('text')
+        .attr('class', 'tripLabel')
+        .attr('x', xPos)
+        .attr('y', yPos)
+        .attr('dy', -10)
+        .text(({ code }) => code);
+      // Add 'selected' class to the trip SVG group
+      tripSel.classed('selected', true);
+      tripSel.selectAll('circle.scheduledStop').attr('r', 3);
+      // In the map, highlight the vehicle
+      d3.select(`#map g.trip[data-code='${trip.code}'] circle`).attr('r', 6);
+    }
+
+    // Handle mouse out of trip event
+    function tripMouseOut(trip) {
+      // Similarly as above
+      const tripSel = d3.select(this);
+      tripSel.select('text.tripLabel').remove();
+      tripSel.classed('selected', false);
+      tripSel.selectAll('circle.scheduledStop').attr('r', 2);
+      d3.select(`#map g.trip[data-code='${trip.code}'] circle`).attr('r', 3);
+    }
+
     // Trip enter
     const tripsEnterSel = tripsSel.enter().append('g')
       .attr('class', 'trip')
       .attr('data-trip-code', ({ code }) => code)
-      .on('mouseover', function f(trip) {
-        // Get the SVG g element corresponding to this trip
-        const tripSel = d3.select(this);
-        // Get the current mouse position
-        const [xPos, yPos] = d3.mouse(overlay.node());
-        // Add label with the code of the trip next to the mouse cursor
-        tripSel.append('text')
-          .attr('class', 'tripLabel')
-          .attr('x', xPos)
-          .attr('y', yPos)
-          .attr('dy', -10)
-          .text(({ code }) => code);
-        // Add 'selected' class to the trip SVG group
-        tripSel.classed('selected', true);
-        tripSel.selectAll('circle.scheduledStop').attr('r', 3);
-        // In the map, highlight the vehicle
-        d3.select(`#map g.trip[data-code='${trip.code}'] circle`).attr('r', 6);
-      })
-      .on('mouseout', function f(trip) {
-        // Similarly as above
-        const tripSel = d3.select(this);
-        tripSel.select('text.tripLabel').remove();
-        tripSel.classed('selected', false);
-        tripSel.selectAll('circle.scheduledStop').attr('r', 2);
-        d3.select(`#map g.trip[data-code='${trip.code}'] circle`).attr('r', 3);
-      });
+      .on('mouseover', tripMouseOver)
+      .on('mouseout', tripMouseOut);
 
+    // Trip enter + update > static schedule links selection
     const staticLinksSel = tripsEnterSel.merge(tripsSel)
       .selectAll('line.static-link')
       .data(({ links }) => links);
 
-    console.log(staticLinksSel.data());
-
+    // Trip enter + update > static schedule links exit
     staticLinksSel.exit().remove();
 
+    // Trip enter + update > static schedule links enter
     staticLinksSel.enter()
       .append('line')
       .attr('class', 'static-link')
       .attr('x1', ({ start: { distance } }) => this.xScale(distance))
       .attr('x2', ({ end: { distance } }) => this.xScale(distance))
+      // Trip enter + update > static schedule links enter + update
       .merge(staticLinksSel)
       .attr('y1', ({ start: { time } }) => this.yScale(time))
       .attr('y2', ({ end: { time } }) => this.yScale(time));
+
+    const staticStopsSel = tripsEnterSel.merge(tripsSel)
+      .selectAll('circle.static-stop')
+      .data(({ links }) => {
+        // Get all the stops that the trip has made, by considering all the vertexes of the static
+        // schedule links and deduplicating them using an object
+        const stops = {};
+        for (const link of links) {
+          stops[link.start.distance] = link.start.time;
+          stops[link.end.distance] = link.end.time;
+        }
+        return Array.from(Object.entries(stops).map(([distance, time]) => ({ distance, time })));
+      });
+
+    staticStopsSel.exit().remove();
+
+    staticStopsSel.enter()
+      .append('circle')
+      .attr('class', 'static-stop')
+      .attr('r', '2')
+      .attr('cx', ({ distance }) => this.xScale(distance))
+      .merge(staticStopsSel)
+      .attr('cy', ({ time }) => this.yScale(time));
 
     // const vehiclesPosLinksSel = vehiclesEnterUpdateSel.selectAll('line.pos-link')
     //   .data(({ positions }) => this.getPositionLinks(positions));
