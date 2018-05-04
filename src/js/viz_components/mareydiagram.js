@@ -36,6 +36,7 @@ export default class MareyDiagram {
     this.dims = dims;
     this.options = options;
 
+    this.trips = this.computeTrips();
     this.initialSetup(changeCallback);
     this.drawTrips();
   }
@@ -509,20 +510,70 @@ export default class MareyDiagram {
     return posLinks;
   }
 
+  computeTrips() {
+    const trips = [];
+    for (const vehicleJourney of this.journeyPatternMix.referenceJP.vehicleJourneys) {
+      const links = [];
+      const { staticSchedule } = vehicleJourney;
+      for (let index = 0; index < staticSchedule.length - 1; index += 1) {
+        const link = {
+          start: {
+            time: staticSchedule[index].time,
+            distance: staticSchedule[index].distance,
+          },
+          end: {
+            time: staticSchedule[index + 1].time,
+            distance: staticSchedule[index + 1].distance,
+          },
+        };
+        links.push(link);
+      }
+      trips.push({
+        code: vehicleJourney.code,
+        links,
+        firstAndLastTimes: vehicleJourney.firstAndLastTimes,
+      });
+    }
+    for (const otherJP of this.journeyPatternMix.otherJPs) {
+      for (const vehicleJourney of otherJP.journeyPattern.vehicleJourneys) {
+        const links = [];
+        for (const { withinItself, withinOther } of otherJP.sharedLinks) {
+          const link = {
+            start: {
+              time: vehicleJourney.times[withinOther[0] * 2],
+              distance: this.journeyPatternMix.referenceJP.distances[withinItself[0]],
+            },
+            end: {
+              time: vehicleJourney.times[withinOther[1] * 2],
+              distance: this.journeyPatternMix.referenceJP.distances[withinItself[1]],
+            },
+          };
+          links.push(link);
+        }
+        trips.push({
+          code: vehicleJourney.code,
+          links,
+          firstAndLastTimes: vehicleJourney.firstAndLastTimes,
+        });
+      }
+    }
+    return trips;
+  }
+
   /**
    * Draw the trips on the diagram
    */
   drawTrips() {
-    // Get the trips that are visible in the currently selected domain.
-    const trips = this.journeyPatternMix.referenceJP.vehicleJourneys;
-    const tripsInSelectedDomain = trips.filter((trip) => {
+    const tripInSelectedDomain = (trip) => {
       const [minShownTime, maxShownTime] = this.yScale.domain();
       const { first: firstTripTime, last: lastTripTime } = trip.firstAndLastTimes;
 
       return (firstTripTime < minShownTime && lastTripTime > maxShownTime) ||
         (minShownTime < firstTripTime && firstTripTime < maxShownTime) ||
         (minShownTime < lastTripTime && lastTripTime < maxShownTime);
-    });
+    };
+
+    const tripsInSelectedDomain = this.trips.filter(tripInSelectedDomain);
 
     // Trip selection
     const tripsSel = this.tripsG.selectAll('g.trip')
@@ -565,28 +616,62 @@ export default class MareyDiagram {
         d3.select(`#map g.trip[data-code='${trip.code}'] circle`).attr('r', 3);
       });
 
+    const staticLinksSel = tripsEnterSel.merge(tripsSel)
+      .selectAll('line.static-link')
+      .data(({ links }) => links);
+
+    console.log(staticLinksSel.data());
+
+    staticLinksSel.exit().remove();
+
+    staticLinksSel.enter()
+      .append('line')
+      .attr('class', 'static-link')
+      .attr('x1', ({ start: { distance } }) => this.xScale(distance))
+      .attr('x2', ({ end: { distance } }) => this.xScale(distance))
+      .merge(staticLinksSel)
+      .attr('y1', ({ start: { time } }) => this.yScale(time))
+      .attr('y2', ({ end: { time } }) => this.yScale(time));
+
+    // const vehiclesPosLinksSel = vehiclesEnterUpdateSel.selectAll('line.pos-link')
+    //   .data(({ positions }) => this.getPositionLinks(positions));
+
+    // vehiclesPosLinksSel.exit().remove();
+
+    // // Trip > vehicle > line enter
+    // vehiclesPosLinksSel.enter()
+    //   .append('line')
+    //   // Trip > vehicle > line enter + update
+    //   .merge(vehiclesPosLinksSel)
+    //   .attr('class', ({ status, prognosed }) =>
+    //      `pos-link ${status} ${prognosed ? 'prognosed' : ''}`)
+    //   .attr('x1', ({ distanceA }) => this.xScale(distanceA))
+    //   .attr('x2', ({ distanceB }) => this.xScale(distanceB))
+    //   .attr('y1', ({ timeA }) => this.yScale(timeA))
+    //   .attr('y2', ({ timeB }) => this.yScale(timeB));
+
     // Trip enter > path
-    tripsEnterSel
-      .append('path')
-      .merge(tripsSel.select('path'))
-      .attr('d', ({ staticSchedule }) => this.tripLineGenerator(staticSchedule));
+    // tripsEnterSel
+    //   .append('path')
+    //   .merge(tripsSel.select('path'))
+    //   .attr('d', ({ staticSchedule }) => this.tripLineGenerator(staticSchedule));
 
     // TODO:
     // instead of using <path> elements, use separate <line>s like for the realtime data
 
     // Trip enter > circle selection
-    const tripsScheduledStopsSel = tripsEnterSel.merge(tripsSel)
-      .selectAll('circle.scheduledStop')
-      .data(({ staticSchedule }) => staticSchedule);
+    // const tripsScheduledStopsSel = tripsEnterSel.merge(tripsSel)
+    //   .selectAll('circle.scheduledStop')
+    //   .data(({ staticSchedule }) => staticSchedule);
 
-    // Trip enter > circle
-    tripsScheduledStopsSel.enter()
-      .append('circle')
-      .attr('class', 'scheduledStop')
-      .attr('r', '2')
-      .attr('cx', ({ distance }) => this.xScale(distance))
-      .merge(tripsScheduledStopsSel)
-      .attr('cy', ({ time }) => this.yScale(time));
+    // // Trip enter > circle
+    // tripsScheduledStopsSel.enter()
+    //   .append('circle')
+    //   .attr('class', 'scheduledStop')
+    //   .attr('r', '2')
+    //   .attr('cx', ({ distance }) => this.xScale(distance))
+    //   .merge(tripsScheduledStopsSel)
+    //   .attr('cy', ({ time }) => this.yScale(time));
 
     // // Trip enter > vehicle selection
     // const vehiclesSel = tripsSel.selectAll('g.vehicle')

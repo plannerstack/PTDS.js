@@ -24,14 +24,12 @@ export default class VehicleJourney {
     this.cancelled = cancelled;
 
     // Compute static schedule as (time, distance) object pairs array
-    this.staticSchedule = this.times
-      .map((time, index) => ({
-        time,
+    this.staticSchedule = this.journeyPattern.distances
+      .map((distance, index) => ({
+        distance,
         // The times array is double the length of the distances array,
         // because we have for each stop the arrival and departure time.
-        // Therefore we take the distance element with index corresponding
-        // to half the index of the corresponding time element
-        distance: this.journeyPattern.distances[Math.floor(index / 2)],
+        time: this.times[index * 2],
       }));
   }
 
