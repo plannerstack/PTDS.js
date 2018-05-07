@@ -39,7 +39,10 @@ export default class PTDS {
    *         referenceJP: JourneyPattern,
    *         otherJPs: {
    *           journeyPattern: JourneyPattern,
-   *           sharedLinks: [[number, number], [number, number]]
+   *           sharedSequences: {
+   *              referenceSequences: Array.<Array.<number>>,
+   *              otherSequences: Array.<Array.<number>>
+   *            }
    *         }
    * }} - Object representing the mix of journey patterns to display
    */
@@ -62,12 +65,10 @@ export default class PTDS {
       otherJPs: [],
     };
 
-    // Compute the shared links between the longest journey pattern and all the other ones
+    // Compute the shared sequences between the longest journey pattern and all the other ones
     for (const journeyPattern of Object.values(this.data.journeyPatterns)) {
-      const sharedLinks = maxNstopsJP.sharedLinks(journeyPattern);
-      if (sharedLinks.length) {
-        journeyPatternMix.otherJPs.push({ journeyPattern, sharedLinks });
-      }
+      const sharedSequences = maxNstopsJP.sharedSequences(journeyPattern);
+      if (sharedSequences) { journeyPatternMix.otherJPs.push({ journeyPattern, sharedSequences }); }
     }
 
     return journeyPatternMix;

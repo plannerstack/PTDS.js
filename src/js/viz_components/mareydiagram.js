@@ -515,63 +515,42 @@ export default class MareyDiagram {
    * @return {Object} - Trip drawing information
    */
   computeTrips() {
-    const trips = [];
-    // We need to chop the trip into all the stopA-stopB segments
-    // First, we do it for the trips of the reference journey pattern.
-    for (const vehicleJourney of this.journeyPatternMix.referenceJP.vehicleJourneys) {
-      const links = [];
-      const { staticSchedule } = vehicleJourney;
-      for (let index = 0; index < staticSchedule.length - 1; index += 1) {
-        const link = {
-          start: {
-            time: staticSchedule[index].time,
-            distance: staticSchedule[index].distance,
-          },
-          end: {
-            time: staticSchedule[index + 1].time,
-            distance: staticSchedule[index + 1].distance,
-          },
-        };
-        links.push(link);
-      }
-      // We store the code of the trip, the links that make it and the first and last times.
-      trips.push({
-        code: vehicleJourney.code,
-        links,
-        firstAndLastTimes: vehicleJourney.firstAndLastTimes,
-      });
-    }
+    const trips = this.journeyPatternMix.referenceJP.vehicleJourneys
+      .map(({ code, staticSchedule, firstAndLastTimes }) => ({
+        code,
+        // For the reference journey pattern there is only one sequence
+        sequences: [
+          staticSchedule.map(({ time, distance }) => ({ time, distance })),
+        ],
+        firstAndLastTimes,
+      }));
+
     // Then, for the "other" journey patterns which match in at least one link with
-    // the refrence journey pattern.e
+    // the refrence journey pattern.
     for (const otherJP of this.journeyPatternMix.otherJPs) {
       for (const vehicleJourney of otherJP.journeyPattern.vehicleJourneys) {
-        const links = [];
-        // For each trip of the "other" journey patterns, iterate over the segments shared with the
-        // reference journey pattern and add the corresponding "timinglink".
-        for (const { withinItself, withinOther } of otherJP.sharedLinks) {
-          const link = {
-            start: {
-              // The *2 factor is because the times array is twice as long as the distances one,
-              // since it includes arrival and departure times at each stop. For now,
-              // we don't use this information.
-              // TODO: use arrival and departure times for more accurate representation
-              time: vehicleJourney.times[withinOther[0] * 2],
-              distance: this.journeyPatternMix.referenceJP.distances[withinItself[0]],
-            },
-            end: {
-              time: vehicleJourney.times[withinOther[1] * 2],
-              distance: this.journeyPatternMix.referenceJP.distances[withinItself[1]],
-            },
-          };
-          links.push(link);
+        const sequences = [];
+        // For each trip of the "other" journey patterns, iterate over the sequences shared with the
+        // reference journey pattern and add the corresponding "timinglinks".
+        const { referenceSequences, otherSequences } = otherJP.sharedSequences;
+        for (let i = 0; i < referenceSequences.length; i += 1) {
+          const refSequence = referenceSequences[i];
+          const otherSequence = otherSequences[i];
+
+          sequences.push(refSequence.map((refIndex, j) => ({
+            time: vehicleJourney.times[otherSequence[j] * 2],
+            distance: this.journeyPatternMix.referenceJP.distances[refIndex],
+          })));
         }
+
         trips.push({
           code: vehicleJourney.code,
-          links,
+          sequences,
           firstAndLastTimes: vehicleJourney.firstAndLastTimes,
         });
       }
     }
+
     return trips;
   }
 
@@ -640,47 +619,51 @@ export default class MareyDiagram {
       .on('mouseover', tripMouseOver)
       .on('mouseout', tripMouseOut);
 
-    // Trip enter + update > static schedule links selection
-    const staticLinksSel = tripsEnterSel.merge(tripsSel)
-      .selectAll('line.static-link')
-      .data(({ links }) => links);
+    // Trip enter + update > static schedule sequences selection
+    const staticSequencesSel = tripsEnterSel.merge(tripsSel)
+      .selectAll('path.static-sequence')
+      .data(({ sequences }) => sequences);
 
-    // Trip enter + update > static schedule links exit
-    staticLinksSel.exit().remove();
+    // Trip enter + update > static schedule sequences exit
+    staticSequencesSel.exit().remove();
 
-    // Trip enter + update > static schedule links enter
-    staticLinksSel.enter()
-      .append('line')
-      .attr('class', 'static-link')
-      .attr('x1', ({ start: { distance } }) => this.xScale(distance))
-      .attr('x2', ({ end: { distance } }) => this.xScale(distance))
-      // Trip enter + update > static schedule links enter + update
-      .merge(staticLinksSel)
-      .attr('y1', ({ start: { time } }) => this.yScale(time))
-      .attr('y2', ({ end: { time } }) => this.yScale(time));
+    const sequenceGenerator = d3.line()
+      .x(({ distance }) => this.xScale(distance))
+      .y(({ time }) => this.yScale(time));
 
-    const staticStopsSel = tripsEnterSel.merge(tripsSel)
-      .selectAll('circle.static-stop')
-      .data(({ links }) => {
-        // Get all the stops that the trip has made, by considering all the vertexes of the static
-        // schedule links and deduplicating them using an object
-        const stops = {};
-        for (const link of links) {
-          stops[link.start.distance] = link.start.time;
-          stops[link.end.distance] = link.end.time;
-        }
-        return Array.from(Object.entries(stops).map(([distance, time]) => ({ distance, time })));
-      });
+    // Trip enter + update > static schedule sequences enter
+    staticSequencesSel.enter()
+      .append('path')
+      .attr('class', 'static-sequence')
+      // Trip enter + update > static schedule sequences enter + update
+      .merge(staticSequencesSel)
+      .attr('d', schedule => sequenceGenerator(schedule));
 
-    staticStopsSel.exit().remove();
+    // Trip enter + update > circle stops selection
+    // const staticStopsSel = tripsEnterSel.merge(tripsSel)
+    //   .selectAll('circle.static-stop')
+    //   .data(({ links }) => {
+    //     // Get all the stops that the trip has made, by considering all the vertexes
+    //     // of the static schedule links and deduplicating them using an object
+    //     const stops = {};
+    //     for (const link of links) {
+    //       stops[link.start.distance] = link.start.time;
+    //       stops[link.end.distance] = link.end.time;
+    //     }
+    //     return Array.from(Object.entries(stops).map(([distance, time]) => ({ distance, time })));
+    //   });
 
-    staticStopsSel.enter()
-      .append('circle')
-      .attr('class', 'static-stop')
-      .attr('r', 1.5)
-      .attr('cx', ({ distance }) => this.xScale(distance))
-      .merge(staticStopsSel)
-      .attr('cy', ({ time }) => this.yScale(time));
+    // // Trip enter + update > circle stops exit
+    // staticStopsSel.exit().remove();
+
+    // // Trip enter + update > circle stops enter
+    // staticStopsSel.enter()
+    //   .append('circle')
+    //   .attr('class', 'static-stop')
+    //   .attr('r', 1.5)
+    //   .attr('cx', ({ distance }) => this.xScale(distance))
+    //   .merge(staticStopsSel)
+    //   .attr('cy', ({ time }) => this.yScale(time));
 
     // const vehiclesPosLinksSel = vehiclesEnterUpdateSel.selectAll('line.pos-link')
     //   .data(({ positions }) => this.getPositionLinks(positions));

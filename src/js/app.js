@@ -10,7 +10,7 @@ log.enableAll();
 const options = {
   stopRadius: 1,
   stopAreaRadius: 1,
-  tripRadius: 3,
+  tripRadius: 2,
   showStops: false,
   showStopAreas: true,
   showLinks: true,
