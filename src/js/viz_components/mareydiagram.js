@@ -510,8 +510,14 @@ export default class MareyDiagram {
     return posLinks;
   }
 
+  /**
+   *  Compute information needed to draw the trips on the Marey diagram
+   * @return {Object} - Trip drawing information
+   */
   computeTrips() {
     const trips = [];
+    // We need to chop the trip into all the stopA-stopB segments
+    // First, we do it for the trips of the reference journey pattern.
     for (const vehicleJourney of this.journeyPatternMix.referenceJP.vehicleJourneys) {
       const links = [];
       const { staticSchedule } = vehicleJourney;
@@ -528,18 +534,27 @@ export default class MareyDiagram {
         };
         links.push(link);
       }
+      // We store the code of the trip, the links that make it and the first and last times.
       trips.push({
         code: vehicleJourney.code,
         links,
         firstAndLastTimes: vehicleJourney.firstAndLastTimes,
       });
     }
+    // Then, for the "other" journey patterns which match in at least one link with
+    // the refrence journey pattern.e
     for (const otherJP of this.journeyPatternMix.otherJPs) {
       for (const vehicleJourney of otherJP.journeyPattern.vehicleJourneys) {
         const links = [];
+        // For each trip of the "other" journey patterns, iterate over the segments shared with the
+        // reference journey pattern and add the corresponding "timinglink".
         for (const { withinItself, withinOther } of otherJP.sharedLinks) {
           const link = {
             start: {
+              // The *2 factor is because the times array is twice as long as the distances one,
+              // since it includes arrival and departure times at each stop. For now,
+              // we don't use this information.
+              // TODO: use arrival and departure times for more accurate representation
               time: vehicleJourney.times[withinOther[0] * 2],
               distance: this.journeyPatternMix.referenceJP.distances[withinItself[0]],
             },
@@ -662,7 +677,7 @@ export default class MareyDiagram {
     staticStopsSel.enter()
       .append('circle')
       .attr('class', 'static-stop')
-      .attr('r', '2')
+      .attr('r', 1.5)
       .attr('cx', ({ distance }) => this.xScale(distance))
       .merge(staticStopsSel)
       .attr('cy', ({ time }) => this.yScale(time));

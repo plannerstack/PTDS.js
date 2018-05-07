@@ -46,6 +46,8 @@ export default class PTDS {
   computeJourneyPatternMix() {
     let maxNstops = -1;
     let maxNstopsJP;
+
+    // Find the longest journey pattern with the given line and direction (most stops)
     for (const journeyPattern of Object.values(this.data.journeyPatterns)) {
       if (journeyPattern.line.code === this.options.dual.line &&
           journeyPattern.direction === this.options.dual.direction &&
@@ -60,6 +62,7 @@ export default class PTDS {
       otherJPs: [],
     };
 
+    // Compute the shared links between the longest journey pattern and all the other ones
     for (const journeyPattern of Object.values(this.data.journeyPatterns)) {
       const sharedLinks = maxNstopsJP.sharedLinks(journeyPattern);
       if (sharedLinks.length) {
