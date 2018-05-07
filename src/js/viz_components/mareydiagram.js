@@ -6,6 +6,7 @@ import { select, mouse, event as d3event } from 'd3-selection';
 import { line } from 'd3-shape';
 import { zoom, zoomIdentity } from 'd3-zoom';
 import { brushY } from 'd3-brush';
+import { flatten } from 'lodash';
 
 const d3 = Object.assign({}, {
   timeParse,
@@ -640,30 +641,21 @@ export default class MareyDiagram {
       .attr('d', schedule => sequenceGenerator(schedule));
 
     // Trip enter + update > circle stops selection
-    // const staticStopsSel = tripsEnterSel.merge(tripsSel)
-    //   .selectAll('circle.static-stop')
-    //   .data(({ links }) => {
-    //     // Get all the stops that the trip has made, by considering all the vertexes
-    //     // of the static schedule links and deduplicating them using an object
-    //     const stops = {};
-    //     for (const link of links) {
-    //       stops[link.start.distance] = link.start.time;
-    //       stops[link.end.distance] = link.end.time;
-    //     }
-    //     return Array.from(Object.entries(stops).map(([distance, time]) => ({ distance, time })));
-    //   });
+    const staticStopsSel = tripsEnterSel.merge(tripsSel)
+      .selectAll('circle.static-stop')
+      .data(({ sequences }) => flatten(sequences));
 
-    // // Trip enter + update > circle stops exit
-    // staticStopsSel.exit().remove();
+    // Trip enter + update > circle stops exit
+    staticStopsSel.exit().remove();
 
-    // // Trip enter + update > circle stops enter
-    // staticStopsSel.enter()
-    //   .append('circle')
-    //   .attr('class', 'static-stop')
-    //   .attr('r', 1.5)
-    //   .attr('cx', ({ distance }) => this.xScale(distance))
-    //   .merge(staticStopsSel)
-    //   .attr('cy', ({ time }) => this.yScale(time));
+    // Trip enter + update > circle stops enter
+    staticStopsSel.enter()
+      .append('circle')
+      .attr('class', 'static-stop')
+      .attr('r', 1.5)
+      .attr('cx', ({ distance }) => this.xScale(distance))
+      .merge(staticStopsSel)
+      .attr('cy', ({ time }) => this.yScale(time));
 
     // const vehiclesPosLinksSel = vehiclesEnterUpdateSel.selectAll('line.pos-link')
     //   .data(({ positions }) => this.getPositionLinks(positions));
