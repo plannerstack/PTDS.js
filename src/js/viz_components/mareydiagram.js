@@ -594,6 +594,8 @@ export default class MareyDiagram {
       }
     }
 
+    console.log(trips);
+
     return trips;
   }
 
@@ -698,6 +700,45 @@ export default class MareyDiagram {
       .attr('cx', ({ distance }) => this.xScale(distance))
       .merge(staticStopsSel)
       .attr('cy', ({ time }) => this.yScale(time));
+
+    const realtimeVehiclesSel = tripsEnterSel.merge(tripsSel)
+      .selectAll('g.vehicle')
+      .data(({ realtimeSequences }) => realtimeSequences);
+
+    realtimeVehiclesSel.exit().remove();
+
+    const realtimeVehiclesEnterSel = realtimeVehiclesSel.enter()
+      .append('g')
+      .attr('class', 'vehicle')
+      .attr('data-vehicle-number', ({ vehicleNumber }) => vehicleNumber);
+
+    const realtimeVehiclesSequencesSel = realtimeVehiclesEnterSel.merge(realtimeVehiclesSel)
+      .selectAll('g.sequence')
+      .data(({ sequences }) => sequences);
+
+    realtimeVehiclesSequencesSel.exit().remove();
+
+    const realtimeVehiclesSequencesEnterSel = realtimeVehiclesSequencesSel.enter()
+      .append('g')
+      .attr('class', 'sequence');
+
+    const realtimeVehiclesSequencesLinksSel = realtimeVehiclesSequencesEnterSel
+      .merge(realtimeVehiclesSequencesSel)
+      .selectAll('line.pos-link')
+      .data(sequence => this.getPositionLinks(sequence));
+
+    realtimeVehiclesSequencesLinksSel.exit().remove();
+
+    realtimeVehiclesSequencesLinksSel.enter()
+      .append('line')
+      // Trip > vehicle > line enter + update
+      .merge(realtimeVehiclesSequencesLinksSel)
+      .attr('class', ({ status, prognosed }) =>
+        `pos-link ${status} ${prognosed ? 'prognosed' : ''}`)
+      .attr('x1', ({ distanceA }) => this.xScale(distanceA))
+      .attr('x2', ({ distanceB }) => this.xScale(distanceB))
+      .attr('y1', ({ timeA }) => this.yScale(timeA))
+      .attr('y2', ({ timeB }) => this.yScale(timeB));
 
     // const vehiclesPosLinksSel = vehiclesEnterUpdateSel.selectAll('line.pos-link')
     //   .data(({ positions }) => this.getPositionLinks(positions));
