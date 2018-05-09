@@ -49,6 +49,7 @@ export default class JourneyPattern {
   sharedSequences(otherJP) {
     const referenceSequences = [];
     const otherSequences = [];
+    let foundSharedLink = false;
 
     for (let refIndex = 0; refIndex < this.stops.length - 1; refIndex += 1) {
       const jpStopA = this.stops[refIndex];
@@ -59,6 +60,7 @@ export default class JourneyPattern {
         const otherJPStopB = otherJP.stops[otherIndex + 1];
 
         if (jpStopA.area === otherJPStopA.area && jpStopB.area === otherJPStopB.area) {
+          foundSharedLink = true;
           if (!referenceSequences.length) {
             // If the reference sequences is list, add the first sequence with the found link
             referenceSequences.push([refIndex, refIndex + 1]);
@@ -84,6 +86,6 @@ export default class JourneyPattern {
       }
     }
 
-    return referenceSequences.length ? { referenceSequences, otherSequences } : false;
+    return foundSharedLink ? { referenceSequences, otherSequences } : false;
   }
 }

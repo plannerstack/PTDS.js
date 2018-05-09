@@ -135,19 +135,45 @@ export default class VehicleJourney {
    *           positions: {time: Date, distance: number, status: string, prognosed: boolean}
    *          }>} - List of enriched realtime position info
    */
-  getVehiclePositions() {
+  get realTimeData() {
     if (!this.isRealTime) return [];
 
     return Object.values(this.realtime).map(({ vehicleNumber, times, distances }) => ({
       vehicleNumber,
       // For each vehicle, enrich its positions information by computing the "on time"
       // status at each position
-      positions: times.map((time, index) => ({
-        time,
-        distance: distances[index],
-        status: this.vehicleStatusComparedToSchedule(time, distances[index]),
-        prognosed: time > new Date(),
-      })),
+      positions: times.map((time, index) => {
+        const distance = distances[index];
+        const staticDistances = Array.from(this.staticSchedule.map(({ distance: d }) => d));
+        let lastStopIndex;
+        let distanceSinceLastStop;
+
+        if (distance <= staticDistances[0]) {
+          lastStopIndex = 0;
+          distanceSinceLastStop = 0;
+        } else if (distance >= staticDistances[staticDistances.length - 1]) {
+          lastStopIndex = staticDistances.length - 2;
+          distanceSinceLastStop = staticDistances[staticDistances.length - 1] -
+                                  staticDistances[staticDistances.length - 2];
+        } else {
+          for (let i = 0; i < staticDistances.length - 1; i += 1) {
+            if (staticDistances[i] <= distance && distance < staticDistances[i + 1]) {
+              lastStopIndex = i;
+              distanceSinceLastStop = distance - staticDistances[i];
+              break;
+            }
+          }
+        }
+
+        return {
+          time,
+          distanceSinceLastStop,
+          distanceFromStart: distance,
+          lastStopIndex,
+          status: this.vehicleStatusComparedToSchedule(time, distance),
+          prognosed: time > new Date(),
+        };
+      }),
     }));
   }
 

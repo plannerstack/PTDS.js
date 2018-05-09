@@ -23,7 +23,6 @@ export default class PTDS {
 
     if (options.mode === 'dual') {
       this.journeyPatternMix = this.computeJourneyPatternMix();
-      console.log(this.journeyPatternMix);
     } else if (options.mode === 'spiralSimulation') {
       this.widgetTimeFormat = d3.timeFormat('%Y-%m-%d %H:%M:%S');
       this.createSimulationWidget();

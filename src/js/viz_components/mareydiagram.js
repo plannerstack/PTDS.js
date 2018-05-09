@@ -517,12 +517,21 @@ export default class MareyDiagram {
    */
   computeTrips() {
     const trips = this.journeyPatternMix.referenceJP.vehicleJourneys
-      .map(({ code, staticSchedule, firstAndLastTimes }) => ({
+      .map(({ code, staticSchedule, firstAndLastTimes, realTimeData }) => ({
         code,
         // For the reference journey pattern there is only one sequence
-        sequences: [
+        staticSequences: [
           staticSchedule.map(({ time, distance }) => ({ time, distance })),
         ],
+        realtimeSequences: realTimeData.map(({ vehicleNumber, positions }) => ({
+          vehicleNumber,
+          sequences: positions.map(({ time, distanceFromStart, status, prognosed }) => ({
+            time,
+            distance: distanceFromStart,
+            status,
+            prognosed,
+          })),
+        })),
         firstAndLastTimes,
       }));
 
@@ -530,23 +539,56 @@ export default class MareyDiagram {
     // the refrence journey pattern.
     for (const otherJP of this.journeyPatternMix.otherJPs) {
       for (const vehicleJourney of otherJP.journeyPattern.vehicleJourneys) {
-        const sequences = [];
-        // For each trip of the "other" journey patterns, iterate over the sequences shared with the
-        // reference journey pattern and add the corresponding "timinglinks".
+        const staticSequences = [];
+
+        // For each trip of the "other" journey patterns, iterate over the sequences
+        // shared with the reference journey pattern and add the corresponding "timinglinks".
         const { referenceSequences, otherSequences } = otherJP.sharedSequences;
         for (let i = 0; i < referenceSequences.length; i += 1) {
           const refSequence = referenceSequences[i];
           const otherSequence = otherSequences[i];
 
-          sequences.push(refSequence.map((refIndex, j) => ({
+          staticSequences.push(refSequence.map((refIndex, j) => ({
             time: vehicleJourney.times[otherSequence[j] * 2],
             distance: this.journeyPatternMix.referenceJP.distances[refIndex],
           })));
         }
 
+        const realtimeSequences = [];
+        for (const { vehicleNumber, positions } of vehicleJourney.realTimeData) {
+          const vehicleSequences = [];
+
+          for (let i = 0; i < referenceSequences.length; i += 1) {
+            const refSequence = referenceSequences[i].slice(0, -1);
+            const otherSequence = otherSequences[i].slice(0, -1);
+
+            vehicleSequences.push(positions
+              .filter(({ lastStopIndex }) => otherSequence.includes(lastStopIndex))
+              .map(({ time, distanceSinceLastStop, lastStopIndex, status, prognosed }) => {
+                const lastStopRefIndex = refSequence[otherSequence.indexOf(lastStopIndex)];
+                const lastStopRefDistance = this.journeyPatternMix
+                  .referenceJP
+                  .distances[lastStopRefIndex];
+
+                return {
+                  time,
+                  distance: distanceSinceLastStop + lastStopRefDistance,
+                  status,
+                  prognosed,
+                };
+              }));
+          }
+
+          realtimeSequences.push({
+            vehicleNumber,
+            sequences: vehicleSequences,
+          });
+        }
+
         trips.push({
           code: vehicleJourney.code,
-          sequences,
+          staticSequences,
+          realtimeSequences,
           firstAndLastTimes: vehicleJourney.firstAndLastTimes,
         });
       }
@@ -620,30 +662,30 @@ export default class MareyDiagram {
       .on('mouseover', tripMouseOver)
       .on('mouseout', tripMouseOut);
 
-    // Trip enter + update > static schedule sequences selection
+    // Trip enter + update > static schedule staticSequences selection
     const staticSequencesSel = tripsEnterSel.merge(tripsSel)
       .selectAll('path.static-sequence')
-      .data(({ sequences }) => sequences);
+      .data(({ staticSequences }) => staticSequences);
 
-    // Trip enter + update > static schedule sequences exit
+    // Trip enter + update > static schedule staticSequences exit
     staticSequencesSel.exit().remove();
 
     const sequenceGenerator = d3.line()
       .x(({ distance }) => this.xScale(distance))
       .y(({ time }) => this.yScale(time));
 
-    // Trip enter + update > static schedule sequences enter
+    // Trip enter + update > static schedule staticSequences enter
     staticSequencesSel.enter()
       .append('path')
       .attr('class', 'static-sequence')
-      // Trip enter + update > static schedule sequences enter + update
+      // Trip enter + update > static schedule staticSequences enter + update
       .merge(staticSequencesSel)
       .attr('d', schedule => sequenceGenerator(schedule));
 
     // Trip enter + update > circle stops selection
     const staticStopsSel = tripsEnterSel.merge(tripsSel)
       .selectAll('circle.static-stop')
-      .data(({ sequences }) => flatten(sequences));
+      .data(({ staticSequences }) => flatten(staticSequences));
 
     // Trip enter + update > circle stops exit
     staticStopsSel.exit().remove();
