@@ -594,8 +594,6 @@ export default class MareyDiagram {
       }
     }
 
-    console.log(trips);
-
     return trips;
   }
 
