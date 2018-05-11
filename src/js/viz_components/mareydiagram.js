@@ -707,23 +707,24 @@ export default class MareyDiagram {
 
     realtimeVehiclesSel.exit().remove();
 
-    const realtimeVehiclesEnterSel = realtimeVehiclesSel.enter()
+    const realtimeVehiclesEnterUpdateSel = realtimeVehiclesSel.enter()
       .append('g')
       .attr('class', 'vehicle')
-      .attr('data-vehicle-number', ({ vehicleNumber }) => vehicleNumber);
+      .attr('data-vehicle-number', ({ vehicleNumber }) => vehicleNumber)
+      .merge(realtimeVehiclesSel);
 
-    const realtimeVehiclesSequencesSel = realtimeVehiclesEnterSel.merge(realtimeVehiclesSel)
+    const realtimeVehiclesSequencesSel = realtimeVehiclesEnterUpdateSel
       .selectAll('g.sequence')
       .data(({ sequences }) => sequences);
 
     realtimeVehiclesSequencesSel.exit().remove();
 
-    const realtimeVehiclesSequencesEnterSel = realtimeVehiclesSequencesSel.enter()
+    const realtimeVehiclesSequencesEnterUpdateSel = realtimeVehiclesSequencesSel.enter()
       .append('g')
-      .attr('class', 'sequence');
+      .attr('class', 'sequence')
+      .merge(realtimeVehiclesSequencesSel);
 
-    const realtimeVehiclesSequencesLinksSel = realtimeVehiclesSequencesEnterSel
-      .merge(realtimeVehiclesSequencesSel)
+    const realtimeVehiclesSequencesLinksSel = realtimeVehiclesSequencesEnterUpdateSel
       .selectAll('line.pos-link')
       .data(sequence => this.getPositionLinks(sequence));
 
@@ -740,95 +741,21 @@ export default class MareyDiagram {
       .attr('y1', ({ timeA }) => this.yScale(timeA))
       .attr('y2', ({ timeB }) => this.yScale(timeB));
 
-    // const vehiclesPosLinksSel = vehiclesEnterUpdateSel.selectAll('line.pos-link')
-    //   .data(({ positions }) => this.getPositionLinks(positions));
+    const realtimeVehiclesSequencesCirclesSel = realtimeVehiclesSequencesEnterUpdateSel
+      .selectAll('circle.position')
+      // Draw the dots representing the positions only at the maximum zoom level
+      .data(sequence => (this.currentApproximation.showPosDots ? sequence : []));
 
-    // vehiclesPosLinksSel.exit().remove();
+    realtimeVehiclesSequencesCirclesSel.exit().remove();
 
-    // // Trip > vehicle > line enter
-    // vehiclesPosLinksSel.enter()
-    //   .append('line')
-    //   // Trip > vehicle > line enter + update
-    //   .merge(vehiclesPosLinksSel)
-    //   .attr('class', ({ status, prognosed }) =>
-    //      `pos-link ${status} ${prognosed ? 'prognosed' : ''}`)
-    //   .attr('x1', ({ distanceA }) => this.xScale(distanceA))
-    //   .attr('x2', ({ distanceB }) => this.xScale(distanceB))
-    //   .attr('y1', ({ timeA }) => this.yScale(timeA))
-    //   .attr('y2', ({ timeB }) => this.yScale(timeB));
-
-    // Trip enter > path
-    // tripsEnterSel
-    //   .append('path')
-    //   .merge(tripsSel.select('path'))
-    //   .attr('d', ({ staticSchedule }) => this.tripLineGenerator(staticSchedule));
-
-    // TODO:
-    // instead of using <path> elements, use separate <line>s like for the realtime data
-
-    // Trip enter > circle selection
-    // const tripsScheduledStopsSel = tripsEnterSel.merge(tripsSel)
-    //   .selectAll('circle.scheduledStop')
-    //   .data(({ staticSchedule }) => staticSchedule);
-
-    // // Trip enter > circle
-    // tripsScheduledStopsSel.enter()
-    //   .append('circle')
-    //   .attr('class', 'scheduledStop')
-    //   .attr('r', '2')
-    //   .attr('cx', ({ distance }) => this.xScale(distance))
-    //   .merge(tripsScheduledStopsSel)
-    //   .attr('cy', ({ time }) => this.yScale(time));
-
-    // // Trip enter > vehicle selection
-    // const vehiclesSel = tripsSel.selectAll('g.vehicle')
-    //   .data(({ vehicles }) => vehicles, ({ vehicleNumber }) => vehicleNumber);
-
-    // // Trip > vehicle exit
-    // vehiclesSel.exit().remove();
-
-    // // Trip > vehicle enter,
-    // const vehiclesEnterSel = vehiclesSel.enter().append('g')
-    //   .attr('class', 'vehicle')
-    //   .attr('data-vehicle-n', ({ vehicleNumber }) => vehicleNumber);
-
-    // // Trip > vehicle enter + update
-    // const vehiclesEnterUpdateSel = vehiclesSel.merge(vehiclesEnterSel);
-
-    // // Trip > vehicle enter + update > circle
-    // const vehiclesPosSel = vehiclesEnterUpdateSel
-    //   .selectAll('circle.position')
-    //   // Draw the dots representing the positions only at the maximum zoom level
-    //   .data(({ positions }) => (this.currentApproximation.showPosDots ? positions : []));
-
-    // vehiclesPosSel.exit().remove();
-
-    // vehiclesPosSel.enter()
-    //   .append('circle')
-    //   .attr('class', ({ status, prognosed }) =>
-    //     `position ${status} ${prognosed ? 'prognosed' : ''}`)
-    //   .attr('r', '1.5')
-    //   .attr('cx', ({ distance }) => this.xScale(distance))
-    //   // Trip > vehicle > circle enter + update
-    //   .merge(vehiclesPosSel)
-    //   .attr('cy', ({ time }) => this.yScale(time));
-
-    // // Trip > vehicle > line
-    // const vehiclesPosLinksSel = vehiclesEnterUpdateSel.selectAll('line.pos-link')
-    //   .data(({ positions }) => this.getPositionLinks(positions));
-
-    // vehiclesPosLinksSel.exit().remove();
-
-    // // Trip > vehicle > line enter
-    // vehiclesPosLinksSel.enter()
-    //   .append('line')
-    //   // Trip > vehicle > line enter + update
-    //   .merge(vehiclesPosLinksSel)
-    //   .attr('class', ({ status, prognosed }) =>
-    //      `pos-link ${status} ${prognosed ? 'prognosed' : ''}`)
-    //   .attr('x1', ({ distanceA }) => this.xScale(distanceA))
-    //   .attr('x2', ({ distanceB }) => this.xScale(distanceB))
-    //   .attr('y1', ({ timeA }) => this.yScale(timeA))
-    //   .attr('y2', ({ timeB }) => this.yScale(timeB));
+    realtimeVehiclesSequencesCirclesSel.enter()
+      .append('circle')
+      .attr('class', ({ status, prognosed }) =>
+        `position ${status} ${prognosed ? 'prognosed' : ''}`)
+      .attr('r', '1.5')
+      .attr('cx', ({ distance }) => this.xScale(distance))
+      // Trip > vehicle > circle enter + update
+      .merge(realtimeVehiclesSequencesCirclesSel)
+      .attr('cy', ({ time }) => this.yScale(time));
   }
 }
