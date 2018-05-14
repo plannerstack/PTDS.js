@@ -715,27 +715,16 @@ export default class MareyDiagram {
       .attr('data-vehicle-number', ({ vehicleNumber }) => vehicleNumber)
       .merge(realtimeVehiclesSel);
 
-    const realtimeVehiclesSequencesSel = realtimeVehiclesEnterUpdateSel
-      .selectAll('g.sequence')
-      .data(({ sequences }) => sequences);
-
-    realtimeVehiclesSequencesSel.exit().remove();
-
-    const realtimeVehiclesSequencesEnterUpdateSel = realtimeVehiclesSequencesSel.enter()
-      .append('g')
-      .attr('class', 'sequence')
-      .merge(realtimeVehiclesSequencesSel);
-
-    const realtimeVehiclesSequencesLinksSel = realtimeVehiclesSequencesEnterUpdateSel
+    const realtimeVehiclesLinksSel = realtimeVehiclesEnterUpdateSel
       .selectAll('line.pos-link')
-      .data(sequence => this.getPositionLinks(sequence));
+      .data(({ sequences }) => flatten(sequences.map(sequence => this.getPositionLinks(sequence))));
 
-    realtimeVehiclesSequencesLinksSel.exit().remove();
+    realtimeVehiclesLinksSel.exit().remove();
 
-    realtimeVehiclesSequencesLinksSel.enter()
+    realtimeVehiclesLinksSel.enter()
       .append('line')
       // Trip > vehicle > line enter + update
-      .merge(realtimeVehiclesSequencesLinksSel)
+      .merge(realtimeVehiclesLinksSel)
       .attr('class', ({ status, prognosed }) =>
         `pos-link ${status} ${prognosed ? 'prognosed' : ''}`)
       .attr('x1', ({ distanceA }) => this.xScale(distanceA))
@@ -743,21 +732,21 @@ export default class MareyDiagram {
       .attr('y1', ({ timeA }) => this.yScale(timeA))
       .attr('y2', ({ timeB }) => this.yScale(timeB));
 
-    const realtimeVehiclesSequencesCirclesSel = realtimeVehiclesSequencesEnterUpdateSel
+    const realtimeVehiclesCirclesSel = realtimeVehiclesEnterUpdateSel
       .selectAll('circle.position')
       // Draw the dots representing the positions only at the maximum zoom level
-      .data(sequence => (this.currentApproximation.showPosDots ? sequence : []));
+      .data(({ sequences }) => (this.currentApproximation.showPosDots ? flatten(sequences) : []));
 
-    realtimeVehiclesSequencesCirclesSel.exit().remove();
+    realtimeVehiclesCirclesSel.exit().remove();
 
-    realtimeVehiclesSequencesCirclesSel.enter()
+    realtimeVehiclesCirclesSel.enter()
       .append('circle')
       .attr('class', ({ status, prognosed }) =>
         `position ${status} ${prognosed ? 'prognosed' : ''}`)
       .attr('r', '1.5')
       .attr('cx', ({ distance }) => this.xScale(distance))
       // Trip > vehicle > circle enter + update
-      .merge(realtimeVehiclesSequencesCirclesSel)
+      .merge(realtimeVehiclesCirclesSel)
       .attr('cy', ({ time }) => this.yScale(time));
   }
 }
