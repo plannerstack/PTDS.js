@@ -30,15 +30,25 @@ const d3 = Object.assign({}, {
  * This class manages the Marey diagram visualization.
  */
 export default class MareyDiagram {
-  constructor(journeyPatternMix, diagGroup, scrollGroup, dims, options, changeCallback) {
+  /**
+   *
+   * @param {Object} journeyPatternMix - Information to draw on the diagram
+   * @param {Object} diagGroup - SVG element of the diagram
+   * @param {Object} scrollGroup - SVG element of the scrollbar/brush
+   * @param {Object} dims - Dimensions of the diagram
+   * @param {Function} changeCallback - Callback for the time change
+   */
+  constructor(journeyPatternMix, diagGroup, scrollGroup, dims, changeCallback) {
     this.journeyPatternMix = journeyPatternMix;
     this.diagGroup = diagGroup;
     this.scrollGroup = scrollGroup;
     this.dims = dims;
-    this.options = options;
 
+    // Compute information needed to draw the trips
     this.trips = this.computeTrips();
+    // Perform initial set-up of the diagram
     this.initialSetup(changeCallback);
+    // Draw the trips in the diagram
     this.drawTrips();
   }
 
@@ -66,26 +76,27 @@ export default class MareyDiagram {
   }
 
   /**
-   * Initial setup of the visualization, including svg group creation,
+   * Initial setup of the visualization, including SVG group creation,
    * scales creation, axes and timeline drawing.
    * @param  {Function} changeCallback - Callback for the timeline change event
    */
   initialSetup(changeCallback) {
+    // Time formatter for the timeline tooltip
     this.timelineTimeFormat = d3.timeFormat('%H:%M:%S');
 
     this.computeTimeBoundaries();
 
-    // Add 10 min offset to improve readability
+    // Expand the time boundaries by 10 minutes to improve readability of the diagram
     this.minTime = d3.timeMinute.offset(this.minTime, -10);
     this.maxTime = d3.timeMinute.offset(this.maxTime, +10);
 
     // Rectangle that clips the trips, so that when we zoom they don't
-    // end up out of the main graph
+    // end up outside of the main diagram
     this.diagGroup.append('clipPath')
       .attr('id', 'clip-path')
       .append('rect')
       // Use a 5px margin on the sides so that the circles representing the stops
-      // are entirely visible
+      // are entirely visible even at the first and last stop
       .attr('x', -5)
       .attr('width', this.dims.marey.innerWidth + 5)
       .attr('height', this.dims.marey.innerHeight);
@@ -95,8 +106,7 @@ export default class MareyDiagram {
       .x(({ distance }) => this.xScale(distance))
       .y(({ time }) => this.yScale(time));
 
-    // Overlay to listen to mouse movement (and update the timeline)
-    // and listen to zoom/pan events
+    // Overlay to capture mouse events (movement of the timeline, zoom/pan)
     this.overlay = this.diagGroup.append('rect')
       .attr('class', 'overlay')
       .attr('width', this.dims.marey.innerWidth)
@@ -112,7 +122,7 @@ export default class MareyDiagram {
   }
 
   /**
-   * Establishes approximation to use in terms of poslinks approximation
+   * Establishes approximation to use in terms of rt-links approximation
    * and showing or not the position dots
    * @return {{minSecondsDelta: number, showPosDots: boolean}} - Object describing the approximation
    */
@@ -120,10 +130,15 @@ export default class MareyDiagram {
     let minSecondsDelta;
     let showPosDots = false;
 
-    if (this.secondsInDomain > 120 * 60) {
+    // If there are more than 1.5 hours in the selected domain, space the position measurements
+    // at least 120 seconds one from each other
+    if (this.secondsInSelectedDomain > 90 * 60) {
       minSecondsDelta = 120;
-    } else if (this.secondsInDomain > 60 * 60) {
+    // If there is more than 1 hour in the selected domain, the min spacing is 30 seconds
+    } else if (this.secondsInSelectedDomain > 60 * 60) {
       minSecondsDelta = 30;
+    // If there is less than one hour we have no minimum spacing (= we show all the measurements)
+    // and we also show the circles in correspondance of them
     } else {
       minSecondsDelta = 0;
       showPosDots = true;
@@ -133,12 +148,12 @@ export default class MareyDiagram {
   }
 
   /**
-   * Number of seconds in the current domain of the Marey diagram
-   * @return {Number} - Seconds in current domain of the Marey diagram
+   * Number of seconds in the selected domain of the Marey diagram
+   * @return {Number} - Seconds in selected domain of the Marey diagram
    */
-  get secondsInDomain() {
-    const yDomain = this.yScale.domain();
-    return (yDomain[1] - yDomain[0]) / 1000;
+  get secondsInSelectedDomain() {
+    const ySelectedDomain = this.yScale.domain();
+    return (ySelectedDomain[1] - ySelectedDomain[0]) / 1000;
   }
 
   /**
@@ -149,7 +164,7 @@ export default class MareyDiagram {
    * @return {Function} - Time formatter
    */
   get yAxisTimeFormatter() {
-    if (this.secondsInDomain < 15 * 60) return d3.timeFormat('%H:%M:%S');
+    if (this.secondsInSelectedDomain < 15 * 60) return d3.timeFormat('%H:%M:%S');
     return d3.timeFormat('%H:%M');
   }
 
@@ -158,15 +173,17 @@ export default class MareyDiagram {
    */
   zoomAndBrushSetup() {
     // Since we haven't selected a range yet, this will get the domain of the entire day
-    const minutesInDomain = Math.floor(this.secondsInDomain / 60);
+    const minutesInTotalDomain = Math.floor(this.secondsInSelectedDomain / 60);
     this.zoomBehaviour = d3.zoom()
-      // Base maximum zoom on the number of minutes in the domain for the current day
-      .scaleExtent([1, minutesInDomain * 1.6667])
+      // Base maximum zoom on the number of minutes in the domain for the current day.
+      // The 1.6667 constant is empirically determined so that at the maximum zoom level
+      // the granularity is seconds.
+      .scaleExtent([1, minutesInTotalDomain * 1.6667])
       .extent([[0, 0], [this.dims.marey.innerWidth, this.dims.marey.innerHeight]])
       .translateExtent([[0, 0], [this.dims.marey.innerWidth, this.dims.marey.innerHeight]])
       // We encapsulate this.zoomed in a closure so that we don't lose the "this" context
       .on('zoom', () => { this.zoomed(); });
-
+    // Attach zoom behaviour to SVG group
     this.diagGroup.call(this.zoomBehaviour);
 
     this.brushBehaviour = d3.brushY()
@@ -182,6 +199,7 @@ export default class MareyDiagram {
       [, initialEndTime] = this.yScrollScale.domain();
     }
 
+    // Attach brush behaviour to SVG group and set initial selection
     this.scrollGroup
       .call(this.brushBehaviour)
       .call(this.brushBehaviour.move, [0, this.yScrollScale(initialEndTime)]);
@@ -191,15 +209,23 @@ export default class MareyDiagram {
    * Handle the brush selection
    */
   brushed() {
-    // When the zoom event is triggered, the zoom handler
-    // triggers a brush event to sync the two parts,
-    // but we don't want to handle the brush in that case.
+    // When the zoom event is triggered, the zoom handler triggers a brush event to sync
+    // the two parts, but we don't want to handle the brush as usual in that case
     if (d3event.sourceEvent && d3event.sourceEvent.type === 'zoom') return;
 
     // Get the brush selection
-    const selection = d3event.selection || this.yScrollScale.range();
+    const { selection } = d3event;
 
-    // Make it impossible to select a null extent
+    // If the selection is empty, select the full range
+    if (!selection) {
+      this.scrollGroup.call(
+        this.brushBehaviour.move,
+        this.yScrollScale.range(),
+      );
+      return;
+    }
+
+    // Make it impossible to perform a 0px selection
     if (selection[0] === selection[1]) {
       this.scrollGroup.call(
         this.brushBehaviour.move,
@@ -208,7 +234,7 @@ export default class MareyDiagram {
       return;
     }
 
-    // Update the marey y scale domain
+    // Update the Marey y scale domain
     this.yScale.domain(selection.map(this.yScrollScale.invert));
 
     // Update marey axes
@@ -250,7 +276,7 @@ export default class MareyDiagram {
       // If the event is triggered by the scroll of the mouse wheel and the shift key
       // is not pressed, we interpret it as PAN
       if (d3event.sourceEvent.type === 'wheel' && !d3event.sourceEvent.shiftKey) {
-        // Get the current domain in the marey diagram y axis
+        // Get the current domain in the Marey diagram y axis
         const selectedDomain = this.yScale.domain();
         // Compute number of seconds in the selected domain
         const secondsInSelectedDomain = (selectedDomain[1] - selectedDomain[0]) / 1000;
@@ -315,7 +341,7 @@ export default class MareyDiagram {
       this.yScale.domain().map(this.yScrollScale),
     );
 
-    // Update the marey y axes
+    // Update the Marey y axes
     this.refreshAxes();
 
     // Update the trips
@@ -326,9 +352,10 @@ export default class MareyDiagram {
    * Create x and y scales for the visualization, used to draw the axes and the trips
    */
   createScales() {
-    const refJPdistances = this.journeyPatternMix.referenceJP.distances;
+    const referenceJPstopsDistances = this.journeyPatternMix.referenceJP.distances;
+    const lastStopDistance = referenceJPstopsDistances[referenceJPstopsDistances.length - 1];
     this.xScale = d3.scaleLinear()
-      .domain([0, refJPdistances[refJPdistances.length - 1]])
+      .domain([0, lastStopDistance])
       .range([0, this.dims.marey.innerWidth]);
     this.yScale = d3.scaleTime()
       .domain([this.minTime, this.maxTime])
@@ -361,7 +388,7 @@ export default class MareyDiagram {
   }
 
   /**
-   * Vertical axes drawing, left and right
+   * Vertical axes drawing, left and rights
    */
   drawYAxes() {
     this.yLeftAxis = d3.axisLeft(this.yScale)
@@ -400,24 +427,30 @@ export default class MareyDiagram {
       .attr('data-stop-area-code', ({ area: { code } }) => code)
       .on('mouseover', function f(stop) {
         const stopAreaCode = stop.area.code;
-        d3.select(`#map g.stopArea[data-stop-area-code='${stopAreaCode}'] circle`).attr('r', 3);
+        // TODO: radius when selected and non selected (below) should be specified as a config
+        // options somewhere else
+        const selectedStopAreaRadius = 3;
+        d3.select(`#map g.stopArea[data-stop-area-code='${stopAreaCode}'] circle`)
+          .attr('r', selectedStopAreaRadius);
         d3.select(this).classed('selected', true);
       })
       .on('mouseout', function f(stop) {
         const stopAreaCode = stop.area.code;
-        d3.select(`#map g.stopArea[data-stop-area-code='${stopAreaCode}'] circle`).attr('r', 1);
+        const deselectedStopAreaRadius = 1;
+        d3.select(`#map g.stopArea[data-stop-area-code='${stopAreaCode}'] circle`)
+          .attr('r', deselectedStopAreaRadius);
         d3.select(this).classed('selected', false);
       });
 
     this.xAxisG.selectAll('text')
       .attr('x', 5)
-      .attr('dy', '.35em');
+      .attr('y', 4);
   }
 
   /**
    * Create the horizontal line representing the timeline
    * and make it move when the mouse is hovered in the canvas
-   * @param  {Function} changeCallback - Callback to trigger when the timeline is moved
+   * @param {Function} changeCallback - Callback to trigger when the timeline is moved
    */
   createTimeline(changeCallback) {
     // Initial position of the timeline
@@ -426,11 +459,11 @@ export default class MareyDiagram {
     // Timeline initial position
     this.timelineG.attr('transform', `translate(0,${initialTimelineYpos})`);
 
-    // Horizontal line
+    // Horizontal line drawing
     this.timelineG.append('line')
       .attr('x2', this.dims.marey.innerWidth)
       // Keep the line slightly below the mouse cursor so that it doesn't capture
-      // all the mouse events, passing them to the elements below
+      // all the mouse events, letting the elements "below" to listen to them
       .attr('y1', 1)
       .attr('y2', 1);
 
@@ -470,21 +503,22 @@ export default class MareyDiagram {
   }
 
   /**
-   * Given a list of vehicle positions, get the links between them.
+   * Given a sequence of vehicle positions, get the links between them.
    * Basing on the current domain of the diagram, it approximates the positions
    * to reduce the amount of links to be drawn.
-   * @param  {Array.<{time: Date, distance: number, status: string}>} positions - Positions info
+   * @param  {Array.<{time: Date, distance: number,
+   *                  status: string, prognosed: boolean}>} sequence - Positions info
    * @return {Array.<{timeA: Date, timeB: Date,
    *           distanceA: number, distanceB: number,
    *           status: string, prognosed: boolean}>} - Positions links information
    */
-  getPositionLinks(positions) {
+  getRealtimeLinks(sequence) {
     const posLinks = [];
     let index = 0;
 
-    while (index < positions.length - 1) {
-      const posA = positions[index];
-      let posB = positions[index + 1];
+    while (index < sequence.length - 1) {
+      const posA = sequence[index];
+      let posB = sequence[index + 1];
       const timeA = posA.time;
       let timeB = posB.time;
 
@@ -492,11 +526,11 @@ export default class MareyDiagram {
       // apart from the first one, skip it and move to the next "second position".
       // Only if the first and second position of the segment have the same status,
       // so that if a vehicle changed its status we don't skip the position
-      while (index < positions.length - 2 &&
+      while (index < sequence.length - 2 &&
              posA.status === posB.status &&
              timeB - timeA < this.currentApproximation.minSecondsDelta * 1000) {
         index += 1;
-        posB = positions[index + 1];
+        posB = sequence[index + 1];
         timeB = posB.time;
       }
 
@@ -512,19 +546,19 @@ export default class MareyDiagram {
   }
 
   /**
-   *  Compute information needed to draw the trips on the Marey diagram
+   * Compute information needed to draw the trips on the Marey diagram
    * @return {Object} - Trip drawing information
    */
   computeTrips() {
+    // Compute drawing information for the trips of the reference journey pattern
     const trips = this.journeyPatternMix.referenceJP.vehicleJourneys
       .map(({ code, staticSchedule, firstAndLastTimes, realTimeData }) => ({
         code,
         // For the reference journey pattern there is only one sequence
-        staticSequences: [
-          staticSchedule.map(({ time, distance }) => ({ time, distance })),
-        ],
+        staticSequences: [staticSchedule.map(({ time, distance }) => ({ time, distance }))],
         realtimeSequences: realTimeData.map(({ vehicleNumber, positions }) => ({
           vehicleNumber,
+          // Again, only one sequence per vehicle for the reference journey pattern
           sequences: [positions.map(({ time, distanceFromStart, status, prognosed }) => ({
             time,
             distance: distanceFromStart,
@@ -535,14 +569,15 @@ export default class MareyDiagram {
         firstAndLastTimes,
       }));
 
-    // Then, for the "other" journey patterns which match in at least one link with
-    // the refrence journey pattern.
+    // Then compute the trip drawing information for the other journey patterns that share
+    // at least one link with the reference JP
     for (const otherJP of this.journeyPatternMix.otherJPs) {
+      // Iterate over the trips of the journey pattern
       for (const vehicleJourney of otherJP.journeyPattern.vehicleJourneys) {
         const staticSequences = [];
 
         // For each trip of the "other" journey patterns, iterate over the sequences
-        // shared with the reference journey pattern and add the corresponding "timinglinks".
+        // shared with the reference journey pattern and add the corresponding "timinglinks"
         const { referenceSequences, otherSequences } = otherJP.sharedSequences;
         for (let i = 0; i < referenceSequences.length; i += 1) {
           const refSequence = referenceSequences[i];
@@ -555,32 +590,48 @@ export default class MareyDiagram {
         }
 
         const realtimeSequences = [];
+        // Iterate over each of the real time vehicles
         for (const { vehicleNumber, positions } of vehicleJourney.realTimeData) {
           const vehicleSequences = [];
 
+          // Iterate over the shared sequence
           for (let i = 0; i < referenceSequences.length; i += 1) {
+            // Filter out last stop of the sequence because it is not valid as "last stop"
             const refSequence = referenceSequences[i].slice(0, -1);
             const otherSequence = otherSequences[i].slice(0, -1);
 
+            // For each shared sequence, add the positions data of the current trip by mapping
+            // the distance relative to the last stop of the trip to the absolute distance
+            // in the reference journey pattern
             const vehicleSequence = positions
               .filter(({ lastStopIndex }) => otherSequence.includes(lastStopIndex))
               .map(({ time, distanceSinceLastStop, lastStopIndex, status, prognosed }) => {
+                // Find the index of the last stop before the current position
+                // in the reference journey pattern
                 const lastStopRefIndex = refSequence[otherSequence.indexOf(lastStopIndex)];
+                // Get distance of last stop in the reference journey pattern
                 const lastStopRefDistance = this.journeyPatternMix
                   .referenceJP
                   .distances[lastStopRefIndex];
 
                 return {
                   time,
-                  distance: distanceSinceLastStop + lastStopRefDistance,
                   status,
                   prognosed,
+                  // Map the distance by adding the distance of the last stop in the reference
+                  // journey pattern to the distance since the last stop
+                  distance: distanceSinceLastStop + lastStopRefDistance,
                 };
               });
 
+            // Filter out sequences with zero length (can happen that a vehicle belonging to a
+            // journey pattern that shares >1 link(s) with the reference one does not have any
+            // positions to be drawn because the positions are not part of the shared links)
             if (vehicleSequence.length) vehicleSequences.push(vehicleSequence);
           }
 
+          // Filter out vehicles without any position information (can happen that a vehicle
+          // does not have any realtime position data)
           if (vehicleSequences.length) {
             realtimeSequences.push({
               vehicleNumber,
@@ -605,6 +656,14 @@ export default class MareyDiagram {
    * Draw the trips on the diagram
    */
   drawTrips() {
+    // TODO: move these constants in a separate config file
+    const selectedTripStaticStopRadius = 3;
+    const selectedTripRTposRadius = 3;
+    const selectedTripRadius = 6;
+    const deSelectedTripStaticStopRadius = 2;
+    const deSelectedTripRTposRadius = 2;
+    const deSelectedTripRadius = 3;
+
     // Determines if a trip is in the currently selected domain
     const tripInSelectedDomain = (trip) => {
       const [minShownTime, maxShownTime] = this.yScale.domain();
@@ -644,9 +703,10 @@ export default class MareyDiagram {
         .text(({ code }) => code);
       // Add 'selected' class to the trip SVG group
       tripSel.classed('selected', true);
-      tripSel.selectAll('circle.scheduledStop').attr('r', 3);
+      tripSel.selectAll('circle.static-stop').attr('r', selectedTripStaticStopRadius);
+      tripSel.selectAll('circle.rt-position').attr('r', selectedTripRTposRadius);
       // In the map, highlight the vehicle
-      d3.select(`#map g.trip[data-code='${trip.code}'] circle`).attr('r', 6);
+      d3.select(`#map g.trip[data-code='${trip.code}'] circle`).attr('r', selectedTripRadius);
     }
 
     // Handle mouse out of trip event
@@ -655,98 +715,112 @@ export default class MareyDiagram {
       const tripSel = d3.select(this);
       tripSel.select('text.tripLabel').remove();
       tripSel.classed('selected', false);
-      tripSel.selectAll('circle.scheduledStop').attr('r', 2);
-      d3.select(`#map g.trip[data-code='${trip.code}'] circle`).attr('r', 3);
+
+      tripSel.selectAll('circle.static-stop').attr('r', deSelectedTripStaticStopRadius);
+      tripSel.selectAll('circle.rt-position').attr('r', deSelectedTripRTposRadius);
+      d3.select(`#map g.trip[data-code='${trip.code}'] circle`).attr('r', deSelectedTripRadius);
     }
 
     // Trip enter
-    const tripsEnterSel = tripsSel.enter().append('g')
+    const tripsEnterUpdateSel = tripsSel.enter().append('g')
       .attr('class', 'trip')
       .attr('data-trip-code', ({ code }) => code)
       .on('mouseover', tripMouseOver)
-      .on('mouseout', tripMouseOut);
+      .on('mouseout', tripMouseOut)
+      // Trip enter + update
+      .merge(tripsSel);
 
-    // Trip enter + update > static schedule staticSequences selection
-    const staticSequencesSel = tripsEnterSel.merge(tripsSel)
+    // Trip enter + update > static sequences selection
+    const staticSequencesSel = tripsEnterUpdateSel
       .selectAll('path.static-sequence')
       .data(({ staticSequences }) => staticSequences);
 
-    // Trip enter + update > static schedule staticSequences exit
+    // Trip enter + update > static sequences exit
     staticSequencesSel.exit().remove();
 
-    const sequenceGenerator = d3.line()
-      .x(({ distance }) => this.xScale(distance))
-      .y(({ time }) => this.yScale(time));
-
-    // Trip enter + update > static schedule staticSequences enter
+    // Trip enter + update > static sequences enter
     staticSequencesSel.enter()
       .append('path')
       .attr('class', 'static-sequence')
-      // Trip enter + update > static schedule staticSequences enter + update
+      // Trip enter + update > static sequences enter + update
       .merge(staticSequencesSel)
-      .attr('d', schedule => sequenceGenerator(schedule));
+      .attr('d', schedule => this.tripLineGenerator(schedule));
 
-    // Trip enter + update > circle stops selection
-    const staticStopsSel = tripsEnterSel.merge(tripsSel)
+    // Trip enter + update > static stops selection
+    const staticStopsSel = tripsEnterUpdateSel
       .selectAll('circle.static-stop')
       .data(({ staticSequences }) => flatten(staticSequences));
 
-    // Trip enter + update > circle stops exit
+    // Trip enter + update > static stops exit
     staticStopsSel.exit().remove();
 
-    // Trip enter + update > circle stops enter
+    // Trip enter + update > static stops enter
     staticStopsSel.enter()
       .append('circle')
       .attr('class', 'static-stop')
-      .attr('r', 1.5)
+      .attr('r', deSelectedTripStaticStopRadius)
       .attr('cx', ({ distance }) => this.xScale(distance))
       .merge(staticStopsSel)
       .attr('cy', ({ time }) => this.yScale(time));
 
-    const realtimeVehiclesSel = tripsEnterSel.merge(tripsSel)
+    // Trip enter + update > realtime vehicle sequences selection
+    const realtimeVehiclesSel = tripsEnterUpdateSel
       .selectAll('g.vehicle')
       .data(({ realtimeSequences }) => realtimeSequences);
 
+    // Trip enter + update > realtime vehicle sequences exit
     realtimeVehiclesSel.exit().remove();
 
+    // Trip enter + update > realtime vehicle sequences enter
     const realtimeVehiclesEnterUpdateSel = realtimeVehiclesSel.enter()
       .append('g')
       .attr('class', 'vehicle')
       .attr('data-vehicle-number', ({ vehicleNumber }) => vehicleNumber)
+      // Trip enter + update > realtime vehicle sequences enter + update
       .merge(realtimeVehiclesSel);
 
+    // Trip enter + update > realtime vehicle sequences > realtime link selection
     const realtimeVehiclesLinksSel = realtimeVehiclesEnterUpdateSel
-      .selectAll('line.pos-link')
-      .data(({ sequences }) => flatten(sequences.map(sequence => this.getPositionLinks(sequence))));
+      .selectAll('line.rt-link')
+      // Compute the realtime links for each sequence and make a single array out of it
+      .data(
+        ({ sequences }) => flatten(sequences.map(sequence => this.getRealtimeLinks(sequence))),
+        ({ vehicleNumber }) => vehicleNumber,
+      );
 
+    // Trip enter + update > realtime vehicle sequences > realtime link exit
     realtimeVehiclesLinksSel.exit().remove();
 
+    // Trip enter + update > realtime vehicle sequences > realtime link enter
     realtimeVehiclesLinksSel.enter()
       .append('line')
-      // Trip > vehicle > line enter + update
+      // Trip enter + update > realtime vehicle sequences > realtime link enter + update
       .merge(realtimeVehiclesLinksSel)
-      .attr('class', ({ status, prognosed }) =>
-        `pos-link ${status} ${prognosed ? 'prognosed' : ''}`)
+      .attr('class', ({ status }) => `rt-link ${status}`)
+      .classed('prognosed', ({ prognosed }) => prognosed)
       .attr('x1', ({ distanceA }) => this.xScale(distanceA))
       .attr('x2', ({ distanceB }) => this.xScale(distanceB))
       .attr('y1', ({ timeA }) => this.yScale(timeA))
       .attr('y2', ({ timeB }) => this.yScale(timeB));
 
-    const realtimeVehiclesCirclesSel = realtimeVehiclesEnterUpdateSel
-      .selectAll('circle.position')
-      // Draw the dots representing the positions only at the maximum zoom level
+    // Trip enter + update > realtime vehicle sequences > realtime position selection
+    const realtimeVehiclesPositionsSel = realtimeVehiclesEnterUpdateSel
+      .selectAll('circle.rt-position')
+      // Draw the circles representing the positions only at the maximum zoom level
       .data(({ sequences }) => (this.currentApproximation.showPosDots ? flatten(sequences) : []));
 
-    realtimeVehiclesCirclesSel.exit().remove();
+    // Trip enter + update > realtime vehicle sequences > realtime position exit
+    realtimeVehiclesPositionsSel.exit().remove();
 
-    realtimeVehiclesCirclesSel.enter()
+    // Trip enter + update > realtime vehicle sequences > realtime position enter
+    realtimeVehiclesPositionsSel.enter()
       .append('circle')
-      .attr('class', ({ status, prognosed }) =>
-        `position ${status} ${prognosed ? 'prognosed' : ''}`)
-      .attr('r', '1.5')
+      .attr('class', ({ status }) => `rt-position ${status}`)
+      .classed('prognosed', ({ prognosed }) => prognosed)
+      .attr('r', deSelectedTripRTposRadius)
       .attr('cx', ({ distance }) => this.xScale(distance))
-      // Trip > vehicle > circle enter + update
-      .merge(realtimeVehiclesCirclesSel)
+      // Trip enter + update > realtime vehicle sequences > realtime position enter
+      .merge(realtimeVehiclesPositionsSel)
       .attr('cy', ({ time }) => this.yScale(time));
   }
 }

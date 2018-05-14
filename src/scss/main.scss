@@ -96,7 +96,7 @@ svg {
     fill: none;
   }
 
-  g.vehicle circle.position {
+  g.vehicle circle.rt-position {
     &.early {
       fill: $vehicle-early-color;
     }
@@ -110,7 +110,7 @@ svg {
     }
   }
 
-  g.vehicle line.pos-link {
+  g.vehicle line.rt-link {
     &.early {
       stroke: $vehicle-early-color;
     }

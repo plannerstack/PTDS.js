@@ -16,12 +16,6 @@ export default class JourneyPattern {
     this.distances = distances;
     this.line = line;
     this.direction = direction;
-
-    // Create Array with (stop, distance) pairs
-    this.stopsDistances = this.stops.map((stop, index) => ({
-      stop,
-      distance: this.distances[index],
-    }));
   }
 
   /**
@@ -47,18 +41,26 @@ export default class JourneyPattern {
    *  correspondance between the reference and the other journey pattern
    */
   sharedSequences(otherJP) {
+    // The idea is that in a "reference sequence" we store the index of the matching stops within
+    // the reference journey pattern while in the "other sequence" we store the index of the
+    // matching stops in the other journey pattern
     const referenceSequences = [];
     const otherSequences = [];
     let foundSharedLink = false;
 
+    // Iterate over the links of the JP
     for (let refIndex = 0; refIndex < this.stops.length - 1; refIndex += 1) {
+      // Extract (stopA, stopB) pairs
       const jpStopA = this.stops[refIndex];
       const jpStopB = this.stops[refIndex + 1];
 
+      // Iterate over the links of the other JP
       for (let otherIndex = 0; otherIndex < otherJP.stops.length - 1; otherIndex += 1) {
+        // Extract (oStopA, oStopB) pairs
         const otherJPStopA = otherJP.stops[otherIndex];
         const otherJPStopB = otherJP.stops[otherIndex + 1];
 
+        // If we find a shared link between the journey patterns (same stop areas)
         if (jpStopA.area === otherJPStopA.area && jpStopB.area === otherJPStopB.area) {
           foundSharedLink = true;
           if (!referenceSequences.length) {
@@ -86,6 +88,7 @@ export default class JourneyPattern {
       }
     }
 
+    // If no shared link was found, return false
     return foundSharedLink ? { referenceSequences, otherSequences } : false;
   }
 }
