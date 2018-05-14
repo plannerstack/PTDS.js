@@ -525,12 +525,12 @@ export default class MareyDiagram {
         ],
         realtimeSequences: realTimeData.map(({ vehicleNumber, positions }) => ({
           vehicleNumber,
-          sequences: positions.map(({ time, distanceFromStart, status, prognosed }) => ({
+          sequences: [positions.map(({ time, distanceFromStart, status, prognosed }) => ({
             time,
             distance: distanceFromStart,
             status,
             prognosed,
-          })),
+          }))],
         })),
         firstAndLastTimes,
       }));
@@ -562,7 +562,7 @@ export default class MareyDiagram {
             const refSequence = referenceSequences[i].slice(0, -1);
             const otherSequence = otherSequences[i].slice(0, -1);
 
-            vehicleSequences.push(positions
+            const vehicleSequence = positions
               .filter(({ lastStopIndex }) => otherSequence.includes(lastStopIndex))
               .map(({ time, distanceSinceLastStop, lastStopIndex, status, prognosed }) => {
                 const lastStopRefIndex = refSequence[otherSequence.indexOf(lastStopIndex)];
@@ -576,13 +576,17 @@ export default class MareyDiagram {
                   status,
                   prognosed,
                 };
-              }));
+              });
+
+            if (vehicleSequence.length) vehicleSequences.push(vehicleSequence);
           }
 
-          realtimeSequences.push({
-            vehicleNumber,
-            sequences: vehicleSequences,
-          });
+          if (vehicleSequences.length) {
+            realtimeSequences.push({
+              vehicleNumber,
+              sequences: vehicleSequences,
+            });
+          }
         }
 
         trips.push({
