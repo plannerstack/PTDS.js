@@ -21,18 +21,64 @@ export default class PTDS {
     this.data = new PTDataset(inputData, options.selectedDate);
     this.options = options;
 
-    this.widgetTimeFormat = d3.timeFormat('%Y-%m-%d %H:%M:%S');
-
-    if (options.mode === 'spiralSimulation') { this.createSimulationWidget(); }
+    if (options.mode === 'dual') {
+      this.journeyPatternMix = this.computeJourneyPatternMix();
+    } else if (options.mode === 'spiralSimulation') {
+      this.widgetTimeFormat = d3.timeFormat('%Y-%m-%d %H:%M:%S');
+      this.createSimulationWidget();
+    }
 
     this.createVisualizations();
+  }
+
+  /**
+   * Used in the dual visualization mode, computes the object representing the mix of journey
+   * patterns that we are going to visualize.
+   * @return {{
+   *         referenceJP: JourneyPattern,
+   *         otherJPs: {
+   *           journeyPattern: JourneyPattern,
+   *           sharedSequences: {
+   *              referenceSequences: Array.<Array.<number>>,
+   *              otherSequences: Array.<Array.<number>>
+   *            }
+   *         }
+   * }} - Object representing the mix of journey patterns to display
+   */
+  computeJourneyPatternMix() {
+    let maxNstops = -1;
+    let maxNstopsJP;
+
+    // Find the longest journey pattern with the given line and direction (most stops)
+    for (const journeyPattern of Object.values(this.data.journeyPatterns)) {
+      if (journeyPattern.line.code === this.options.dual.line &&
+          journeyPattern.direction === this.options.dual.direction &&
+          journeyPattern.stops.length > maxNstops) {
+        maxNstops = journeyPattern.stops.length;
+        maxNstopsJP = journeyPattern;
+      }
+    }
+
+    const journeyPatternMix = {
+      referenceJP: maxNstopsJP,
+      otherJPs: [],
+    };
+
+    // Compute the shared sequences between the longest journey pattern and all the other ones
+    for (const journeyPattern of Object.values(this.data.journeyPatterns)) {
+      if (journeyPattern.code !== maxNstopsJP.code) {
+        const sharedSequences = maxNstopsJP.sharedSequences(journeyPattern);
+        if (sharedSequences) journeyPatternMix.otherJPs.push({ journeyPattern, sharedSequences });
+      }
+    }
+
+    return journeyPatternMix;
   }
 
   /**
    * Create the SVG elements
    */
   createSVGObjects() {
-    /* eslint global-require: "off" */
     // Get browser dimensions
     // The correction factors are needed because the actual size
     // available is less than the one returned by the browser due to scrollbars
@@ -201,10 +247,17 @@ export default class PTDS {
     if (this.options.mode === 'dual') {
       // Callback that updates the map when the timeline is moved in the Marey diagram
       const timelineChangeCallback = (time) => {
+        // Extract the codes of all the journey patterns shown (reference + others sharing >1 link)
+        const selectedJPcodes = [
+          this.journeyPatternMix.referenceJP.code,
+          ...this.journeyPatternMix.otherJPs.map(({ journeyPattern }) => journeyPattern.code),
+        ];
+
         this.map.updateData({
           trips: this.getTripsAtTime(
             time,
-            trip => this.options.dual.journeyPatterns.includes(trip.journeyPattern.code),
+            // Display on the map only the trips that we're showing in the diagram
+            trip => selectedJPcodes.includes(trip.journeyPattern.code),
           ),
         });
         this.map.drawTrips();
@@ -212,11 +265,10 @@ export default class PTDS {
 
       // Creation of the Marey diagram
       this.marey = new MareyDiagram(
-        this.getMareyData(),
+        this.journeyPatternMix,
         this.mareySVGgroup,
         this.scrollSVGgroup,
         this.dims,
-        this.options,
         timelineChangeCallback,
       );
     }
@@ -238,8 +290,12 @@ export default class PTDS {
       // If we're in dual mode, we're interested only in the data that belongs
       // to the chosen journey pattern(s). To filter the stops, stop areas and stops links
       // we first extract the stops belonging to the chosen journey pattern(s).
-      for (const journeyPatternRef of this.options.dual.journeyPatterns) {
-        for (const stop of this.data.journeyPatterns[journeyPatternRef].stops) {
+      const selectedJourneyPatterns = [
+        this.journeyPatternMix.referenceJP,
+        ...this.journeyPatternMix.otherJPs.map(({ journeyPattern }) => journeyPattern),
+      ];
+      for (const journeyPattern of selectedJourneyPatterns) {
+        for (const stop of journeyPattern.stops) {
           validStops.push(stop);
         }
       }
@@ -271,45 +327,6 @@ export default class PTDS {
       [];
 
     return { stops: validStops, stopAreas, links, trips: [] };
-  }
-
-  /**
-   * Get the data needed to draw the Marey diagram
-   * @return {{
-   *   trips: Array.<{
-   *     code: string,
-   *     schedule: Array.<{time: Date, distance: number}>,
-   *     vehicles: Array.<{
-   *       vehichleNumber: number,
-   *       positions: {time: Date, distance: number, status: string, prognosed: boolean}
-   *     }>,
-   *     timeBoundaries: {first: Date, last: Date}
-   *   }>,
-   *   stopsDistances: Array.<{stop: Stop, distance: number}>,
-   *   timeBoundaries: {first: Date, last: Date}
-   * }} - Data for the Marey diagram
-   */
-  getMareyData() {
-    // TODO: support multiple journey patterns
-    const journeyPatternCode = this.options.dual.journeyPatterns[0];
-    const journeyPattern = this.data.journeyPatterns[journeyPatternCode];
-
-    // Trips that belong to the chosen journey pattern(s)
-    const trips = journeyPattern.vehicleJourneys;
-
-    // Create trips list with essential information for the Marey diagram
-    const tripsProcessed = trips.map(trip => ({
-      code: trip.code,
-      schedule: trip.staticSchedule,
-      vehicles: trip.getVehiclePositions(),
-      timeBoundaries: trip.firstAndLastTimes,
-    }));
-
-    return {
-      trips: tripsProcessed,
-      stopsDistances: journeyPattern.stopsDistances,
-      timeBoundaries: journeyPattern.firstAndLastTimes,
-    };
   }
 
   /**

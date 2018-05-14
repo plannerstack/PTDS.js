@@ -20,18 +20,16 @@ export default class VehicleJourney {
     this.code = code;
     this.journeyPattern = journeyPattern;
     this.times = times;
-    this.realtime = realtime;
+    this.rt = realtime;
     this.cancelled = cancelled;
 
     // Compute static schedule as (time, distance) object pairs array
-    this.staticSchedule = this.times
-      .map((time, index) => ({
-        time,
+    this.staticSchedule = this.journeyPattern.distances
+      .map((distance, index) => ({
+        distance,
         // The times array is double the length of the distances array,
         // because we have for each stop the arrival and departure time.
-        // Therefore we take the distance element with index corresponding
-        // to half the index of the corresponding time element
-        distance: this.journeyPattern.distances[Math.floor(index / 2)],
+        time: this.times[index * 2],
       }));
   }
 
@@ -40,7 +38,7 @@ export default class VehicleJourney {
    * @return {boolean} - True if real time data is available, false otherwise
    */
   get isRealTime() {
-    return typeof this.realtime !== 'undefined' && Object.keys(this.realtime).length !== 0;
+    return typeof this.rt !== 'undefined' && Object.keys(this.rt).length !== 0;
   }
 
   /**
@@ -51,7 +49,7 @@ export default class VehicleJourney {
   get firstAndLastTimes() {
     if (this.isRealTime) {
       // Extract first and last realtime time for each vehicle
-      const combinedFirstAndLast = Object.values(this.realtime)
+      const combinedFirstAndLast = Object.values(this.rt)
         .filter(({ times }) => times.length > 0)
         .map(({ times }) => ({ first: times[0], last: times[times.length - 1] }));
 
@@ -83,7 +81,7 @@ export default class VehicleJourney {
     // If realtime data is available, the trip is considered active
     // if at least one of the vehicles is active
     if (this.isRealTime) {
-      return Object.values(this.realtime).some(({ times }) =>
+      return Object.values(this.rt).some(({ times }) =>
         times[0] <= time && time <= times[times.length - 1]);
     }
 
@@ -131,25 +129,61 @@ export default class VehicleJourney {
   }
 
   /**
-   * Computes the realtime positions information of a the vehicles belonging to this journey
+   * Computes the realtime positions information of the vehicles belonging to this journey
    * @return {Array.<{
-   *           vehichleNumber: number,
-   *           positions: {time: Date, distance: number, status: string, prognosed: boolean}
+   *           vehicleNumber: number,
+   *           positions: {time: Date, distanceSinceLastStop: number, distanceFromStart: number,
+   *           status: string, prognosed: boolean}
    *          }>} - List of enriched realtime position info
    */
-  getVehiclePositions() {
+  get realTimeData() {
     if (!this.isRealTime) return [];
 
-    return Object.values(this.realtime).map(({ vehicleNumber, times, distances }) => ({
+    // Extract array of static schedule distances at each stop
+    const staticDistances = this.journeyPattern.distances;
+
+    return Object.values(this.rt).map(({ vehicleNumber, times, distances }) => ({
       vehicleNumber,
-      // For each vehicle, enrich its positions information by computing the "on time"
-      // status at each position
-      positions: times.map((time, index) => ({
-        time,
-        distance: distances[index],
-        status: this.vehicleStatusComparedToSchedule(time, distances[index]),
-        prognosed: time > new Date(),
-      })),
+      // Enrich the vehicles position data with the distance since the last stop
+      // and the index of that stop, as well as the status compared to the schedule
+      positions: times.map((time, index) => {
+        const distance = distances[index];
+        let lastStopIndex;
+        let distanceSinceLastStop;
+
+        // If the current distance is smaller or equal than the distance of the last stop
+        // (typically they're both 0) then the last stop is the first one and the distance is 0
+        if (distance <= staticDistances[0]) {
+          lastStopIndex = 0;
+          distanceSinceLastStop = 0;
+        // If the distance is greater than the distance of the last stop of the journey, then
+        // use the one-to-last stop of the journey as the last stop and the distance between the
+        // last and one-to-last stops as distance from the last stop
+        } else if (distance >= staticDistances[staticDistances.length - 1]) {
+          lastStopIndex = staticDistances.length - 2;
+          distanceSinceLastStop = staticDistances[staticDistances.length - 1] -
+                                  staticDistances[staticDistances.length - 2];
+        } else {
+          // Else, scan the schedule to see in which link the vehicle currently is and compute
+          // the last stop index and distance from last stop consequently
+          for (let i = 0; i < staticDistances.length - 1; i += 1) {
+            if (staticDistances[i] <= distance && distance < staticDistances[i + 1]) {
+              lastStopIndex = i;
+              distanceSinceLastStop = distance - staticDistances[i];
+              break;
+            }
+          }
+        }
+
+        return {
+          time,
+          distanceSinceLastStop,
+          distanceFromStart: distance,
+          lastStopIndex,
+          status: this.vehicleStatusComparedToSchedule(time, distance),
+          prognosed: time > new Date(),
+        };
+      }),
     }));
   }
 
@@ -209,7 +243,8 @@ export default class VehicleJourney {
     };
 
     if (this.isRealTime) {
-      return Object.values(this.realtime)
+      return Object.values(this.rt)
+        // Filter out actually-not-realtime vehicles
         .filter(({ times, distances }) => times.length > 0 && distances.length > 0)
         .map(({ vehicleNumber, times, distances }) => {
           const distance = getDistanceGivenSchedule(times.map((_time, index) =>
@@ -228,7 +263,7 @@ export default class VehicleJourney {
     const distance = getDistanceGivenSchedule(this.staticSchedule);
 
     return [{
-      vehicleNumber: -1, // use fictitious vehicle number for static data
+      vehicleNumber: -1, // Use fictitious vehicle number for static data
       distance,
       position: this.getPositionFromDistance(distance, stopsLinks),
       status: VehicleStatus.UNDEFINED,
