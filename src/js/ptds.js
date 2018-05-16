@@ -105,23 +105,25 @@ export default class PTDS {
     if (['dual', 'marey'].includes(this.options.mode)) {
       const dual = this.options.mode === 'dual';
 
-      this.dims = { marey: {}, map: {} };
-      this.dims.marey.outerWidth = dual ?
-        windowWidth * this.options.dual.verticalSplitPercentage :
-        windowWidth;
-      this.dims.marey.outerHeight = windowHeight;
-      this.dims.marey.innerWidth = this.dims.marey.outerWidth - margins.marey.left -
-                                   margins.marey.right;
-      this.dims.marey.innerHeight = this.dims.marey.outerHeight - margins.marey.top -
-                                    margins.marey.bottom;
+      this.dims = { marey: null, map: null };
+
+      {
+        const outerWidth = dual ?
+          windowWidth * this.options.dual.verticalSplitPercentage :
+          windowWidth;
+        const outerHeight = windowHeight;
+        const innerWidth = outerWidth - margins.marey.left - margins.marey.right;
+        const innerHeight = outerHeight - margins.marey.top - margins.marey.bottom;
+        this.dims.marey = { outerWidth, outerHeight, innerHeight, innerWidth };
+      }
 
       if (dual) {
-        this.dims.map = {
-          outerWidth: windowWidth * (1 - this.options.dual.verticalSplitPercentage),
-          outerHeight: windowHeight,
-          innerHeight: windowHeight - margins.map.top - margins.map.bottom,
-        };
-        this.dims.map.innerWidth = this.dims.map.outerWidth - margins.map.left - margins.map.right;
+        const outerWidth = windowWidth * (1 - this.options.dual.verticalSplitPercentage);
+        const outerHeight = windowHeight;
+        const innerWidth = outerWidth - margins.map.left - margins.map.right;
+        const innerHeight = windowHeight - margins.map.top - margins.map.bottom;
+
+        this.dims.map = { outerWidth, outerHeight, innerHeight, innerWidth };
       }
 
 
@@ -154,6 +156,7 @@ export default class PTDS {
         .attr('class', 'brush')
         .attr('transform', `translate(${margins.mareyScroll.left},${margins.mareyScroll.top})`);
     } else {
+      // Fullscreen simulation
       this.dims = {
         map: {
           outerWidth: windowWidth,
@@ -164,8 +167,8 @@ export default class PTDS {
       };
     }
 
+    // If we're either in simulation or dual mode, create the map SVG element
     if (['dual', 'spiralSimulation'].includes(this.options.mode)) {
-      // Create main map SVG element applying the margins
       this.mapSVG = d3.select('div.main').append('div')
         .attr('id', 'map-container')
         .append('svg')
