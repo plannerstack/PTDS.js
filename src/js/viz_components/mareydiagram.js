@@ -574,8 +574,18 @@ export default class MareyDiagram {
     for (const otherJP of this.journeyPatternMix.otherJPs) {
       // Iterate over the trips of the journey pattern
       for (const vehicleJourney of otherJP.journeyPattern.vehicleJourneys) {
-        const staticSequences = [];
+        // Min and max time of every static/realtime position of the current journey,
+        // only for the shared segments
+        let minTime = null;
+        let maxTime = null;
 
+        // Update min and max time boundaries
+        const updateTimeBoundaries = (time) => {
+          if (minTime === null || time < minTime) minTime = time;
+          if (maxTime === null || time > maxTime) maxTime = time;
+        };
+
+        const staticSequences = [];
         // For each trip of the "other" journey patterns, iterate over the sequences
         // shared with the reference journey pattern and add the corresponding "timinglinks"
         const { referenceSequences, otherSequences } = otherJP.sharedSequences;
@@ -583,10 +593,15 @@ export default class MareyDiagram {
           const refSequence = referenceSequences[i];
           const otherSequence = otherSequences[i];
 
-          staticSequences.push(refSequence.map((refIndex, j) => ({
-            time: vehicleJourney.times[otherSequence[j] * 2],
-            distance: this.journeyPatternMix.referenceJP.distances[refIndex],
-          })));
+          staticSequences.push(refSequence.map((refIndex, j) => {
+            // Index is multiplied by 2 because times array is twice the length as the distances one
+            const time = vehicleJourney.times[otherSequence[j] * 2];
+            updateTimeBoundaries(time);
+            return {
+              time,
+              distance: this.journeyPatternMix.referenceJP.distances[refIndex],
+            };
+          }));
         }
 
         const realtimeSequences = [];
@@ -613,6 +628,7 @@ export default class MareyDiagram {
                 const lastStopRefDistance = this.journeyPatternMix
                   .referenceJP
                   .distances[lastStopRefIndex];
+                updateTimeBoundaries(time);
 
                 return {
                   time,
@@ -644,7 +660,7 @@ export default class MareyDiagram {
           code: vehicleJourney.code,
           staticSequences,
           realtimeSequences,
-          firstAndLastTimes: vehicleJourney.firstAndLastTimes,
+          firstAndLastTimes: { first: minTime, last: maxTime },
         });
       }
     }
@@ -687,6 +703,10 @@ export default class MareyDiagram {
     // Get the overlay element from the class instance because we'll lose the "this" reference later
     const { overlay } = this;
 
+    // Inside the trip events handlers the "this" context will be changed so we store a reference
+    // to it in "that" to access it inside the functions
+    const that = this;
+
     // Handler mouse over trip event
     // Classic function instead of () => {} because "this" context gets modified
     function tripMouseOver(trip) {
@@ -721,12 +741,33 @@ export default class MareyDiagram {
       d3.select(`#map g.trip[data-code='${trip.code}'] circle`).attr('r', deSelectedTripRadius);
     }
 
+    // Handle click on a trip
+    function tripClick(trip) {
+      let { first, last } = trip.firstAndLastTimes;
+      first = d3.timeMinute.offset(first, -1);
+      last = d3.timeMinute.offset(last, +1);
+      // Update zoom status to reflect change in domain
+      that.diagGroup.call(that.zoomBehaviour.transform, d3.zoomIdentity
+        .scale(that.lastK)
+        .translate(0, -that.yScrollScale(first)));
+      // Update brush status to reflect change in domain
+      that.scrollGroup
+        .call(that.brushBehaviour.move, [
+          that.yScrollScale(first),
+          that.yScrollScale(last),
+        ]);
+      // Update Marey diagram domain
+      that.yScale.domain([first, last]);
+      tripMouseOut.call(this, trip);
+    }
+
     // Trip enter
     const tripsEnterUpdateSel = tripsSel.enter().append('g')
       .attr('class', 'trip')
       .attr('data-trip-code', ({ code }) => code)
       .on('mouseover', tripMouseOver)
       .on('mouseout', tripMouseOut)
+      .on('click', tripClick)
       // Trip enter + update
       .merge(tripsSel);
 
