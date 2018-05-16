@@ -493,7 +493,7 @@ export default class MareyDiagram {
       // and format it
       const time = this.yScale.invert(yPos);
 
-      changeCallback(time);
+      if (typeof changeCallback !== 'undefined') changeCallback(time);
 
       // Update the y position of the timeline group
       this.timelineG.attr('transform', `translate(0,${yPos})`);
