@@ -21,7 +21,7 @@ export default class PTDS {
     this.data = new PTDataset(inputData, options.selectedDate);
     this.options = options;
 
-    if (options.mode === 'dual') {
+    if (['dual', 'marey'].includes(options.mode)) {
       this.journeyPatternMix = this.computeJourneyPatternMix();
     } else if (options.mode === 'spiralSimulation') {
       this.widgetTimeFormat = d3.timeFormat('%Y-%m-%d %H:%M:%S');
@@ -51,8 +51,8 @@ export default class PTDS {
 
     // Find the longest journey pattern with the given line and direction (most stops)
     for (const journeyPattern of Object.values(this.data.journeyPatterns)) {
-      if (journeyPattern.line.code === this.options.dual.line &&
-          journeyPattern.direction === this.options.dual.direction &&
+      if (journeyPattern.line.code === this.options.line &&
+          journeyPattern.direction === this.options.direction &&
           journeyPattern.stops.length > maxNstops) {
         maxNstops = journeyPattern.stops.length;
         maxNstopsJP = journeyPattern;
@@ -102,24 +102,28 @@ export default class PTDS {
       },
     };
 
-    if (this.options.mode === 'dual') {
-      // Inner and outer dimensions of the Marey diagram and the map
-      this.dims = {
-        marey: {
-          outerWidth: windowWidth * this.options.dual.verticalSplitPercentage,
-          outerHeight: windowHeight,
-        },
-        map: {
-          outerWidth: windowWidth * (1 - this.options.dual.verticalSplitPercentage),
-          outerHeight: windowHeight,
-          innerHeight: windowHeight - margins.map.top - margins.map.bottom,
-        },
-      };
+    if (['dual', 'marey'].includes(this.options.mode)) {
+      const dual = this.options.mode === 'dual';
+
+      this.dims = { marey: {}, map: {} };
+      this.dims.marey.outerWidth = dual ?
+        windowWidth * this.options.dual.verticalSplitPercentage :
+        windowWidth;
+      this.dims.marey.outerHeight = windowHeight;
       this.dims.marey.innerWidth = this.dims.marey.outerWidth - margins.marey.left -
                                    margins.marey.right;
       this.dims.marey.innerHeight = this.dims.marey.outerHeight - margins.marey.top -
                                     margins.marey.bottom;
-      this.dims.map.innerWidth = this.dims.map.outerWidth - margins.map.left - margins.map.right;
+
+      if (dual) {
+        this.dims.map = {
+          outerWidth: windowWidth * (1 - this.options.dual.verticalSplitPercentage),
+          outerHeight: windowHeight,
+          innerHeight: windowHeight - margins.map.top - margins.map.bottom,
+        };
+        this.dims.map.innerWidth = this.dims.map.outerWidth - margins.map.left - margins.map.right;
+      }
+
 
       Object.assign(margins, { mareyScroll: {
         top: 80,
@@ -160,15 +164,17 @@ export default class PTDS {
       };
     }
 
-    // Create main map SVG element applying the margins
-    this.mapSVG = d3.select('div.main').append('div')
-      .attr('id', 'map-container')
-      .append('svg')
-      .attr('id', 'map')
-      .attr('width', this.dims.map.outerWidth)
-      .attr('height', this.dims.map.outerHeight)
-      .append('g')
-      .attr('transform', `translate(${margins.map.left},${margins.map.top})`);
+    if (['dual', 'spiralSimulation'].includes(this.options.mode)) {
+      // Create main map SVG element applying the margins
+      this.mapSVG = d3.select('div.main').append('div')
+        .attr('id', 'map-container')
+        .append('svg')
+        .attr('id', 'map')
+        .attr('width', this.dims.map.outerWidth)
+        .attr('height', this.dims.map.outerHeight)
+        .append('g')
+        .attr('transform', `translate(${margins.map.left},${margins.map.top})`);
+    }
   }
 
   /**
@@ -235,13 +241,15 @@ export default class PTDS {
     // First, create the SVG objects
     this.createSVGObjects();
 
-    // Create the map
-    this.map = new InteractiveMap(
-      this.getBaseMapData(),
-      this.mapSVG,
-      this.dims.map,
-      this.options,
-    );
+    if (this.options.mode !== 'marey') {
+      // Create the map
+      this.map = new InteractiveMap(
+        this.getBaseMapData(),
+        this.mapSVG,
+        this.dims.map,
+        this.options,
+      );
+    }
 
     // If we are in "dual" mode, draw the Marey diagram of the chosen journey pattern
     if (this.options.mode === 'dual') {
@@ -270,6 +278,14 @@ export default class PTDS {
         this.scrollSVGgroup,
         this.dims,
         timelineChangeCallback,
+      );
+    } else if (this.options.mode === 'marey') {
+      // Creation of the Marey diagram
+      this.marey = new MareyDiagram(
+        this.journeyPatternMix,
+        this.mareySVGgroup,
+        this.scrollSVGgroup,
+        this.dims,
       );
     }
   }

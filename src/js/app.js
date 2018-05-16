@@ -14,8 +14,8 @@ const options = {
   showStops: false,
   showStopAreas: true,
   showLinks: true,
-  // mode can be either 'dual' or 'spiralSimulation'
-  // dual = marey + linked map, spiralSimulation = spiral simulation
+  // mode can be either 'dual', 'spiralSimulation' or 'marey'
+  // marey = fullscreen marey, dual = marey + linked map, spiralSimulation = spiral simulation
   mode: 'spiralSimulation',
   // spiralSimulation specific options
   spiral: {
@@ -72,11 +72,8 @@ const processIndex = () => {
 
   const modeSelect = document.getElementById('mode');
   modeSelect.onchange = () => {
-    if (modeSelect.value === 'dual') {
-      document.getElementsByClassName('linedirectionSel')[0].style.display = 'block';
-    } else {
-      document.getElementsByClassName('linedirectionSel')[0].style.display = 'none';
-    }
+    const displayStyleLDselect = ['dual', 'marey'].includes(modeSelect.value) ? 'block' : 'none';
+    document.getElementsByClassName('linedirectionSel')[0].style.display = displayStyleLDselect;
   };
 
   // Populate date picker with available options
@@ -134,11 +131,11 @@ const formSubmit = (event) => {
 
       // Create new visualization, using the specified mode.
       const selectedMode = document.getElementById('mode').value;
-      if (selectedMode === 'dual') {
-        options.mode = 'dual';
+      if (['dual', 'marey'].includes(selectedMode)) {
+        options.mode = selectedMode;
         const [line, direction] = document.getElementById('line-direction').value.split(' - ');
-        options.dual.line = line;
-        options.dual.direction = parseInt(direction, 10);
+        options.line = line;
+        options.direction = parseInt(direction, 10);
       } else {
         options.mode = 'spiralSimulation';
       }
