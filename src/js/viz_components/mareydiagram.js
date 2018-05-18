@@ -749,11 +749,11 @@ export default class MareyDiagram {
       first = d3.timeMinute.offset(first, -1);
       last = d3.timeMinute.offset(last, +1);
       // Update zoom status to reflect change in domain
-      that.diagGroup.call(that.zoomBehaviour.transform, d3.zoomIdentity
+      that.g.diagram.call(that.zoomBehaviour.transform, d3.zoomIdentity
         .scale(that.lastK)
         .translate(0, -that.yScrollScale(first)));
       // Update brush status to reflect change in domain
-      that.scrollGroup
+      that.g.scroll
         .call(that.brushBehaviour.move, [
           that.yScrollScale(first),
           that.yScrollScale(last),
