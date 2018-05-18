@@ -38,6 +38,7 @@ svg {
   line, path {
     stroke: black;
     stroke-width: 1;
+    fill: none;
   }
 }
 
@@ -93,7 +94,6 @@ svg {
 
   path.static-sequence {
     stroke: dimgray;
-    fill: none;
   }
 
   g.vehicle circle.rt-position {
@@ -110,7 +110,7 @@ svg {
     }
   }
 
-  g.vehicle line.rt-link {
+  g.vehicle path.rt-sequence {
     &.early {
       stroke: $vehicle-early-color;
     }
