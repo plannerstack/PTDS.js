@@ -122,32 +122,6 @@ export default class MareyDiagram {
   }
 
   /**
-   * Establishes approximation to use in terms of rt-links approximation
-   * and showing or not the position dots
-   * @return {{minSecondsDelta: number, showPosDots: boolean}} - Object describing the approximation
-   */
-  get currentApproximation() {
-    let minSecondsDelta;
-    let showPosDots = false;
-
-    // If there are more than 1.5 hours in the selected domain, space the position measurements
-    // at least 120 seconds one from each other
-    if (this.secondsInSelectedDomain > 90 * 60) {
-      minSecondsDelta = 120;
-    // If there is more than 1 hour in the selected domain, the min spacing is 30 seconds
-    } else if (this.secondsInSelectedDomain > 60 * 60) {
-      minSecondsDelta = 30;
-    // If there is less than one hour we have no minimum spacing (= we show all the measurements)
-    // and we also show the circles in correspondance of them
-    } else {
-      minSecondsDelta = 0;
-      showPosDots = true;
-    }
-
-    return { minSecondsDelta, showPosDots };
-  }
-
-  /**
    * Number of seconds in the selected domain of the Marey diagram
    * @return {Number} - Seconds in selected domain of the Marey diagram
    */
@@ -502,8 +476,22 @@ export default class MareyDiagram {
     });
   }
 
-  // JSDOC
-  static getRealtimeLinks(sequence) {
+  /**
+   * Given a sequence of realtime positions, finds groups of positions that share status
+   * and prognosis
+   * @param {Array.<{
+   *  time: Date,
+   *  distance: number,
+   *  status: string,
+   *  prognosed: boolean}
+   * >} sequence - Sequence of positions
+   * @returns {Array.<{
+   *  status: string,
+   *  prognosis: boolean,
+   *  positions: Array.<{time: Date, distance: number}>}
+   * >} - Positions grouped by similarity
+   */
+  static getRealtimePaths(sequence) {
     const realtimePaths = {
       pathsList: [],
       startNewSequence: function f(position) {
@@ -816,10 +804,8 @@ export default class MareyDiagram {
       .selectAll('path.rt-sequence')
       // Compute the realtime links for each sequence and make a single array out of it
       .data(
-        ({ sequences }) => {
-          const res = flatten(sequences.map(sequence => MareyDiagram.getRealtimeLinks(sequence)));
-          return res;
-        },
+        ({ sequences }) =>
+          flatten(sequences.map(sequence => MareyDiagram.getRealtimePaths(sequence))),
         ({ vehicleNumber }) => vehicleNumber,
       );
 
@@ -839,7 +825,7 @@ export default class MareyDiagram {
     const realtimeVehiclesPositionsSel = realtimeVehiclesEnterUpdateSel
       .selectAll('circle.rt-position')
       // Draw the circles representing the positions only at the maximum zoom level
-      .data(({ sequences }) => (this.currentApproximation.showPosDots ? flatten(sequences) : []));
+      .data(({ sequences }) => (this.secondsInSelectedDomain < 60 * 60 ? flatten(sequences) : []));
 
     // Trip enter + update > realtime vehicle sequences > realtime position exit
     realtimeVehiclesPositionsSel.exit().remove();
