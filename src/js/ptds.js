@@ -83,16 +83,16 @@ export default class PTDS {
     // The correction factors are needed because the actual size
     // available is less than the one returned by the browser due to scrollbars
     // and other elements that take up space.
-    const windowWidth = window.innerWidth - 20;
-    const windowHeight = window.innerHeight - 10;
+    const windowWidth = window.innerWidth;
+    const windowHeight = window.innerHeight;
 
     // D3 margin convention https://bl.ocks.org/mbostock/3019563
     const margins = {
       marey: {
         top: 80,
-        right: 150,
+        right: 50,
         bottom: 20,
-        left: 60,
+        left: 50,
       },
       map: {
         top: 20,
@@ -100,6 +100,8 @@ export default class PTDS {
         bottom: 20,
         left: 20,
       },
+      mareyScroll: {},
+      mareyStopSelection: {},
     };
 
     if (['dual', 'marey'].includes(this.options.mode)) {
@@ -112,10 +114,31 @@ export default class PTDS {
           windowWidth * this.options.dual.verticalSplitPercentage :
           windowWidth;
         const outerHeight = windowHeight;
-        const innerWidth = outerWidth - margins.marey.left - margins.marey.right;
         const innerHeight = outerHeight - margins.marey.top - margins.marey.bottom;
-        this.dims.marey = { outerWidth, outerHeight, innerHeight, innerWidth };
+        this.dims.marey = { outerWidth, outerHeight, innerHeight };
       }
+
+      this.dims.mareyScroll = {
+        width: 70,
+        height: this.dims.marey.innerHeight,
+      };
+
+      this.dims.mareyStopSelection = {
+        width: 100,
+        height: this.dims.marey.innerHeight,
+      };
+
+      this.dims.marey.innerWidth = this.dims.marey.outerWidth - margins.marey.left -
+                                   margins.marey.right - this.dims.mareyScroll.width -
+                                   this.dims.mareyStopSelection.width - 30;
+      margins.mareyScroll = {
+        left: margins.marey.left + this.dims.marey.innerWidth + 100,
+        top: margins.marey.top,
+      };
+      margins.mareyStopSelection = {
+        left: margins.mareyScroll.left + this.dims.mareyScroll.width,
+        top: margins.marey.top,
+      };
 
       if (dual) {
         const outerWidth = windowWidth * (1 - this.options.dual.verticalSplitPercentage);
@@ -126,35 +149,29 @@ export default class PTDS {
         this.dims.map = { outerWidth, outerHeight, innerHeight, innerWidth };
       }
 
-
-      Object.assign(margins, { mareyScroll: {
-        top: 80,
-        right: 50,
-        bottom: 20,
-        left: margins.marey.left + this.dims.marey.innerWidth + 100,
-      } });
-
-      this.dims.mareyScroll = {
-        width: this.dims.marey.outerWidth - margins.mareyScroll.left,
-        height: this.dims.marey.innerHeight,
-      };
-
       // Create main marey SVG element applying the margins
       const mareySVG = d3.select('div.main')
         .append('div')
         .attr('id', 'marey-container')
-        .style('height', `${windowHeight}px`)
         .append('svg')
         .attr('id', 'marey')
         .attr('width', this.dims.marey.outerWidth)
         .attr('height', this.dims.marey.outerHeight);
 
-      // Create transformed group and store in 'this'
-      this.mareySVGgroup = mareySVG.append('g')
-        .attr('transform', `translate(${margins.marey.left},${margins.marey.top})`);
-      this.scrollSVGgroup = mareySVG.append('g')
-        .attr('class', 'brush')
-        .attr('transform', `translate(${margins.mareyScroll.left},${margins.mareyScroll.top})`);
+      // Create transformed groups and store their reference
+      this.mareySVGgroups = {
+        diagram: mareySVG.append('g')
+          .attr('transform', `translate(${margins.marey.left},${margins.marey.top})`),
+        scroll: mareySVG.append('g')
+          .attr('class', 'marey-scroll')
+          .attr('transform', `translate(${margins.mareyScroll.left},${margins.mareyScroll.top})`),
+        stopSelection: mareySVG.append('g')
+          .attr('class', 'marey-stop-selection')
+          .attr(
+            'transform',
+            `translate(${margins.mareyStopSelection.left},${margins.mareyStopSelection.top})`,
+          ),
+      };
     } else {
       // Fullscreen simulation
       this.dims = {
@@ -277,8 +294,7 @@ export default class PTDS {
       // Creation of the Marey diagram
       this.marey = new MareyDiagram(
         this.journeyPatternMix,
-        this.mareySVGgroup,
-        this.scrollSVGgroup,
+        this.mareySVGgroups,
         this.dims,
         timelineChangeCallback,
       );
@@ -286,8 +302,7 @@ export default class PTDS {
       // Creation of the Marey diagram
       this.marey = new MareyDiagram(
         this.journeyPatternMix,
-        this.mareySVGgroup,
-        this.scrollSVGgroup,
+        this.mareySVGgroups,
         this.dims,
       );
     }

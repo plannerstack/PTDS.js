@@ -47,8 +47,20 @@ svg {
 }
 
 #marey {
-  .brush rect {
-    stroke: none;
+  .marey-scroll {
+    rect.selection {
+      stroke: black;
+    }
+  }
+
+  .marey-stop-selection {
+    g.tick circle {
+      fill: $map-stop-area-color;
+      stroke: black;
+    }
+    rect.selection {
+      stroke: black;
+    }
   }
 
   .timeline {
