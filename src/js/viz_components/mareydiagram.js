@@ -502,52 +502,42 @@ export default class MareyDiagram {
     });
   }
 
-  /**
-   * Given a sequence of vehicle positions, get the links between them.
-   * Basing on the current domain of the diagram, it approximates the positions
-   * to reduce the amount of links to be drawn.
-   * @param  {Array.<{time: Date, distance: number,
-   *                  status: string, prognosed: boolean}>} sequence - Positions info
-   * @return {Array.<{timeA: Date, timeB: Date,
-   *           distanceA: number, distanceB: number,
-   *           status: string, prognosed: boolean}>} - Positions links information
-   */
-  getRealtimeLinks(sequence) {
-    const posLinks = [];
-    let index = 0;
+  // JSDOC
+  static getRealtimeLinks(sequence) {
+    const realtimePaths = {
+      pathsList: [],
+      startNewSequence: function f(position) {
+        const { status, prognosed, ...barePosition } = position;
+        this.pathsList.push({ status, prognosed, positions: [barePosition] });
+      },
+      addToLastSequence: function f(position) {
+        const { status, prognosed, ...barePosition } = position;
+        this.pathsList[this.pathsList.length - 1].positions.push(barePosition);
+      },
+      addPosition: function f(newPosition) {
+        // If this is the first position we see, start a new sequence
+        if (this.pathsList.length === 0) this.startNewSequence(newPosition);
+        else {
+          // If the status or prognosis of the new position are different from the
+          // ones of the last sequence added, start a new sequence. Otherwise continue it.
+          const lastAddedPath = this.pathsList[this.pathsList.length - 1];
+          const breakCondition = (newPosition.prognosed !== lastAddedPath.prognosed ||
+                                  newPosition.status !== lastAddedPath.status);
 
-    while (index < sequence.length - 1) {
-      const posA = sequence[index];
-      let posB = sequence[index + 1];
-      const timeA = posA.time;
-      let timeB = posB.time;
+          this.addToLastSequence(newPosition);
+          if (breakCondition) this.startNewSequence(newPosition);
+        }
+      },
+    };
 
-      // If the current "second position" of the link is less than minSecondsDelta seconds
-      // apart from the first one, skip it and move to the next "second position".
-      // Only if the first and second position of the segment have the same status,
-      // so that if a vehicle changed its status we don't skip the position
-      while (index < sequence.length - 2 &&
-             posA.status === posB.status &&
-             timeB - timeA < this.currentApproximation.minSecondsDelta * 1000) {
-        index += 1;
-        posB = sequence[index + 1];
-        timeB = posB.time;
-      }
+    for (const position of sequence) realtimePaths.addPosition(position);
 
-      const distanceA = posA.distance;
-      const distanceB = posB.distance;
-      const prognosed = posA.prognosed || posB.prognosed;
-
-      posLinks.push({ timeA, timeB, distanceA, distanceB, status: posA.status, prognosed });
-      index += 1;
-    }
-
-    return posLinks;
+    return realtimePaths.pathsList;
   }
 
   /**
    * Compute information needed to draw the trips on the Marey diagram
-   * @return {Object} - Trip drawing information
+   * @return {Array.<Object>} - Trip drawing information
    */
   computeTrips() {
     // Compute drawing information for the trips of the reference journey pattern
@@ -822,27 +812,28 @@ export default class MareyDiagram {
 
     // Trip enter + update > realtime vehicle sequences > realtime link selection
     const realtimeVehiclesLinksSel = realtimeVehiclesEnterUpdateSel
-      .selectAll('line.rt-link')
+    // const realtimeVehiclesEnterUpdateSel
+      .selectAll('path.rt-sequence')
       // Compute the realtime links for each sequence and make a single array out of it
       .data(
-        ({ sequences }) => flatten(sequences.map(sequence => this.getRealtimeLinks(sequence))),
+        ({ sequences }) => {
+          const res = flatten(sequences.map(sequence => MareyDiagram.getRealtimeLinks(sequence)));
+          return res;
+        },
         ({ vehicleNumber }) => vehicleNumber,
       );
 
     // Trip enter + update > realtime vehicle sequences > realtime link exit
     realtimeVehiclesLinksSel.exit().remove();
 
-    // Trip enter + update > realtime vehicle sequences > realtime link enter
+    // // Trip enter + update > realtime vehicle sequences > realtime link enter
     realtimeVehiclesLinksSel.enter()
-      .append('line')
+      .append('path')
       // Trip enter + update > realtime vehicle sequences > realtime link enter + update
       .merge(realtimeVehiclesLinksSel)
-      .attr('class', ({ status }) => `rt-link ${status}`)
+      .attr('class', ({ status }) => `rt-sequence ${status}`)
       .classed('prognosed', ({ prognosed }) => prognosed)
-      .attr('x1', ({ distanceA }) => this.xScale(distanceA))
-      .attr('x2', ({ distanceB }) => this.xScale(distanceB))
-      .attr('y1', ({ timeA }) => this.yScale(timeA))
-      .attr('y2', ({ timeB }) => this.yScale(timeB));
+      .attr('d', ({ positions }) => this.tripLineGenerator(positions));
 
     // Trip enter + update > realtime vehicle sequences > realtime position selection
     const realtimeVehiclesPositionsSel = realtimeVehiclesEnterUpdateSel
