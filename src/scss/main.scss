@@ -107,8 +107,7 @@ svg {
     }
 
     // Color all the vertical lines representing the stops
-    // except for the first and the last as they overlap the left and right axes
-    g.tick:not(:nth-child(2)):not(:last-child) {
+    g.tick {
       line {
         stroke: $marey-stop-lines-stroke;
       }

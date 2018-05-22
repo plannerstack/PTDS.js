@@ -421,6 +421,9 @@ export default class MareyDiagram {
    * so by changing the order of group creation we can adjust their "z-index".
    */
   createGroups() {
+    this.xAxisG = this.g.diagram.append('g')
+      .attr('class', 'top-axis axis')
+      .attr('clip-path', 'url(#clip-path)');
     this.yLeftAxisG = this.g.diagram.append('g')
       .attr('class', 'left-axis axis');
     this.yRightAxisG = this.g.diagram.append('g')
@@ -430,9 +433,6 @@ export default class MareyDiagram {
       .attr('class', 'scroll-axis axis');
     this.yStopSelAxisG = this.g.stopSelection.append('g')
       .attr('class', 'stop-selection-axis axis');
-    this.xAxisG = this.g.diagram.append('g')
-      .attr('class', 'top-axis axis')
-      .attr('clip-path', 'url(#clip-path)');
     this.tripsG = this.g.diagram.append('g')
       .attr('class', 'trips')
       .attr('clip-path', 'url(#clip-path)');
