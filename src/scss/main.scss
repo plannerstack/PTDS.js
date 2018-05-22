@@ -43,7 +43,7 @@ svg {
 }
 
 // Make invisible the overlays used to handle zoom and mouse movement
-.overlay {
+.overlay-mouse {
   fill-opacity: 0;
 }
 
@@ -51,6 +51,10 @@ svg {
   .marey-scroll {
     rect.selection {
       stroke: black;
+    }
+    .overlay {
+      fill: lightgray;
+      fill-opacity: 0.3;
     }
   }
 
@@ -61,6 +65,10 @@ svg {
     }
     rect.selection {
       stroke: black;
+    }
+    .overlay {
+      fill: lightgray;
+      fill-opacity: 0.3;
     }
   }
 
@@ -80,11 +88,12 @@ svg {
     // Top axis labels are rotated and a white outline
     // is used to make them more visible when on top of other elements
     text {
-      transform: rotate(270deg) ;
+      transform: rotate(270deg) translate(5px, 6px);
       text-anchor: start;
       paint-order: stroke;
       stroke: white;
       stroke-width: 5;
+      // clip-path: url(#clip-path-top-labels);
     }
 
     // Color all the vertical lines representing the stops
@@ -92,6 +101,7 @@ svg {
     g.tick:not(:nth-child(2)):not(:last-child) {
       line {
         stroke: $marey-stop-lines-stroke;
+        // clip-path: url(#clip-path);
       }
     }
     g.tick.selected {
