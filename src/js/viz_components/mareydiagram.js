@@ -237,7 +237,12 @@ export default class MareyDiagram {
     this.lastK = this.dims.mareyScroll.height / (selection[1] - selection[0]);
   }
 
+  /**
+   * Stop selection brush handler
+   */
   brushedStops() {
+    if (!d3event.sourceEvent) return;
+
     // Get the brush selection
     const { selection } = d3event;
     const transitionDuration = 500;
@@ -400,10 +405,9 @@ export default class MareyDiagram {
   createScales() {
     const referenceJPstopsDistances = this.journeyPatternMix.referenceJP.distances;
     const lastStopDistance = referenceJPstopsDistances[referenceJPstopsDistances.length - 1];
-    const xScalePadding = 0;
     this.xScale = d3.scaleLinear()
       .domain([0, lastStopDistance])
-      .range([xScalePadding, this.dims.marey.innerWidth - xScalePadding]);
+      .range([0, this.dims.marey.innerWidth]);
     this.yStopSelScale = d3.scaleLinear()
       .domain([0, lastStopDistance])
       .range([0, this.dims.mareyStopSelection.height]);
@@ -435,7 +439,7 @@ export default class MareyDiagram {
       .attr('class', 'stop-selection-axis axis');
     this.tripsG = this.g.diagram.append('g')
       .attr('class', 'trips')
-      .attr('clip-path', 'url(#clip-path)');
+      .attr('clip-path', 'url(#clip-path-trips)');
     this.timelineG = this.g.diagram.append('g')
       .attr('class', 'timeline');
   }
@@ -459,6 +463,7 @@ export default class MareyDiagram {
     this.yStopSelAxis = d3.axisRight(this.yStopSelScale)
       .tickValues(this.journeyPatternMix.referenceJP.distances)
       .tickFormat((_, index) => {
+        // Truncate the tick label if longer than maxChars chars
         const maxChars = 25;
         const stop = this.journeyPatternMix.referenceJP.stops[index];
         let label = `${stop.code} ${stop.name}`;
@@ -471,13 +476,8 @@ export default class MareyDiagram {
     this.yScrollAxisG.call(this.yScrollAxis);
     this.yStopSelAxisG.call(this.yStopSelAxis);
 
-    this.yScrollAxisG.selectAll('.tick').select('text').attr('x', 15);
-
-    const stopSelAxisTicksSel = this.yStopSelAxisG.selectAll('.tick');
-    stopSelAxisTicksSel.select('line').remove();
-    stopSelAxisTicksSel.select('text').attr('x', 15);
-    stopSelAxisTicksSel.append('circle')
-      .attr('r', 3);
+    // Add circle to represent the stop in the stop selection brush
+    this.yStopSelAxisG.selectAll('.tick').append('circle').attr('r', 3);
   }
 
   /**
@@ -760,9 +760,10 @@ export default class MareyDiagram {
     return trips;
   }
 
-  // /**
-  //  * Draw the trips on the diagram
-  //  */
+  /**
+   * Draw the trips on the diagram
+   * @param {number} transitionDuration - Duration of the transition in case of stop selection
+   */
   drawTrips(transitionDuration) {
     // TODO: move these constants in a separate config file
     const selectedTripStaticStopRadius = 3;
@@ -848,14 +849,13 @@ export default class MareyDiagram {
           that.yScrollScale(first),
           that.yScrollScale(last),
         ]);
-      // Update Marey diagram domainP
+      // Update Marey diagram domain
       that.yScale.domain([first, last]);
       tripMouseOut.call(this, trip);
     }
 
     // Trip enter
     const tripsEnterUpdateSel = tripsSel.enter().append('g')
-      .attr('clip-path', 'url(#clip-path-trips)')
       .attr('class', 'trip')
       .attr('data-trip-code', ({ code }) => code)
       .on('mouseover', tripMouseOver)

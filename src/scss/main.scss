@@ -56,12 +56,23 @@ svg {
       fill: lightgray;
       fill-opacity: 0.3;
     }
+    .scroll-axis g.tick text {
+      transform: translate(6px, 0px);
+    }
   }
 
   .marey-stop-selection {
-    g.tick circle {
-      fill: $map-stop-area-color;
-      stroke: black;
+    g.tick {
+      circle {
+        fill: $map-stop-area-color;
+        stroke: black;
+      }
+      line {
+        display: none;
+      }
+      text {
+        transform: translate(4px, 0px);
+      }
     }
     rect.selection {
       stroke: black;
