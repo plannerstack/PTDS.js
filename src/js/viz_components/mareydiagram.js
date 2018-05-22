@@ -97,13 +97,11 @@ export default class MareyDiagram {
       .attr('y', -60)
       .attr('width', this.dims.marey.innerWidth)
       .attr('height', this.dims.marey.innerHeight + 60);
-    // this.g.diagram.append('clipPath')
-    //   .attr('id', 'clip-path-top-labels')
-    //   .append('rect')
-    //   .attr('x', -5)
-    //   .attr('y', -60)
-    //   .attr('width', this.dims.marey.innerWidth + 5)
-    //   .attr('height', 60);
+    this.g.diagram.append('clipPath')
+      .attr('id', 'clip-path-trips')
+      .append('rect')
+      .attr('width', this.dims.marey.innerWidth)
+      .attr('height', this.dims.marey.innerHeight);
 
     // Line generator for the static schedule of a trip
     this.tripLineGenerator = d3.line()
@@ -794,6 +792,7 @@ export default class MareyDiagram {
 
     // Trip enter
     const tripsEnterUpdateSel = tripsSel.enter().append('g')
+      .attr('clip-path', 'url(#clip-path-trips)')
       .attr('class', 'trip')
       .attr('data-trip-code', ({ code }) => code)
       .on('mouseover', tripMouseOver)
