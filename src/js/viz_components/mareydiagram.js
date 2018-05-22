@@ -305,8 +305,8 @@ export default class MareyDiagram {
   refreshYAxes() {
     this.yLeftAxis.tickFormat(this.yAxisTimeFormatter);
     this.yRightAxis.tickFormat(this.yAxisTimeFormatter);
-    this.yLeftAxisG.call(this.yLeftAxis);
-    this.yRightAxisG.call(this.yRightAxis);
+    this.yLeftAxisG.call(this.yLeftAxis.scale(this.yScale));
+    this.yRightAxisG.call(this.yRightAxis.scale(this.yScale));
   }
 
   /**
