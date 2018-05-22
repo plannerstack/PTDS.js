@@ -222,7 +222,7 @@ export default class MareyDiagram {
     this.yScale.domain(selection.map(this.yScrollScale.invert));
 
     // Update marey axes
-    this.refreshAxes();
+    this.refreshYAxes();
 
     // Update the trips
     this.drawTrips();
@@ -237,28 +237,72 @@ export default class MareyDiagram {
     this.lastK = this.dims.mareyScroll.height / (selection[1] - selection[0]);
   }
 
-  /**
-   * Refresh the axes after changing the scale and/or the ticks
-   */
-  refreshAxes() {
-    this.yLeftAxis.tickFormat(this.yAxisTimeFormatter);
-    this.yRightAxis.tickFormat(this.yAxisTimeFormatter);
-    this.yLeftAxisG.call(this.yLeftAxis.scale(this.yScale));
-    this.yRightAxisG.call(this.yRightAxis.scale(this.yScale));
-  }
-
   brushedStops() {
     // Get the brush selection
     const { selection } = d3event;
     const transitionDuration = 500;
 
-    // Update the Marey y scale domain
-    this.xScale.domain(selection.map(this.yStopSelScale.invert));
+    // If the selection is empty, select the full range
+    if (!selection) {
+      this.g.stopSelection.call(
+        this.stopSelectionBehavior.move,
+        this.yStopSelScale.range(),
+      );
+      return;
+    }
 
+    // Get new domain from selection
+    let newDomain = selection.map(this.yStopSelScale.invert);
+
+    // Find distance of the closest stop to the distance selected
+    const getClosestStop = (goalDistance) => {
+      let minDelta = { delta: Number.MAX_SAFE_INTEGER, index: -1, distance: -1 };
+      for (const [index, distance] of this.journeyPatternMix.referenceJP.distances.entries()) {
+        const currentDelta = Math.abs(distance - goalDistance);
+        if (currentDelta < minDelta.delta) minDelta = { delta: currentDelta, index, distance };
+      }
+      return minDelta;
+    };
+
+    newDomain = newDomain.map(getClosestStop);
+
+    // If the user tried to select a single stop, fix that
+    if (newDomain[0].distance === newDomain[1].distance) {
+      const referenceJPdistances = this.journeyPatternMix.referenceJP.distances;
+      if (newDomain[1].index < referenceJPdistances.length - 1) {
+        newDomain[1].index += 1;
+        newDomain[1].distance = referenceJPdistances[newDomain[1].index];
+      } else {
+        newDomain[0].index -= 1;
+        newDomain[0].distance = referenceJPdistances[newDomain[0].index];
+      }
+    }
+
+    this.g.stopSelection
+      .transition().duration(transitionDuration)
+      .call(
+        this.stopSelectionBehavior.move,
+        newDomain.map(({ distance }) => distance).map(this.yStopSelScale),
+      );
+
+    // Update the Marey x scale domain
+    this.xScale.domain(newDomain.map(({ distance }) => distance));
+
+    // Update the x axis
     this.drawXAxis(transitionDuration);
 
     // Update the trips
     this.drawTrips(transitionDuration);
+  }
+
+  /**
+   * Refresh the axes after changing the scale and/or the ticks
+   */
+  refreshYAxes() {
+    this.yLeftAxis.tickFormat(this.yAxisTimeFormatter);
+    this.yRightAxis.tickFormat(this.yAxisTimeFormatter);
+    this.yLeftAxisG.call(this.yLeftAxis);
+    this.yRightAxisG.call(this.yRightAxis);
   }
 
   /**
@@ -340,7 +384,7 @@ export default class MareyDiagram {
     );
 
     // Update the Marey y axes
-    this.refreshAxes();
+    this.refreshYAxes();
 
     // Update the trips
     this.drawTrips();
