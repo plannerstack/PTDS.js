@@ -459,8 +459,11 @@ export default class MareyDiagram {
     this.yStopSelAxis = d3.axisRight(this.yStopSelScale)
       .tickValues(this.journeyPatternMix.referenceJP.distances)
       .tickFormat((_, index) => {
+        const maxChars = 25;
         const stop = this.journeyPatternMix.referenceJP.stops[index];
-        return `${stop.code} ${stop.name}`;
+        let label = `${stop.code} ${stop.name}`;
+        if (label.length > maxChars) label = `${label.substr(0, maxChars - 3)}...`;
+        return label;
       });
 
     this.yLeftAxisG.call(this.yLeftAxis);

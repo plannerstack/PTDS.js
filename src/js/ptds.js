@@ -124,7 +124,7 @@ export default class PTDS {
       };
 
       this.dims.mareyStopSelection = {
-        width: 250,
+        width: 170,
         height: this.dims.marey.innerHeight,
       };
 
