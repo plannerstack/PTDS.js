@@ -93,7 +93,17 @@ svg {
       paint-order: stroke;
       stroke: white;
       stroke-width: 5;
-      // clip-path: url(#clip-path-top-labels);
+    }
+
+    g.tick:nth-child(2) {
+      text {
+        transform: rotate(270deg) translate(5px, 10px);
+      }
+    }
+    g.tick:last-child {
+      text {
+        transform: rotate(270deg) translate(5px, 2px);
+      }
     }
 
     // Color all the vertical lines representing the stops
@@ -101,7 +111,6 @@ svg {
     g.tick:not(:nth-child(2)):not(:last-child) {
       line {
         stroke: $marey-stop-lines-stroke;
-        // clip-path: url(#clip-path);
       }
     }
     g.tick.selected {
