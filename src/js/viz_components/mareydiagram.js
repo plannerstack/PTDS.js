@@ -254,7 +254,7 @@ export default class MareyDiagram {
     // Get new domain from selection
     let newDomain = selection.map(this.yStopSelScale.invert);
 
-    // Find distance of the closest stop to the distance selected
+    // Get the closest stop to a given distance
     const getClosestStop = (goalDistance) => {
       let minDelta = { delta: Number.MAX_SAFE_INTEGER, index: -1, distance: -1 };
       for (const [index, distance] of this.journeyPatternMix.referenceJP.distances.entries()) {
@@ -264,20 +264,24 @@ export default class MareyDiagram {
       return minDelta;
     };
 
+    // Round the selection to the stops
     newDomain = newDomain.map(getClosestStop);
 
     // If the user tried to select a single stop, fix that
     if (newDomain[0].distance === newDomain[1].distance) {
       const referenceJPdistances = this.journeyPatternMix.referenceJP.distances;
+      // If we're not at the end of the domain, select as the end stop the next one
       if (newDomain[1].index < referenceJPdistances.length - 1) {
         newDomain[1].index += 1;
         newDomain[1].distance = referenceJPdistances[newDomain[1].index];
+      // If we're at the end, select as the previous stop the previous one
       } else {
         newDomain[0].index -= 1;
         newDomain[0].distance = referenceJPdistances[newDomain[0].index];
       }
     }
 
+    // Update the selection
     this.g.stopSelection
       .transition().duration(transitionDuration)
       .call(
@@ -454,7 +458,10 @@ export default class MareyDiagram {
 
     this.yStopSelAxis = d3.axisRight(this.yStopSelScale)
       .tickValues(this.journeyPatternMix.referenceJP.distances)
-      .tickFormat((_, index) => this.journeyPatternMix.referenceJP.stops[index].code);
+      .tickFormat((_, index) => {
+        const stop = this.journeyPatternMix.referenceJP.stops[index];
+        return `${stop.code} ${stop.name}`;
+      });
 
     this.yLeftAxisG.call(this.yLeftAxis);
     this.yRightAxisG.call(this.yRightAxis);
@@ -616,6 +623,15 @@ export default class MareyDiagram {
     for (const position of sequence) realtimePaths.addPosition(position);
 
     return realtimePaths.pathsList;
+  }
+
+  /**
+   * Current approximation to use
+   */
+  get currentApproximation() {
+    return {
+      showDots: this.secondsInSelectedDomain < 60 * 60,
+    };
   }
 
   /**
@@ -867,7 +883,7 @@ export default class MareyDiagram {
     const staticStopsSel = tripsEnterUpdateSel
       .selectAll('circle.static-stop')
       .data(({ staticSequences }) =>
-        (this.secondsInSelectedDomain < 60 * 60 ? flatten(staticSequences) : []));
+        (this.currentApproximation.showDots ? flatten(staticSequences) : []));
 
     // Trip enter + update > static stops exit
     staticStopsSel.exit().remove();
@@ -925,7 +941,7 @@ export default class MareyDiagram {
     const realtimeVehiclesPositionsSel = realtimeVehiclesEnterUpdateSel
       .selectAll('circle.rt-position')
       // Draw the circles representing the positions only at the maximum zoom level
-      .data(({ sequences }) => (this.secondsInSelectedDomain < 60 * 60 ? flatten(sequences) : []));
+      .data(({ sequences }) => (this.currentApproximation.showDots ? flatten(sequences) : []));
 
     // Trip enter + update > realtime vehicle sequences > realtime position exit
     realtimeVehiclesPositionsSel.exit().remove();
