@@ -224,6 +224,9 @@ export default class MareyDiagram {
     // Update marey axes
     this.refreshYAxes();
 
+    // Update the timeline
+    this.updateTimeline();
+
     // Update the trips
     this.drawTrips();
 
@@ -395,6 +398,9 @@ export default class MareyDiagram {
     // Update the Marey y axes
     this.refreshYAxes();
 
+    // Update the timeline
+    this.updateTimeline();
+
     // Update the trips
     this.drawTrips();
   }
@@ -531,7 +537,7 @@ export default class MareyDiagram {
    * and make it move when the mouse is hovered in the canvas
    * @param {Function} changeCallback - Callback to trigger when the timeline is moved
    */
-  createTimeline(changeCallback) {
+  createTimeline(changeCallback = null) {
     // Initial position of the timeline
     const initialTimelineYpos = this.yScale(this.minTime);
 
@@ -558,7 +564,10 @@ export default class MareyDiagram {
     // Doing that, though, means that elements with a "z-index" greater than
     // the overlay will get first the movement trigger, so that this handler would not be called.
     // Therefore we register the listener on the main group with all the SVG elements.
-    this.g.diagram.on('mousemove', () => {
+    this.updateTimeline = () => {
+      // If the update is not triggered by an interaction, stop
+      if (!(d3event.type === 'mousemove' || d3event.sourceEvent)) return;
+
       // Get the mouse position relative to the overlay
       // Using a closure we maintain the "this" context as the class instance,
       // but we don't have the DOM element reference so we have to get that manually.
@@ -572,13 +581,19 @@ export default class MareyDiagram {
       // and format it
       const time = this.yScale.invert(yPos);
 
-      if (typeof changeCallback !== 'undefined') changeCallback(time);
+      if (changeCallback) changeCallback(time);
 
-      // Update the y position of the timeline group
-      this.timelineG.attr('transform', `translate(0,${yPos})`);
+      // Only update the vertical position to reflect the one of the mouse
+      // if needed. With zoom and brush, we don't want to change the vertical
+      // position. Only when the mouse is moved over the diagram
+      if (d3event.type === 'mousemove') {
+        // Update the y position of the timeline group
+        this.timelineG.attr('transform', `translate(0,${yPos})`);
+      }
       // Update the text showing the time
       this.timelineG.select('text').text(this.timelineTimeFormat(time));
-    });
+    };
+    this.g.diagram.on('mousemove', this.updateTimeline);
   }
 
   /**
