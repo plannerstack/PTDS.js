@@ -42,7 +42,7 @@ export default class InteractiveMap {
   setupZoom() {
     // Overlay to listen to the zoom events
     const overlay = this.mapGroup.append('rect')
-      .attr('class', 'overlay')
+      .attr('class', 'overlay-mouse')
       .attr('width', this.dims.innerWidth)
       .attr('height', this.dims.innerHeight);
 

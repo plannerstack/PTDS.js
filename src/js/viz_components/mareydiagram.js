@@ -33,15 +33,14 @@ export default class MareyDiagram {
   /**
    *
    * @param {Object} journeyPatternMix - Information to draw on the diagram
-   * @param {Object} diagGroup - SVG element of the diagram
-   * @param {Object} scrollGroup - SVG element of the scrollbar/brush
+   * @param {{diagram: Object, scroll: Object, stopSelection: Object}} svgGroups - SVG groups
+   *   for the diagram, the scroll and the stop selection
    * @param {Object} dims - Dimensions of the diagram
    * @param {Function} changeCallback - Callback for the time change
    */
-  constructor(journeyPatternMix, diagGroup, scrollGroup, dims, changeCallback) {
+  constructor(journeyPatternMix, svgGroups, dims, changeCallback) {
     this.journeyPatternMix = journeyPatternMix;
-    this.diagGroup = diagGroup;
-    this.scrollGroup = scrollGroup;
+    this.g = svgGroups;
     this.dims = dims;
 
     // Compute information needed to draw the trips
@@ -92,13 +91,16 @@ export default class MareyDiagram {
 
     // Rectangle that clips the trips, so that when we zoom they don't
     // end up outside of the main diagram
-    this.diagGroup.append('clipPath')
+    this.g.diagram.append('clipPath')
       .attr('id', 'clip-path')
       .append('rect')
-      // Use a 5px margin on the sides so that the circles representing the stops
-      // are entirely visible even at the first and last stop
-      .attr('x', -5)
-      .attr('width', this.dims.marey.innerWidth + 5)
+      .attr('y', -60)
+      .attr('width', this.dims.marey.innerWidth)
+      .attr('height', this.dims.marey.innerHeight + 60);
+    this.g.diagram.append('clipPath')
+      .attr('id', 'clip-path-trips')
+      .append('rect')
+      .attr('width', this.dims.marey.innerWidth)
       .attr('height', this.dims.marey.innerHeight);
 
     // Line generator for the static schedule of a trip
@@ -107,8 +109,8 @@ export default class MareyDiagram {
       .y(({ time }) => this.yScale(time));
 
     // Overlay to capture mouse events (movement of the timeline, zoom/pan)
-    this.overlay = this.diagGroup.append('rect')
-      .attr('class', 'overlay')
+    this.overlay = this.g.diagram.append('rect')
+      .attr('class', 'overlay-mouse')
       .attr('width', this.dims.marey.innerWidth)
       .attr('height', this.dims.marey.innerHeight);
 
@@ -158,10 +160,10 @@ export default class MareyDiagram {
       // We encapsulate this.zoomed in a closure so that we don't lose the "this" context
       .on('zoom', () => { this.zoomed(); });
     // Attach zoom behaviour to SVG group
-    this.diagGroup.call(this.zoomBehaviour);
+    this.g.diagram.call(this.zoomBehaviour);
 
     this.brushBehaviour = d3.brushY()
-      .extent([[-20, 0], [0, this.dims.mareyScroll.height]])
+      .extent([[-10, 0], [10, this.dims.mareyScroll.height]])
       // Same as above
       .on('brush end', () => { this.brushed(); });
 
@@ -174,9 +176,17 @@ export default class MareyDiagram {
     }
 
     // Attach brush behaviour to SVG group and set initial selection
-    this.scrollGroup
+    this.g.scroll
       .call(this.brushBehaviour)
       .call(this.brushBehaviour.move, [0, this.yScrollScale(initialEndTime)]);
+
+    this.stopSelectionBehavior = d3.brushY()
+      .extent([[-10, 0], [10, this.dims.mareyStopSelection.height]])
+      .on('end', () => { this.brushedStops(); });
+
+    this.g.stopSelection
+      .call(this.stopSelectionBehavior)
+      .call(this.stopSelectionBehavior.move, [0, this.yStopSelScale.range()[1]]);
   }
 
   /**
@@ -192,7 +202,7 @@ export default class MareyDiagram {
 
     // If the selection is empty, select the full range
     if (!selection) {
-      this.scrollGroup.call(
+      this.g.scroll.call(
         this.brushBehaviour.move,
         this.yScrollScale.range(),
       );
@@ -201,7 +211,7 @@ export default class MareyDiagram {
 
     // Make it impossible to perform a 0px selection
     if (selection[0] === selection[1]) {
-      this.scrollGroup.call(
+      this.g.scroll.call(
         this.brushBehaviour.move,
         [selection[0], selection[0] + 1],
       );
@@ -212,7 +222,10 @@ export default class MareyDiagram {
     this.yScale.domain(selection.map(this.yScrollScale.invert));
 
     // Update marey axes
-    this.refreshAxes();
+    this.refreshYAxes();
+
+    // Update the timeline
+    this.updateTimeline();
 
     // Update the trips
     this.drawTrips();
@@ -221,16 +234,83 @@ export default class MareyDiagram {
     const zoomTransform = d3.zoomIdentity
       .scale(this.dims.mareyScroll.height / (selection[1] - selection[0]))
       .translate(0, -selection[0]);
-    this.diagGroup.call(this.zoomBehaviour.transform, zoomTransform);
+    this.g.diagram.call(this.zoomBehaviour.transform, zoomTransform);
 
     // Update the transform scale
     this.lastK = this.dims.mareyScroll.height / (selection[1] - selection[0]);
   }
 
   /**
+   * Stop selection brush handler
+   */
+  brushedStops() {
+    if (!d3event.sourceEvent) return;
+
+    // Get the brush selection
+    const { selection } = d3event;
+    const transitionDuration = 500;
+
+    // If the selection is empty, select the full range
+    if (!selection) {
+      this.g.stopSelection.call(
+        this.stopSelectionBehavior.move,
+        this.yStopSelScale.range(),
+      );
+      return;
+    }
+
+    // Get new domain from selection
+    let newDomain = selection.map(this.yStopSelScale.invert);
+
+    // Get the closest stop to a given distance
+    const getClosestStop = (goalDistance) => {
+      let minDelta = { delta: Number.MAX_SAFE_INTEGER, index: -1, distance: -1 };
+      for (const [index, distance] of this.journeyPatternMix.referenceJP.distances.entries()) {
+        const currentDelta = Math.abs(distance - goalDistance);
+        if (currentDelta < minDelta.delta) minDelta = { delta: currentDelta, index, distance };
+      }
+      return minDelta;
+    };
+
+    // Round the selection to the stops
+    newDomain = newDomain.map(getClosestStop);
+
+    // If the user tried to select a single stop, fix that
+    if (newDomain[0].distance === newDomain[1].distance) {
+      const referenceJPdistances = this.journeyPatternMix.referenceJP.distances;
+      // If we're not at the end of the domain, select as the end stop the next one
+      if (newDomain[1].index < referenceJPdistances.length - 1) {
+        newDomain[1].index += 1;
+        newDomain[1].distance = referenceJPdistances[newDomain[1].index];
+      // If we're at the end, select as the previous stop the previous one
+      } else {
+        newDomain[0].index -= 1;
+        newDomain[0].distance = referenceJPdistances[newDomain[0].index];
+      }
+    }
+
+    // Update the selection
+    this.g.stopSelection
+      .transition().duration(transitionDuration)
+      .call(
+        this.stopSelectionBehavior.move,
+        newDomain.map(({ distance }) => distance).map(this.yStopSelScale),
+      );
+
+    // Update the Marey x scale domain
+    this.xScale.domain(newDomain.map(({ distance }) => distance));
+
+    // Update the x axis
+    this.drawXAxis(transitionDuration);
+
+    // Update the trips
+    this.drawTrips(transitionDuration);
+  }
+
+  /**
    * Refresh the axes after changing the scale and/or the ticks
    */
-  refreshAxes() {
+  refreshYAxes() {
     this.yLeftAxis.tickFormat(this.yAxisTimeFormatter);
     this.yRightAxis.tickFormat(this.yAxisTimeFormatter);
     this.yLeftAxisG.call(this.yLeftAxis.scale(this.yScale));
@@ -300,7 +380,7 @@ export default class MareyDiagram {
         const zoomTransform = d3.zoomIdentity
           .scale(this.lastK)
           .translate(0, -this.yScrollScale(newDomain[0]));
-        this.diagGroup.call(this.zoomBehaviour.transform, zoomTransform);
+        this.g.diagram.call(this.zoomBehaviour.transform, zoomTransform);
       } else {
         // If shift key is pressed, ZOOM.
         // Update the last known scale K value
@@ -310,13 +390,16 @@ export default class MareyDiagram {
     }
 
     // Update the brush selection
-    this.scrollGroup.call(
+    this.g.scroll.call(
       this.brushBehaviour.move,
       this.yScale.domain().map(this.yScrollScale),
     );
 
     // Update the Marey y axes
-    this.refreshAxes();
+    this.refreshYAxes();
+
+    // Update the timeline
+    this.updateTimeline();
 
     // Update the trips
     this.drawTrips();
@@ -331,6 +414,9 @@ export default class MareyDiagram {
     this.xScale = d3.scaleLinear()
       .domain([0, lastStopDistance])
       .range([0, this.dims.marey.innerWidth]);
+    this.yStopSelScale = d3.scaleLinear()
+      .domain([0, lastStopDistance])
+      .range([0, this.dims.mareyStopSelection.height]);
     this.yScale = d3.scaleTime()
       .domain([this.minTime, this.maxTime])
       .range([0, this.dims.marey.innerHeight]);
@@ -345,19 +431,22 @@ export default class MareyDiagram {
    * so by changing the order of group creation we can adjust their "z-index".
    */
   createGroups() {
-    this.yLeftAxisG = this.diagGroup.append('g')
+    this.xAxisG = this.g.diagram.append('g')
+      .attr('class', 'top-axis axis')
+      .attr('clip-path', 'url(#clip-path)');
+    this.yLeftAxisG = this.g.diagram.append('g')
       .attr('class', 'left-axis axis');
-    this.yRightAxisG = this.diagGroup.append('g')
+    this.yRightAxisG = this.g.diagram.append('g')
       .attr('class', 'right-axis axis')
       .attr('transform', `translate(${this.dims.marey.innerWidth},0)`);
-    this.yScrollAxisG = this.scrollGroup.append('g')
+    this.yScrollAxisG = this.g.scroll.append('g')
       .attr('class', 'scroll-axis axis');
-    this.xAxisG = this.diagGroup.append('g')
-      .attr('class', 'top-axis axis');
-    this.tripsG = this.diagGroup.append('g')
+    this.yStopSelAxisG = this.g.stopSelection.append('g')
+      .attr('class', 'stop-selection-axis axis');
+    this.tripsG = this.g.diagram.append('g')
       .attr('class', 'trips')
-      .attr('clip-path', 'url(#clip-path)');
-    this.timelineG = this.diagGroup.append('g')
+      .attr('clip-path', 'url(#clip-path-trips)');
+    this.timelineG = this.g.diagram.append('g')
       .attr('class', 'timeline');
   }
 
@@ -377,48 +466,70 @@ export default class MareyDiagram {
       .ticks(20)
       .tickFormat(this.yAxisTimeFormatter);
 
+    this.yStopSelAxis = d3.axisRight(this.yStopSelScale)
+      .tickValues(this.journeyPatternMix.referenceJP.distances)
+      .tickFormat((_, index) => {
+        // Truncate the tick label if longer than maxChars chars
+        const maxChars = 25;
+        const stop = this.journeyPatternMix.referenceJP.stops[index];
+        let label = `${stop.code} ${stop.name}`;
+        if (label.length > maxChars) label = `${label.substr(0, maxChars - 3)}...`;
+        return label;
+      });
+
     this.yLeftAxisG.call(this.yLeftAxis);
     this.yRightAxisG.call(this.yRightAxis);
     this.yScrollAxisG.call(this.yScrollAxis);
+    this.yStopSelAxisG.call(this.yStopSelAxis);
+
+    // Add circle to represent the stop in the stop selection brush
+    this.yStopSelAxisG.selectAll('.tick').append('circle').attr('r', 3);
   }
 
   /**
    * Horizontal axis drawing
+   * @param {number} transitionDuration - Duration of the transition
    */
-  drawXAxis() {
-    this.xAxis = d3.axisTop(this.xScale)
-      .tickSize(-this.dims.marey.innerHeight)
-      .tickValues(this.journeyPatternMix.referenceJP.distances)
-      .tickFormat((_, index) => this.journeyPatternMix.referenceJP.stops[index].code);
-
-    this.xAxisG.call(this.xAxis);
+  drawXAxis(transitionDuration = 0) {
+    if (typeof this.xAxis === 'undefined') {
+      this.xAxis = d3.axisTop(this.xScale)
+        .tickSize(-this.dims.marey.innerHeight)
+        .tickValues(this.journeyPatternMix.referenceJP.distances)
+        .tickFormat((_, index) => this.journeyPatternMix.referenceJP.stops[index].code);
+    }
 
     // Enhance vertical lines representing stops adding the stop code as attribute
     // to the SVG element and adding the "selected" CSS class to them when the mouse
     // cursor is positioned over
-    this.xAxisG.selectAll('.tick')
-      .data(this.journeyPatternMix.referenceJP.stops)
-      .attr('data-stop-area-code', ({ area: { code } }) => code)
-      .on('mouseover', function f(stop) {
-        const stopAreaCode = stop.area.code;
-        // TODO: radius when selected and non selected (below) should be specified as a config
-        // options somewhere else
-        const selectedStopAreaRadius = 3;
-        d3.select(`#map g.stopArea[data-stop-area-code='${stopAreaCode}'] circle`)
-          .attr('r', selectedStopAreaRadius);
-        d3.select(this).classed('selected', true);
-      })
-      .on('mouseout', function f(stop) {
-        const stopAreaCode = stop.area.code;
-        const deselectedStopAreaRadius = 1;
-        d3.select(`#map g.stopArea[data-stop-area-code='${stopAreaCode}'] circle`)
-          .attr('r', deselectedStopAreaRadius);
-        d3.select(this).classed('selected', false);
-      });
+    const that = this;
+    const bindTicksClick = () => {
+      this.xAxisG.selectAll('.tick')
+        .attr(
+          'data-stop-area-code',
+          (_, stopIndex) => this.journeyPatternMix.referenceJP.stops[stopIndex].area.code,
+        )
+        .on('mouseover', function f(_, stopIndex) {
+          const stopAreaCode = that.journeyPatternMix.referenceJP.stops[stopIndex].area.code;
+          // TODO: radius when selected and non selected (below) should be specified as a config
+          // options somewhere else
+          const selectedStopAreaRadius = 3;
+          d3.select(`#map g.stopArea[data-stop-area-code='${stopAreaCode}'] circle`)
+            .attr('r', selectedStopAreaRadius);
+          d3.select(this).classed('selected', true);
+        })
+        .on('mouseout', function f(_, stopIndex) {
+          const stopAreaCode = that.journeyPatternMix.referenceJP.stops[stopIndex].area.code;
+          const deselectedStopAreaRadius = 1;
+          d3.select(`#map g.stopArea[data-stop-area-code='${stopAreaCode}'] circle`)
+            .attr('r', deselectedStopAreaRadius);
+          d3.select(this).classed('selected', false);
+        });
+    };
 
-    this.xAxisG.selectAll('text')
-      .attr('x', 5)
-      .attr('y', 4);
+    this.xAxisG
+      .transition().duration(transitionDuration)
+      .call(this.xAxis)
+      .on('end', bindTicksClick);
   }
 
   /**
@@ -426,7 +537,7 @@ export default class MareyDiagram {
    * and make it move when the mouse is hovered in the canvas
    * @param {Function} changeCallback - Callback to trigger when the timeline is moved
    */
-  createTimeline(changeCallback) {
+  createTimeline(changeCallback = null) {
     // Initial position of the timeline
     const initialTimelineYpos = this.yScale(this.minTime);
 
@@ -453,7 +564,10 @@ export default class MareyDiagram {
     // Doing that, though, means that elements with a "z-index" greater than
     // the overlay will get first the movement trigger, so that this handler would not be called.
     // Therefore we register the listener on the main group with all the SVG elements.
-    this.diagGroup.on('mousemove', () => {
+    this.updateTimeline = () => {
+      // If the update is not triggered by an interaction, stop
+      if (!(d3event.type === 'mousemove' || d3event.sourceEvent)) return;
+
       // Get the mouse position relative to the overlay
       // Using a closure we maintain the "this" context as the class instance,
       // but we don't have the DOM element reference so we have to get that manually.
@@ -467,13 +581,19 @@ export default class MareyDiagram {
       // and format it
       const time = this.yScale.invert(yPos);
 
-      if (typeof changeCallback !== 'undefined') changeCallback(time);
+      if (changeCallback) changeCallback(time);
 
-      // Update the y position of the timeline group
-      this.timelineG.attr('transform', `translate(0,${yPos})`);
+      // Only update the vertical position to reflect the one of the mouse
+      // if needed. With zoom and brush, we don't want to change the vertical
+      // position. Only when the mouse is moved over the diagram
+      if (d3event.type === 'mousemove') {
+        // Update the y position of the timeline group
+        this.timelineG.attr('transform', `translate(0,${yPos})`);
+      }
       // Update the text showing the time
       this.timelineG.select('text').text(this.timelineTimeFormat(time));
-    });
+    };
+    this.g.diagram.on('mousemove', this.updateTimeline);
   }
 
   /**
@@ -521,6 +641,15 @@ export default class MareyDiagram {
     for (const position of sequence) realtimePaths.addPosition(position);
 
     return realtimePaths.pathsList;
+  }
+
+  /**
+   * Current approximation to use
+   */
+  get currentApproximation() {
+    return {
+      showDots: this.secondsInSelectedDomain < 60 * 60,
+    };
   }
 
   /**
@@ -648,8 +777,9 @@ export default class MareyDiagram {
 
   /**
    * Draw the trips on the diagram
+   * @param {number} transitionDuration - Duration of the transition in case of stop selection
    */
-  drawTrips() {
+  drawTrips(transitionDuration) {
     // TODO: move these constants in a separate config file
     const selectedTripStaticStopRadius = 3;
     const selectedTripRTposRadius = 3;
@@ -725,11 +855,11 @@ export default class MareyDiagram {
       first = d3.timeMinute.offset(first, -1);
       last = d3.timeMinute.offset(last, +1);
       // Update zoom status to reflect change in domain
-      that.diagGroup.call(that.zoomBehaviour.transform, d3.zoomIdentity
+      that.g.diagram.call(that.zoomBehaviour.transform, d3.zoomIdentity
         .scale(that.lastK)
         .translate(0, -that.yScrollScale(first)));
       // Update brush status to reflect change in domain
-      that.scrollGroup
+      that.g.scroll
         .call(that.brushBehaviour.move, [
           that.yScrollScale(first),
           that.yScrollScale(last),
@@ -755,7 +885,7 @@ export default class MareyDiagram {
       .data(({ staticSequences }) => staticSequences);
 
     // Trip enter + update > static sequences exit
-    staticSequencesSel.exit().remove();
+    staticSequencesSel.exit().transition().duration(transitionDuration).remove();
 
     // Trip enter + update > static sequences enter
     staticSequencesSel.enter()
@@ -763,12 +893,15 @@ export default class MareyDiagram {
       .attr('class', 'static-sequence')
       // Trip enter + update > static sequences enter + update
       .merge(staticSequencesSel)
+      .transition()
+      .duration(transitionDuration)
       .attr('d', schedule => this.tripLineGenerator(schedule));
 
     // Trip enter + update > static stops selection
     const staticStopsSel = tripsEnterUpdateSel
       .selectAll('circle.static-stop')
-      .data(({ staticSequences }) => flatten(staticSequences));
+      .data(({ staticSequences }) =>
+        (this.currentApproximation.showDots ? flatten(staticSequences) : []));
 
     // Trip enter + update > static stops exit
     staticStopsSel.exit().remove();
@@ -778,8 +911,10 @@ export default class MareyDiagram {
       .append('circle')
       .attr('class', 'static-stop')
       .attr('r', deSelectedTripStaticStopRadius)
-      .attr('cx', ({ distance }) => this.xScale(distance))
       .merge(staticStopsSel)
+      .transition()
+      .duration(transitionDuration)
+      .attr('cx', ({ distance }) => this.xScale(distance))
       .attr('cy', ({ time }) => this.yScale(time));
 
     // Trip enter + update > realtime vehicle sequences selection
@@ -803,11 +938,8 @@ export default class MareyDiagram {
     // const realtimeVehiclesEnterUpdateSel
       .selectAll('path.rt-sequence')
       // Compute the realtime links for each sequence and make a single array out of it
-      .data(
-        ({ sequences }) =>
-          flatten(sequences.map(sequence => MareyDiagram.getRealtimePaths(sequence))),
-        ({ vehicleNumber }) => vehicleNumber,
-      );
+      .data(({ sequences }) =>
+        flatten(sequences.map(sequence => MareyDiagram.getRealtimePaths(sequence))));
 
     // Trip enter + update > realtime vehicle sequences > realtime link exit
     realtimeVehiclesLinksSel.exit().remove();
@@ -819,13 +951,15 @@ export default class MareyDiagram {
       .merge(realtimeVehiclesLinksSel)
       .attr('class', ({ status }) => `rt-sequence ${status}`)
       .classed('prognosed', ({ prognosed }) => prognosed)
+      .transition()
+      .duration(transitionDuration)
       .attr('d', ({ positions }) => this.tripLineGenerator(positions));
 
     // Trip enter + update > realtime vehicle sequences > realtime position selection
     const realtimeVehiclesPositionsSel = realtimeVehiclesEnterUpdateSel
       .selectAll('circle.rt-position')
       // Draw the circles representing the positions only at the maximum zoom level
-      .data(({ sequences }) => (this.secondsInSelectedDomain < 60 * 60 ? flatten(sequences) : []));
+      .data(({ sequences }) => (this.currentApproximation.showDots ? flatten(sequences) : []));
 
     // Trip enter + update > realtime vehicle sequences > realtime position exit
     realtimeVehiclesPositionsSel.exit().remove();
@@ -836,9 +970,11 @@ export default class MareyDiagram {
       .attr('class', ({ status }) => `rt-position ${status}`)
       .classed('prognosed', ({ prognosed }) => prognosed)
       .attr('r', deSelectedTripRTposRadius)
+      .merge(realtimeVehiclesPositionsSel)
+      .transition()
+      .duration(transitionDuration)
       .attr('cx', ({ distance }) => this.xScale(distance))
       // Trip enter + update > realtime vehicle sequences > realtime position enter
-      .merge(realtimeVehiclesPositionsSel)
       .attr('cy', ({ time }) => this.yScale(time));
   }
 }
