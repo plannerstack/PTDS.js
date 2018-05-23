@@ -21,11 +21,45 @@ export default class PTDataset {
     this.vehicleJourneys = this.computeVehicleJourneys(inputData.vehicleJourneys);
     this.stopsLinks = this.computeLinks();
 
+    const testMarkers = [
+      {
+        id: 123,
+        reference: {
+          vehicleJourneyCode: 'HTM:1:10011:2018-05-16',
+          vehicleNumber: 3125,
+        },
+        time: new Date(1526441459000),
+        message: 'Test Marker Message',
+        url: 'http://example.org/',
+      },
+    ];
+
+    this.addMarkersToDataset(testMarkers);
+
+
     // Compute times of the first and last stop of any journey in the dataset
     this.earliestTime = Math.min(...Object.values(this.journeyPatterns).map(jp =>
       jp.firstAndLastTimes.first));
     this.latestTime = Math.max(...Object.values(this.journeyPatterns).map(jp =>
       jp.firstAndLastTimes.last));
+  }
+
+  addMarkersToDataset(markers) {
+    for (const marker of markers) {
+      const { vehicleJourneyCode, vehicleNumber } = marker.reference;
+      if (Object.prototype.hasOwnProperty.call(this.vehicleJourneys, vehicleJourneyCode)) {
+        const { rt } = this.vehicleJourneys[vehicleJourneyCode];
+        if (Object.prototype.hasOwnProperty.call(rt, vehicleNumber)) {
+          const vehicleData = rt[vehicleNumber];
+          if (Object.prototype.hasOwnProperty.call(vehicleData, 'markers')) {
+            const markersData = vehicleData.markers;
+            markersData.push(marker);
+          } else {
+            vehicleData.markers = [marker];
+          }
+        }
+      }
+    }
   }
 
   /**

@@ -713,7 +713,7 @@ export default class MareyDiagram {
 
         const realtimeSequences = [];
         // Iterate over each of the real time vehicles
-        for (const { vehicleNumber, positions } of vehicleJourney.realTimeData) {
+        for (const { vehicleNumber, positions, markers } of vehicleJourney.realTimeData) {
           const vehicleSequences = [];
 
           // Iterate over the shared sequence
@@ -746,6 +746,24 @@ export default class MareyDiagram {
                   distance: distanceSinceLastStop + lastStopRefDistance,
                 };
               });
+
+            // If there are markers to add, add them
+            if (markers) {
+              // Deep clone markers
+              const leftOverMarkers = markers.slice();
+              for (const [indexP, { time }] of vehicleSequence.entries()) {
+                for (const [indexM, marker] of leftOverMarkers.entries()) {
+                  if (indexP !== vehicleSequence.length - 1) {
+                    const nextPosition = vehicleSequence[indexP + 1];
+                    if (time < marker.time && marker.time < nextPosition.time) {
+                      console.log(`computing position for marker ${marker.id}`);
+                      leftOverMarkers.splice(indexM, 1);
+                      break;
+                    }
+                  }
+                }
+              }
+            }
 
             // Filter out sequences with zero length (can happen that a vehicle belonging to a
             // journey pattern that shares >1 link(s) with the reference one does not have any
