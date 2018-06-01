@@ -681,6 +681,7 @@ export default class MareyDiagram {
     for (const otherJP of this.journeyPatternMix.otherJPs) {
       // Iterate over the trips of the journey pattern
       for (const vehicleJourney of otherJP.journeyPattern.vehicleJourneys) {
+        const tripMarkers = [];
         // Min and max time of every static/realtime position of the current journey,
         // only for the shared segments
         let minTime = null;
@@ -751,12 +752,20 @@ export default class MareyDiagram {
             if (markers) {
               // Deep clone markers
               const leftOverMarkers = markers.slice();
-              for (const [indexP, { time }] of vehicleSequence.entries()) {
+              for (const [indexP, { time, distance }] of vehicleSequence.entries()) {
                 for (const [indexM, marker] of leftOverMarkers.entries()) {
                   if (indexP !== vehicleSequence.length - 1) {
                     const nextPosition = vehicleSequence[indexP + 1];
                     if (time < marker.time && marker.time < nextPosition.time) {
-                      console.log(`computing position for marker ${marker.id}`);
+                      const x1 = distance;
+                      const y1 = time;
+                      const x2 = nextPosition.distance;
+                      const y2 = nextPosition.time;
+                      const yM = marker.time;
+                      const xM = (((x1 - x2) / (y1 - y2)) * yM) -
+                                 (((x1 * y2) - (x2 * y1)) / (y1 - y2));
+                      marker.distance = xM;
+                      tripMarkers.push(marker);
                       leftOverMarkers.splice(indexM, 1);
                       break;
                     }
@@ -785,6 +794,7 @@ export default class MareyDiagram {
           code: vehicleJourney.code,
           staticSequences,
           realtimeSequences,
+          markers: tripMarkers,
           firstAndLastTimes: { first: minTime, last: maxTime },
         });
       }
@@ -994,5 +1004,34 @@ export default class MareyDiagram {
       .attr('cx', ({ distance }) => this.xScale(distance))
       // Trip enter + update > realtime vehicle sequences > realtime position enter
       .attr('cy', ({ time }) => this.yScale(time));
+
+    // Draw the markers at the end so that they are on top of everything else
+    // Trip enter + update > marker selection
+    const tripMarkersSel = tripsEnterUpdateSel
+      .selectAll('g.marker')
+      .data(({ markers }) => (typeof markers !== 'undefined' ? markers : []));
+
+    // Trip enter + update > marker exit
+    tripMarkersSel.exit().remove();
+
+    // Trip enter + update > marker enter
+    const tripMarkersGroup = tripMarkersSel.enter().append('g').attr('class', 'marker');
+    tripMarkersGroup
+      .on('mouseover', function f() {
+        d3event.stopPropagation();
+        d3.select(this).append('text').attr('class', 'message').text(({ message, url }) => `${message} | ${url}`);
+      })
+      .on('mouseout', function f() {
+        d3event.stopPropagation();
+        d3.select(this).select('text.message').remove();
+      })
+      .merge(tripMarkersSel)
+      .attr('transform', ({ distance, time }) =>
+        `translate(${this.xScale(distance)},${this.yScale(time)})`);
+
+    tripMarkersGroup.append('image')
+      .attr('width', 15)
+      .attr('height', 15)
+      .attr('xlink:href', 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAABmJLR0QA/wD/AP+gvaeTAAADC0lEQVR4nO2aPWgUQRiGn1XjT4yQwiBGCAhaxDQSBEEJYqNC1NhEbCQWYikEC1vBaBkQCSKWYqFY2Kig8a8QIdGAiI0/KIiCQUW8i4IJWYvZJXfnTG5mb3ZnQuaBD3Kb2W/f99293dlJIBAIBAKBQCAQCATmiIBjwBgwBcQLtMrAE2C/aQDDHoi3XWd0ze/2QGxepXUl3PRAaF71uNZsJAngC7BeJ6kFSBlYU7lhiWTQ2mK0OOG/Ey4L4HsBQlzxoXaDLIDRAoS4QstbNzCL+xuW7ZoBOnWTGvFAsO0a0TUPsBJ46oFoW/UCaDYJAKANeOeB+EbrE9Buaj6lHfE+4NpE1noJdGQ1n9IMXPXAjGldB1ZnMXxYsf0I8MMDY/XqJ3DU0FsVM8CA4ncbgHsemFTVQ9SX/AAwrRNA2uwS4mlQSwScBH57YDitP8Ap5BO75cDFirHaAcTAa8TESEYnMO6B+VfAVoXGLYhHYOV4owBi4C9iMWGpZOwy4HQypmjjs8AFYIVEVwScQL6aZRxAWs+ATYp9tgNvCjT/Edil0NKBuBeo9s0cQAz8QiQrYxXijOT9HnEDaFVo6Kf+k6qhANK6g3rRZB9iUcW28UngkOKYrcA1zT5WAoiBr0CfokcbcMui+buop7N7gc8GvawFkNYVoEXR6zhQasB4KekhowW4jPlXznoAMfAe2Knot5lsj8vxZF8ZO4C3GbXmEkCMmEGeR0w8amkChhAzsXp9ppOxTYo+55JjZdWZWwBpTQBdit7dzP92OYZ64tWV9G5UX+4BxIip6SDyZfcI6AVuI+7sk8nPvfOMH0x62tBWSABpjSJeoLKyDhGOTU11sXmwGPiGmKCY0p/sa1tP4QFUXg09GsfvAR7kqKMK2XdOK6UGeI5YrbnP3B8qNgJ7EAsW23I+fqT8kJB3AK6p8ixbQFhUhABcC3BNCMC1ANeEACTbpgpXURyl2g2yACYKEOIKLW995DcNdV0HdJMa8kCs7Tqraz7lIOL/6soeiM9aZeARBmc+EAgEAoHA4uEfmPh3WpWTDh8AAAAASUVORK5CYII=');
   }
 }

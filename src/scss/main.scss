@@ -48,6 +48,10 @@ svg {
 }
 
 #marey {
+  g.marker text{
+    font-family: FontAwesome;
+  }
+
   .marey-scroll {
     rect.selection {
       stroke: black;
@@ -71,7 +75,7 @@ svg {
         display: none;
       }
       text {
-        transform: translate(4px, 0px);
+        transform: translate(8px, 0px);
       }
     }
     rect.selection {
