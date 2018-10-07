@@ -27,9 +27,7 @@ export default class PTDS {
         fetch(this.data.updateUrl).then(r => r.json()).then((updateData) => {
           this.data.updateVehicleJourneys(updateData.vehicleJourneys);
         });
-        /* This feels very redundant... */
-        this.journeyPatternMix = this.computeJourneyPatternMix();
-        this.marey.update(this.journeyPatternMix);
+        this.marey.update();
       }
     }, 15000, 15000);
 

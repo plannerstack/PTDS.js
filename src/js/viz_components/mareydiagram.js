@@ -51,8 +51,7 @@ export default class MareyDiagram {
     this.drawTrips();
   }
 
-  update(journeyPatternMix) {
-    this.journeyPatternMix = journeyPatternMix;
+  update() {
     this.trips = this.computeTrips();
     this.drawTrips();
   }
