@@ -68,7 +68,7 @@ const loadAvailableLineDirections = () => {
 // Process the index file populating the sidebar with the available parameters,
 // as soon as it is loaded
 const processIndex = () => {
-  const publications = indexData.publications.sort().reverse();
+  const publications = indexData.publications.sort((a, b) => b.date.localeCompare(a.date));
 
   const modeSelect = document.getElementById('mode');
   modeSelect.onchange = () => {
