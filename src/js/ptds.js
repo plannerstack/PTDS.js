@@ -1,6 +1,6 @@
 import { select } from 'd3-selection';
 import { timeFormat } from 'd3-time-format';
-import { timer } from 'd3-timer';
+import { timer, interval } from 'd3-timer';
 import dat from 'dat.gui';
 
 import PTDataset from './ptdataset';
@@ -11,6 +11,7 @@ const d3 = Object.assign({}, {
   select,
   timeFormat,
   timer,
+  interval,
 });
 
 /**
@@ -18,7 +19,20 @@ const d3 = Object.assign({}, {
  */
 export default class PTDS {
   constructor(inputData, options) {
+    this.marey = null;
     this.data = new PTDataset(inputData, options.selectedDate);
+
+    this.dataUpdateTimer = d3.interval(() => {
+      if (this.marey !== null) {
+        fetch(this.data.updateUrl).then(r => r.json()).then((updateData) => {
+          this.data.updateVehicleJourneys(updateData.vehicleJourneys);
+        });
+        /* This feels very redundant... */
+        this.journeyPatternMix = this.computeJourneyPatternMix();
+        this.marey.update(this.journeyPatternMix);
+      }
+    }, 15000, 15000);
+
     this.options = options;
 
     if (['dual', 'marey'].includes(options.mode)) {

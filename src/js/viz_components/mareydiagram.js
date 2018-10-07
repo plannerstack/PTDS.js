@@ -51,6 +51,12 @@ export default class MareyDiagram {
     this.drawTrips();
   }
 
+  update(journeyPatternMix) {
+    this.journeyPatternMix = journeyPatternMix;
+    this.trips = this.computeTrips();
+    this.drawTrips();
+  }
+
   /**
    * Computes the time boundaries for the diagram, looking at the fist and last time of
    * all the trips of all the journey patterns displayed

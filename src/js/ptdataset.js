@@ -15,6 +15,7 @@ import TimeUtils from './timeutils';
  */
 export default class PTDataset {
   constructor(inputData, referenceDate) {
+    this.updateUrl = inputData.updateUrl;
     this.referenceDate = referenceDate;
     Object.assign(this, PTDataset.computeStopsAndStopAreas(inputData.scheduledStopPoints));
     Object.assign(this, this.computeLinesJourneyPatterns(inputData.journeyPatterns));
@@ -189,5 +190,22 @@ export default class PTDataset {
         }),
       vehicleJourney => vehicleJourney.code,
     );
+  }
+
+
+  updateVehicleJourneys(_vehicleJourneys) {
+    for (const [code, { realtime, cancelled }] of Object.entries(_vehicleJourneys)) {
+      // Convert time in seconds since noon minus 12h to Date object
+      for (const rtVehicle of Object.values(realtime)) {
+        rtVehicle.times = rtVehicle.times.map(time =>
+          TimeUtils.secondsToDateObject(time, this.referenceDate));
+      }
+
+      const vehicleJourney = this.vehicleJourneys[code];
+      if (vehicleJourney !== undefined) {
+        vehicleJourney.realtime = realtime;
+        vehicleJourney.cancelled = cancelled;
+      }
+    }
   }
 }
