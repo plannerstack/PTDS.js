@@ -51,6 +51,10 @@ export default class MareyDiagram {
     this.drawTrips();
   }
 
+  /**
+   * Updates the current dataset in the Marey diagram, and redraw.
+   * TODO: investigate if we could improve the update speed by only updating realtime.
+   */
   update() {
     this.trips = this.computeTrips();
     this.drawTrips();

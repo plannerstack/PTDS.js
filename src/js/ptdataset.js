@@ -192,7 +192,11 @@ export default class PTDataset {
     );
   }
 
-
+  /**
+   * Update raw vehicle journey realtime data into an existing VehicleJourney object,
+   * fetch each object indexed by their code for fast lookup and update that object
+   * @param  {Object} _vehicleJourneys Raw vehicle realtime data
+   */
   updateVehicleJourneys(_vehicleJourneys) {
     for (const [code, { realtime, cancelled }] of Object.entries(_vehicleJourneys)) {
       // Convert time in seconds since noon minus 12h to Date object
