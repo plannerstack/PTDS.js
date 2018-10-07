@@ -22,14 +22,16 @@ export default class PTDS {
     this.marey = null;
     this.data = new PTDataset(inputData, options.selectedDate);
 
-    this.dataUpdateTimer = d3.interval(() => {
-      if (this.marey !== null) {
-        fetch(this.data.updateUrl).then(r => r.json()).then((updateData) => {
-          this.data.updateVehicleJourneys(updateData.vehicleJourneys);
-        });
-        this.marey.update();
-      }
-    }, 15000, 15000);
+    if (this.data.updateUrl !== undefined) {
+      this.dataUpdateTimer = d3.interval(() => {
+        if (this.marey !== null) {
+          fetch(this.data.updateUrl).then(r => r.json()).then((updateData) => {
+            this.data.updateVehicleJourneys(updateData.vehicleJourneys);
+          });
+          this.marey.update();
+        }
+      }, 15000, 15000);
+    }
 
     this.options = options;
 
