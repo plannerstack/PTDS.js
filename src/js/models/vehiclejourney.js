@@ -78,7 +78,7 @@ export default class VehicleJourney {
       const firstRt = this.rt[Object.keys(this.rt)];
       return `${this.journeyPattern.line.code} - ${(firstRt.blockNumber !== undefined ? firstRt.blockNumber : '?')} (${firstRt.vehicleNumber})`;
     }
-    return this.journeyPattern.line.code;
+    return `${this.journeyPattern.line.code}`;
   }
 
   /**

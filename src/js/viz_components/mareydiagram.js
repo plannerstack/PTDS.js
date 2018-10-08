@@ -777,6 +777,7 @@ export default class MareyDiagram {
 
         trips.push({
           code: vehicleJourney.code,
+          tripLabel: vehicleJourney.tripLabel,
           staticSequences,
           realtimeSequences,
           firstAndLastTimes: { first: minTime, last: maxTime },
