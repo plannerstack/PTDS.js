@@ -668,12 +668,14 @@ export default class MareyDiagram {
   computeTrips() {
     // Compute drawing information for the trips of the reference journey pattern
     const trips = this.journeyPatternMix.referenceJP.vehicleJourneys
-      .map(({ code, staticSchedule, firstAndLastTimes, realTimeData }) => ({
+      .map(({ code, tripLabel, staticSchedule, firstAndLastTimes, realTimeData }) => ({
         code,
+        tripLabel,
         // For the reference journey pattern there is only one sequence
         staticSequences: [staticSchedule.map(({ time, distance }) => ({ time, distance }))],
-        realtimeSequences: realTimeData.map(({ vehicleNumber, positions }) => ({
+        realtimeSequences: realTimeData.map(({ vehicleNumber, blockNumber, positions }) => ({
           vehicleNumber,
+          blockNumber,
           // Again, only one sequence per vehicle for the reference journey pattern
           sequences: [positions.map(({ time, distanceFromStart, status, prognosed }) => ({
             time,
@@ -722,7 +724,7 @@ export default class MareyDiagram {
 
         const realtimeSequences = [];
         // Iterate over each of the real time vehicles
-        for (const { vehicleNumber, positions } of vehicleJourney.realTimeData) {
+        for (const { vehicleNumber, blockNumber, positions } of vehicleJourney.realTimeData) {
           const vehicleSequences = [];
 
           // Iterate over the shared sequence
@@ -767,6 +769,7 @@ export default class MareyDiagram {
           if (vehicleSequences.length) {
             realtimeSequences.push({
               vehicleNumber,
+              blockNumber,
               sequences: vehicleSequences,
             });
           }
@@ -837,7 +840,7 @@ export default class MareyDiagram {
         .attr('x', xPos)
         .attr('y', yPos)
         .attr('dy', -10)
-        .text(({ code }) => code);
+        .text(({ tripLabel }) => tripLabel);
       // Add 'selected' class to the trip SVG group
       tripSel.classed('selected', true);
       tripSel.selectAll('circle.static-stop').attr('r', selectedTripStaticStopRadius);
