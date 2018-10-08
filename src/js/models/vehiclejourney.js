@@ -75,7 +75,7 @@ export default class VehicleJourney {
   get tripLabel() {
     if (this.isRealTime) {
       /* TODO: Temporary workaround, we should have all blocks */
-      const firstRt = this.rt[Object.keys(this.rt)];
+      const firstRt = this.rt[Object.keys(this.rt)[0]];
       return `${this.journeyPattern.line.code} - ${(firstRt.blockNumber !== undefined ? firstRt.blockNumber : '?')} (${firstRt.vehicleNumber})`;
     }
     return `${this.journeyPattern.line.code}`;
