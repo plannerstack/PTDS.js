@@ -718,15 +718,18 @@ export default class MareyDiagram {
 
           // Iterate over the shared sequence
           for (let i = 0; i < referenceSequences.length; i += 1) {
-            // Filter out last stop of the sequence because it is not valid as "last stop"
-            const refSequence = referenceSequences[i].slice(0, -1);
-            const otherSequence = otherSequences[i].slice(0, -1);
+            const refSequence = referenceSequences[i];
+            const otherSequence = otherSequences[i];
+            const lastStopIndexTerm = otherSequence[otherSequence.length - 1];
 
             // For each shared sequence, add the positions data of the current trip by mapping
             // the distance relative to the last stop of the trip to the absolute distance
             // in the reference journey pattern
             const vehicleSequence = positions
               .filter(({ lastStopIndex }) => otherSequence.includes(lastStopIndex))
+              // Filter out last stop of the sequence beyond the arrival / departure
+              .filter(({ distanceSinceLastStop, lastStopIndex }) =>
+                !(distanceSinceLastStop > 0 && lastStopIndex === lastStopIndexTerm))
               .map(({ time, distanceSinceLastStop, lastStopIndex, status, prognosed }) => {
                 // Find the index of the last stop before the current position
                 // in the reference journey pattern
