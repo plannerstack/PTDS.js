@@ -206,7 +206,7 @@ export default class PTDataset {
       }
 
       const vehicleJourney = this.vehicleJourneys[code];
-      if (vehicleJourney !== undefined) {
+      if (typeof vehicleJourney !== 'undefined') {
         vehicleJourney.rt = realtime;
         vehicleJourney.cancelled = cancelled;
       }
