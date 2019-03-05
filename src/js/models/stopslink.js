@@ -36,10 +36,10 @@ export default class StopsLink {
    */
   getPointAlongStopAreasSegmenyByPercentage(percentage) {
     return new Point(
-      this.stop1.area.center.x +
-        ((this.stop2.area.center.x - this.stop1.area.center.x) * percentage),
-      this.stop1.area.center.y +
-        ((this.stop2.area.center.y - this.stop1.area.center.y) * percentage),
+      this.stop1.area.center.x
+        + ((this.stop2.area.center.x - this.stop1.area.center.x) * percentage),
+      this.stop1.area.center.y
+        + ((this.stop2.area.center.y - this.stop1.area.center.y) * percentage),
     );
   }
 }

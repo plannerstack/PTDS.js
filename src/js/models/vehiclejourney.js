@@ -81,8 +81,8 @@ export default class VehicleJourney {
     // If realtime data is available, the trip is considered active
     // if at least one of the vehicles is active
     if (this.isRealTime) {
-      return Object.values(this.rt).some(({ times }) =>
-        times[0] <= time && time <= times[times.length - 1]);
+      return Object.values(this.rt).some(({ times }) => times[0] <= time
+        && time <= times[times.length - 1]);
     }
 
     return (this.times[0] <= time && time <= this.times[this.times.length - 1]);
@@ -110,13 +110,13 @@ export default class VehicleJourney {
       if (distanceStop1 <= distance && distance <= distanceStop2) {
         // Compute the theoretical time that the vehicle should have to be on time
         // having traveled the current distance
-        const theoreticalTime = (((timeStop2Seconds - timeStop1Seconds) /
-                                  (distanceStop2 - distanceStop1)) * (distance - distanceStop1)) +
-                                timeStop1Seconds;
+        const theoreticalTime = (((timeStop2Seconds - timeStop1Seconds)
+                                  / (distanceStop2 - distanceStop1)) * (distance - distanceStop1))
+                                + timeStop1Seconds;
         // Compare theoretical time with actual time and decide the status of the vehicle
         if (timeSeconds < theoreticalTime - 15) {
           return VehicleStatus.EARLY;
-        } else if (theoreticalTime - 15 <= timeSeconds && timeSeconds <= theoreticalTime + 120) {
+        } if (theoreticalTime - 15 <= timeSeconds && timeSeconds <= theoreticalTime + 120) {
           return VehicleStatus.ONTIME;
         }
         return VehicleStatus.LATE;
@@ -161,8 +161,8 @@ export default class VehicleJourney {
         // last and one-to-last stops as distance from the last stop
         } else if (distance >= staticDistances[staticDistances.length - 1]) {
           lastStopIndex = staticDistances.length - 2;
-          distanceSinceLastStop = staticDistances[staticDistances.length - 1] -
-                                  staticDistances[staticDistances.length - 2];
+          distanceSinceLastStop = staticDistances[staticDistances.length - 1]
+                                  - staticDistances[staticDistances.length - 2];
         } else {
           // Else, scan the schedule to see in which link the vehicle currently is and compute
           // the last stop index and distance from last stop consequently
@@ -207,11 +207,11 @@ export default class VehicleJourney {
         return schedule[0].distance;
       // - if the time asked for is smaller than the time of departure at the first stop of the
       //   trip, approximate the distance with the distance of the first stop
-      } else if (time <= schedule[0].time) {
+      } if (time <= schedule[0].time) {
         return schedule[0].distance;
       // - if the time asked for is smaller than the time of arrival at the last stop of the trip,
       //   approximate  the distance with the distance of the last stop
-      } else if (time >= schedule[schedule.length - 1].time) {
+      } if (time >= schedule[schedule.length - 1].time) {
         return schedule[schedule.length - 1].distance;
       }
 
@@ -226,13 +226,13 @@ export default class VehicleJourney {
         nextStopSchedule = schedule[i + 1];
         if (previousStopSchedule.time <= time && time < nextStopSchedule.time) {
           // Compute percentage of time between previous and next stop by interpolation
-          const percentage = (time - previousStopSchedule.time) /
-                             (nextStopSchedule.time - previousStopSchedule.time);
+          const percentage = (time - previousStopSchedule.time)
+                             / (nextStopSchedule.time - previousStopSchedule.time);
 
           // Use the percentage to compute the actual distance of the vehicle by correspondence
           // to the distance list
-          const distance = previousStopSchedule.distance +
-            (percentage * (nextStopSchedule.distance - previousStopSchedule.distance));
+          const distance = previousStopSchedule.distance
+            + (percentage * (nextStopSchedule.distance - previousStopSchedule.distance));
 
           return distance;
         }
@@ -247,8 +247,8 @@ export default class VehicleJourney {
         // Filter out actually-not-realtime vehicles
         .filter(({ times, distances }) => times.length > 0 && distances.length > 0)
         .map(({ vehicleNumber, times, distances }) => {
-          const distance = getDistanceGivenSchedule(times.map((_time, index) =>
-            ({ time: _time, distance: distances[index] })));
+          const distance = getDistanceGivenSchedule(times.map((_time, index) => ({ time: _time,
+            distance: distances[index] })));
 
           return {
             vehicleNumber,
@@ -294,8 +294,8 @@ export default class VehicleJourney {
     const nextStop = stops[lastStopIndex + 1];
 
     // Percentage of the distance between the previous and the next stop that is completed
-    const percentage = (distance - distances[lastStopIndex]) /
-                       (distances[lastStopIndex + 1] - distances[lastStopIndex]);
+    const percentage = (distance - distances[lastStopIndex])
+                       / (distances[lastStopIndex + 1] - distances[lastStopIndex]);
 
     // Get segment of the network on which the vehicle is now
     const stopsLink = stopsLinks[`${previousStop.code}|${nextStop.code}`];
