@@ -762,8 +762,8 @@ export default class MareyDiagram {
                       const x2 = nextPosition.distance;
                       const y2 = nextPosition.time;
                       const yM = marker.time;
-                      const xM = (((x1 - x2) / (y1 - y2)) * yM) -
-                                 (((x1 * y2) - (x2 * y1)) / (y1 - y2));
+                      const xM = (((x1 - x2) / (y1 - y2)) * yM)
+                                 - (((x1 * y2) - (x2 * y1)) / (y1 - y2));
                       marker.distance = xM;
                       tripMarkers.push(marker);
                       leftOverMarkers.splice(indexM, 1);
@@ -1026,8 +1026,7 @@ export default class MareyDiagram {
         d3.select(this).select('text.message').remove();
       })
       .merge(tripMarkersSel)
-      .attr('transform', ({ distance, time }) =>
-        `translate(${this.xScale(distance)},${this.yScale(time)})`);
+      .attr('transform', ({ distance, time }) => `translate(${this.xScale(distance)},${this.yScale(time)})`);
 
     tripMarkersGroup.append('image')
       .attr('width', 15)
