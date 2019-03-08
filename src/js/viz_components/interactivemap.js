@@ -116,8 +116,8 @@ export default class InteractiveMap {
 
     // Find out the aspect ratio of the rectangle containing all the stops
     // and of the canvas
-    this.stopsGridAspectRatio = (this.stopsMaxX - this.stopsMinX) /
-                                (this.stopsMaxY - this.stopsMinY);
+    this.stopsGridAspectRatio = (this.stopsMaxX - this.stopsMinX)
+                                / (this.stopsMaxY - this.stopsMinY);
     this.mapAspectRatio = this.dims.innerWidth / this.dims.innerHeight;
   }
 
@@ -132,14 +132,14 @@ export default class InteractiveMap {
     if (this.stopsGridAspectRatio > this.mapAspectRatio) {
       // Width is constrained to fit in the width of the canvas
       // Height is adapted consequently, keeping the same aspect ratio
-      const verticalCenteringAdjustment = (this.dims.innerHeight -
-                                          (this.dims.innerWidth / this.stopsGridAspectRatio))
+      const verticalCenteringAdjustment = (this.dims.innerHeight
+                                          - (this.dims.innerWidth / this.stopsGridAspectRatio))
                                           / 2;
       const mappedPoint = new Point(
-        ((point.x - this.stopsMinX) * this.dims.innerWidth) /
-        (this.stopsMaxX - this.stopsMinX),
-        (((point.y - this.stopsMinY) * (this.dims.innerWidth / this.stopsGridAspectRatio)) /
-        (this.stopsMaxY - this.stopsMinY)) + verticalCenteringAdjustment,
+        ((point.x - this.stopsMinX) * this.dims.innerWidth)
+        / (this.stopsMaxX - this.stopsMinX),
+        (((point.y - this.stopsMinY) * (this.dims.innerWidth / this.stopsGridAspectRatio))
+        / (this.stopsMaxY - this.stopsMinY)) + verticalCenteringAdjustment,
       );
 
       // Mirror along horizontal axis
@@ -149,14 +149,14 @@ export default class InteractiveMap {
 
     // Height is constrained to fit the height of the canvas
     // Width is adapted consequently, keeping the same aspect ratio
-    const horizontalCenteringAdjustment = (this.dims.innerWidth -
-                                          (this.dims.innerHeight * this.stopsGridAspectRatio))
+    const horizontalCenteringAdjustment = (this.dims.innerWidth
+                                          - (this.dims.innerHeight * this.stopsGridAspectRatio))
                                           / 2;
     const mappedPoint = new Point(
-      (((point.x - this.stopsMinX) * (this.dims.innerHeight * this.stopsGridAspectRatio)) /
-      (this.stopsMaxX - this.stopsMinX)) + horizontalCenteringAdjustment,
-      ((point.y - this.stopsMinY) * this.dims.innerHeight) /
-      (this.stopsMaxY - this.stopsMinY),
+      (((point.x - this.stopsMinX) * (this.dims.innerHeight * this.stopsGridAspectRatio))
+      / (this.stopsMaxX - this.stopsMinX)) + horizontalCenteringAdjustment,
+      ((point.y - this.stopsMinY) * this.dims.innerHeight)
+      / (this.stopsMaxY - this.stopsMinY),
     );
 
     mappedPoint.y = this.dims.innerHeight - mappedPoint.y;
@@ -303,8 +303,8 @@ export default class InteractiveMap {
 
     // Trip > vehicle selection
     const vehicles = tripsSel.selectAll('g.vehicle')
-      .data(({ vehiclePositions }) =>
-        vehiclePositions.map(({ vehicleNumber, position, status }) => ({
+      .data(({ vehiclePositions }) => vehiclePositions
+        .map(({ vehicleNumber, position, status }) => ({
           vehicleNumber,
           position: this.mapToCanvas(position),
           status,

@@ -354,8 +354,8 @@ export default class MareyDiagram {
 
         // If we're trying to pan back in time and we're already on the upper border,
         // or forward in time and we're at the lower border, stop
-        if ((newDomain[0] === originalDomain[0] && delta < 0) ||
-            (newDomain[1] === originalDomain[1] && delta > 0)) return;
+        if ((newDomain[0] === originalDomain[0] && delta < 0)
+          || (newDomain[1] === originalDomain[1] && delta > 0)) return;
 
         // If the new domain is outside of the upper bound, set its start at the upper border
         if (newDomain[0] < originalDomain[0]) {
@@ -629,8 +629,8 @@ export default class MareyDiagram {
           // If the status or prognosis of the new position are different from the
           // ones of the last sequence added, start a new sequence. Otherwise continue it.
           const lastAddedPath = this.pathsList[this.pathsList.length - 1];
-          const breakCondition = (newPosition.prognosed !== lastAddedPath.prognosed ||
-                                  newPosition.status !== lastAddedPath.status);
+          const breakCondition = (newPosition.prognosed !== lastAddedPath.prognosed
+            || newPosition.status !== lastAddedPath.status);
 
           this.addToLastSequence(newPosition);
           if (breakCondition) this.startNewSequence(newPosition);
@@ -821,9 +821,9 @@ export default class MareyDiagram {
       const [minShownTime, maxShownTime] = this.yScale.domain();
       const { first: firstTripTime, last: lastTripTime } = trip.firstAndLastTimes;
 
-      return (firstTripTime < minShownTime && lastTripTime > maxShownTime) ||
-        (minShownTime < firstTripTime && firstTripTime < maxShownTime) ||
-        (minShownTime < lastTripTime && lastTripTime < maxShownTime);
+      return (firstTripTime < minShownTime && lastTripTime > maxShownTime)
+        || (minShownTime < firstTripTime && firstTripTime < maxShownTime)
+        || (minShownTime < lastTripTime && lastTripTime < maxShownTime);
     };
 
     // Get all the trips in the currently selected domain
@@ -928,8 +928,8 @@ export default class MareyDiagram {
     // Trip enter + update > static stops selection
     const staticStopsSel = tripsEnterUpdateSel
       .selectAll('circle.static-stop')
-      .data(({ staticSequences }) =>
-        (this.currentApproximation.showDots ? flatten(staticSequences) : []));
+      .data(({ staticSequences }) => (this.currentApproximation.showDots
+        ? flatten(staticSequences) : []));
 
     // Trip enter + update > static stops exit
     staticStopsSel.exit().remove();
@@ -966,8 +966,8 @@ export default class MareyDiagram {
     // const realtimeVehiclesEnterUpdateSel
       .selectAll('path.rt-sequence')
       // Compute the realtime links for each sequence and make a single array out of it
-      .data(({ sequences }) =>
-        flatten(sequences.map(sequence => MareyDiagram.getRealtimePaths(sequence))));
+      .data(({ sequences }) => flatten(sequences.map(sequence => MareyDiagram
+        .getRealtimePaths(sequence))));
 
     // Trip enter + update > realtime vehicle sequences > realtime link exit
     realtimeVehiclesLinksSel.exit().remove();

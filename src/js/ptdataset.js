@@ -38,10 +38,10 @@ export default class PTDataset {
 
 
     // Compute times of the first and last stop of any journey in the dataset
-    this.earliestTime = Math.min(...Object.values(this.journeyPatterns).map(jp =>
-      jp.firstAndLastTimes.first));
-    this.latestTime = Math.max(...Object.values(this.journeyPatterns).map(jp =>
-      jp.firstAndLastTimes.last));
+    this.earliestTime = Math.min(...Object.values(this.journeyPatterns)
+      .map(jp => jp.firstAndLastTimes.first));
+    this.latestTime = Math.max(...Object.values(this.journeyPatterns)
+      .map(jp => jp.firstAndLastTimes.last));
   }
 
   addMarkersToDataset(markers) {
@@ -76,8 +76,8 @@ export default class PTDataset {
     // later we turn it into a rich StopArea object.
     const stops = keyBy(
       Object.entries(scheduledStopPoints)
-        .map(([code, { name, x, y, stopAreaRef: areaCode }]) =>
-          new Stop(code, name, new Point(x, y), areaCode)),
+        .map(([code, { name, x, y, stopAreaRef: areaCode }]) => new Stop(code, name,
+          new Point(x, y), areaCode)),
       stop => stop.code,
     );
 
@@ -201,8 +201,8 @@ export default class PTDataset {
         .map(([code, { times, journeyPatternRef, realtime, cancelled }]) => {
           // Convert time in seconds since noon minus 12h to Date object
           for (const rtVehicle of Object.values(realtime)) {
-            rtVehicle.times = rtVehicle.times.map(time =>
-              TimeUtils.secondsToDateObject(time, this.referenceDate));
+            rtVehicle.times = rtVehicle.times.map(time => TimeUtils
+              .secondsToDateObject(time, this.referenceDate));
           }
 
           const vehicleJourney = new VehicleJourney(
