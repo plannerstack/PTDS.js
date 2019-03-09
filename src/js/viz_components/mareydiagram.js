@@ -692,7 +692,7 @@ export default class MareyDiagram {
           for (const [indexM, marker] of leftOverMarkers.entries()) {
             if (indexP !== staticSchedule.length - 1) {
               const nextPosition = staticSchedule[indexP + 1];
-              if (time < marker.time && marker.time < nextPosition.time) {
+              if (time <= marker.time && marker.time < nextPosition.time) {
                 const x1 = distance;
                 const y1 = time;
                 const x2 = nextPosition.distance;
@@ -773,7 +773,7 @@ export default class MareyDiagram {
               for (const [indexM, marker] of leftOverMarkers.entries()) {
                 if (indexP !== staticSequence.length - 1) {
                   const nextPosition = staticSequence[indexP + 1];
-                  if (time < marker.time && marker.time < nextPosition.time) {
+                  if (time <= marker.time && marker.time < nextPosition.time) {
                     const x1 = distance;
                     const y1 = time;
                     const x2 = nextPosition.distance;
@@ -836,7 +836,7 @@ export default class MareyDiagram {
                 for (const [indexM, marker] of leftOverMarkers.entries()) {
                   if (indexP !== vehicleSequence.length - 1) {
                     const nextPosition = vehicleSequence[indexP + 1];
-                    if (time < marker.time && marker.time < nextPosition.time) {
+                    if (time <= marker.time && marker.time < nextPosition.time) {
                       const x1 = distance;
                       const y1 = time;
                       const x2 = nextPosition.distance;
