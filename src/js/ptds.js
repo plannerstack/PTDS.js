@@ -17,8 +17,8 @@ const d3 = Object.assign({}, {
  * Main class
  */
 export default class PTDS {
-  constructor(inputData, options) {
-    this.data = new PTDataset(inputData, options.selectedDate);
+  constructor(inputData, options, markerData) {
+    this.data = new PTDataset(inputData, options.selectedDate, markerData);
     this.options = options;
 
     if (['dual', 'marey'].includes(options.mode)) {

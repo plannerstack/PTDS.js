@@ -14,48 +14,17 @@ import TimeUtils from './timeutils';
  * Class representing a public transport dataset
  */
 export default class PTDataset {
-  constructor(inputData, referenceDate) {
+  constructor(inputData, referenceDate, markerData) {
     this.referenceDate = referenceDate;
     Object.assign(this, PTDataset.computeStopsAndStopAreas(inputData.scheduledStopPoints));
     Object.assign(this, this.computeLinesJourneyPatterns(inputData.journeyPatterns));
     this.vehicleJourneys = this.computeVehicleJourneys(inputData.vehicleJourneys);
     this.stopsLinks = this.computeLinks();
-
-    const testMarkers = [
-      {
-        id: 123,
-        reference: {
-          vehicleJourneyCode: 'HTM:1:10003:2019-03-08',
-          vehicleNumber: 3124,
-        },
-        time: new Date(1552020019000),
-        message: 'Test Marker Message',
-        url: 'http://example.org/',
-      },
-      {
-        id: 124,
-        reference: {
-          vehicleJourneyCode: 'HTM:1:10239:2019-03-08',
-          vehicleNumber: null,
-        },
-        time: new Date(1552076000000),
-        message: 'Test Marker Message',
-        url: 'http://example.org/',
-      },
-      {
-        id: 125,
-        reference: {
-          vehicleJourneyCode: 'HTM:15:150006:2019-03-08',
-          vehicleNumber: null,
-        },
-        time: new Date(1552019700000),
-        message: 'Test Marker Message',
-        url: 'http://example.org/',
-      },
-    ];
-
-    this.addMarkersToDataset(testMarkers);
-
+    this.markers = null;
+    if (markerData != null && markerData.markers != null) {
+      this.markers = this.computeMarkers(markerData.markers);
+      this.addMarkersToDataset(this.markers);
+    }
 
     // Compute times of the first and last stop of any journey in the dataset
     this.earliestTime = Math.min(...Object.values(this.journeyPatterns)
@@ -252,5 +221,15 @@ export default class PTDataset {
         }),
       vehicleJourney => vehicleJourney.code,
     );
+  }
+
+  computeMarkers(markers) {
+    return markers.map(({ id, reference, time, message, url }) => ({
+      id,
+      reference,
+      time: TimeUtils.secondsToDateObject(time, this.referenceDate),
+      message,
+      url,
+    }));
   }
 }
