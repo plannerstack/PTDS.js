@@ -14,6 +14,7 @@ export default class StopArea {
     this.code = code;
     this.stops = stops;
     this.center = this.computeCenter();
+    this.name = stops[0].name; /* TODO: This might need to be improved */
   }
 
   /**
