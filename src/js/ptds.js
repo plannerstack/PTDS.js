@@ -18,9 +18,9 @@ const d3 = Object.assign({}, {
  * Main class
  */
 export default class PTDS {
-  constructor(inputData, options) {
+  constructor(inputData, options, markerData) {
     this.marey = null;
-    this.data = new PTDataset(inputData, options.selectedDate);
+    this.data = new PTDataset(inputData, options.selectedDate, markerData);
 
     if (this.data.updateUrl !== undefined) {
       this.dataUpdateTimer = d3.interval(() => {
@@ -65,9 +65,9 @@ export default class PTDS {
 
     // Find the longest journey pattern with the given line and direction (most stops)
     for (const journeyPattern of Object.values(this.data.journeyPatterns)) {
-      if (journeyPattern.line.code === this.options.line &&
-          journeyPattern.direction === this.options.direction &&
-          journeyPattern.stops.length > maxNstops) {
+      if (journeyPattern.line.code === this.options.line
+          && journeyPattern.direction === this.options.direction
+          && journeyPattern.stops.length > maxNstops) {
         maxNstops = journeyPattern.stops.length;
         maxNstopsJP = journeyPattern;
       }
@@ -124,9 +124,9 @@ export default class PTDS {
       this.dims = { marey: null, map: null };
 
       {
-        const outerWidth = dual ?
-          windowWidth * this.options.dual.verticalSplitPercentage :
-          windowWidth;
+        const outerWidth = dual
+          ? windowWidth * this.options.dual.verticalSplitPercentage
+          : windowWidth;
         const outerHeight = windowHeight;
         const innerHeight = outerHeight - margins.marey.top - margins.marey.bottom;
         this.dims.marey = { outerWidth, outerHeight, innerHeight };
@@ -142,9 +142,9 @@ export default class PTDS {
         height: this.dims.marey.innerHeight,
       };
 
-      this.dims.marey.innerWidth = this.dims.marey.outerWidth - margins.marey.left -
-                                   margins.marey.right - this.dims.mareyScroll.width -
-                                   this.dims.mareyStopSelection.width - 30;
+      this.dims.marey.innerWidth = this.dims.marey.outerWidth - margins.marey.left
+                                   - margins.marey.right - this.dims.mareyScroll.width
+                                   - this.dims.mareyStopSelection.width - 30;
       margins.mareyScroll = {
         left: margins.marey.left + this.dims.marey.innerWidth + 100,
         top: margins.marey.top,
@@ -362,17 +362,17 @@ export default class PTDS {
     // if the options state that they have to be shown.
     // We only consider stop areas that have at least one stop belonging to
     // the valid stop codes list.
-    const stopAreas = this.options.showStopAreas ?
-      Object.values(this.data.stopAreas)
-        .filter(stopArea => stopArea.stops.some(stop => validStops.includes(stop))) :
-      [];
+    const stopAreas = this.options.showStopAreas
+      ? Object.values(this.data.stopAreas)
+        .filter(stopArea => stopArea.stops.some(stop => validStops.includes(stop)))
+      : [];
 
     // Get the links that have both stops in the valid stop list
-    const links = this.options.showLinks ?
-      Object.values(this.data.stopsLinks)
-        .filter(stopsLink =>
-          validStops.includes(stopsLink.stop1) && validStops.includes(stopsLink.stop2)) :
-      [];
+    const links = this.options.showLinks
+      ? Object.values(this.data.stopsLinks)
+        .filter(stopsLink => validStops.includes(stopsLink.stop1)
+          && validStops.includes(stopsLink.stop2))
+      : [];
 
     return { stops: validStops, stopAreas, links, trips: [] };
   }
@@ -415,9 +415,9 @@ export default class PTDS {
   startSpiralSimulation(timeMultiplier, paramA, paramB, timeCallback) {
     // Start time of the simulation. If it was already started earlier and then stopped,
     // start again from when it was left. Otherwise, start from the current time in the day.
-    const startTimeViz = typeof this.lastTime === 'undefined' ?
-      this.data.earliestTime :
-      this.lastTime.getTime();
+    const startTimeViz = typeof this.lastTime === 'undefined'
+      ? this.data.earliestTime
+      : this.lastTime.getTime();
 
     // Store the reference to the timer in the current instance so that
     // we can stop it later
@@ -455,4 +455,3 @@ export default class PTDS {
     }
   }
 }
-
