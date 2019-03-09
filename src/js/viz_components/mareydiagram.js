@@ -657,8 +657,9 @@ export default class MareyDiagram {
    * @return {Array.<Object>} - Trip drawing information
    */
   computeTrips() {
+    /*
     // Compute drawing information for the trips of the reference journey pattern
-    const trips = this.journeyPatternMix.referenceJP.vehicleJourneys
+    const tripsOld = this.journeyPatternMix.referenceJP.vehicleJourneys
       .map(({ code, staticSchedule, firstAndLastTimes, realTimeData }) => ({
         code,
         // For the reference journey pattern there is only one sequence
@@ -674,7 +675,58 @@ export default class MareyDiagram {
           }))],
         })),
         firstAndLastTimes,
+        markers: null,
       }));
+    */
+
+    const trips = [];
+    // Compute drawing information for the trips of the reference journey pattern
+    for (const { code, staticSchedule, firstAndLastTimes, realTimeData, markers } of
+      this.journeyPatternMix.referenceJP.vehicleJourneys) {
+      const tripMarkers = [];
+      // If there are markers to add, add them
+      if (markers) {
+        // Deep clone markers
+        const leftOverMarkers = markers.slice();
+        for (const [indexP, { time, distance }] of staticSchedule.entries()) {
+          for (const [indexM, marker] of leftOverMarkers.entries()) {
+            if (indexP !== staticSchedule.length - 1) {
+              const nextPosition = staticSchedule[indexP + 1];
+              if (time < marker.time && marker.time < nextPosition.time) {
+                const x1 = distance;
+                const y1 = time;
+                const x2 = nextPosition.distance;
+                const y2 = nextPosition.time;
+                const yM = marker.time;
+                const xM = (((x1 - x2) / (y1 - y2)) * yM)
+                           - (((x1 * y2) - (x2 * y1)) / (y1 - y2));
+                marker.distance = xM;
+                tripMarkers.push(marker);
+                leftOverMarkers.splice(indexM, 1);
+                break;
+              }
+            }
+          }
+        }
+      }
+      trips.push({
+        code,
+        // For the reference journey pattern there is only one sequence
+        staticSequences: [staticSchedule.map(({ time, distance }) => ({ time, distance }))],
+        realtimeSequences: realTimeData.map(({ vehicleNumber, positions }) => ({
+          vehicleNumber,
+          // Again, only one sequence per vehicle for the reference journey pattern
+          sequences: [positions.map(({ time, distanceFromStart, status, prognosed }) => ({
+            time,
+            distance: distanceFromStart,
+            status,
+            prognosed,
+          }))],
+        })),
+        markers: tripMarkers,
+        firstAndLastTimes,
+      });
+    }
 
     // Then compute the trip drawing information for the other journey patterns that share
     // at least one link with the reference JP
@@ -710,6 +762,34 @@ export default class MareyDiagram {
               distance: this.journeyPatternMix.referenceJP.distances[refIndex],
             };
           }));
+        }
+
+        // If there are markers to add, add them
+        if (vehicleJourney.markers) {
+          // Deep clone markers
+          const leftOverMarkers = vehicleJourney.markers.slice();
+          for (const staticSequence of staticSequences) {
+            for (const [indexP, { time, distance }] of staticSequence.entries()) {
+              for (const [indexM, marker] of leftOverMarkers.entries()) {
+                if (indexP !== staticSequence.length - 1) {
+                  const nextPosition = staticSequence[indexP + 1];
+                  if (time < marker.time && marker.time < nextPosition.time) {
+                    const x1 = distance;
+                    const y1 = time;
+                    const x2 = nextPosition.distance;
+                    const y2 = nextPosition.time;
+                    const yM = marker.time;
+                    const xM = (((x1 - x2) / (y1 - y2)) * yM)
+                               - (((x1 * y2) - (x2 * y1)) / (y1 - y2));
+                    marker.distance = xM;
+                    tripMarkers.push(marker);
+                    leftOverMarkers.splice(indexM, 1);
+                    break;
+                  }
+                }
+              }
+            }
+          }
         }
 
         const realtimeSequences = [];

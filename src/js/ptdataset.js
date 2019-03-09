@@ -25,10 +25,30 @@ export default class PTDataset {
       {
         id: 123,
         reference: {
-          vehicleJourneyCode: 'HTM:1:10011:2018-05-16',
-          vehicleNumber: 3125,
+          vehicleJourneyCode: 'HTM:1:10003:2019-03-08',
+          vehicleNumber: 3124,
         },
-        time: new Date(1526441459000),
+        time: new Date(1552020019000),
+        message: 'Test Marker Message',
+        url: 'http://example.org/',
+      },
+      {
+        id: 124,
+        reference: {
+          vehicleJourneyCode: 'HTM:1:10239:2019-03-08',
+          vehicleNumber: null,
+        },
+        time: new Date(1552076000000),
+        message: 'Test Marker Message',
+        url: 'http://example.org/',
+      },
+      {
+        id: 125,
+        reference: {
+          vehicleJourneyCode: 'HTM:15:150006:2019-03-08',
+          vehicleNumber: null,
+        },
+        time: new Date(1552019700000),
         message: 'Test Marker Message',
         url: 'http://example.org/',
       },
@@ -48,14 +68,23 @@ export default class PTDataset {
     for (const marker of markers) {
       const { vehicleJourneyCode, vehicleNumber } = marker.reference;
       if (Object.prototype.hasOwnProperty.call(this.vehicleJourneys, vehicleJourneyCode)) {
-        const { rt } = this.vehicleJourneys[vehicleJourneyCode];
-        if (Object.prototype.hasOwnProperty.call(rt, vehicleNumber)) {
+        const vehicleJourneyData = this.vehicleJourneys[vehicleJourneyCode];
+        const { rt } = vehicleJourneyData;
+        if (rt != null && vehicleNumber != null
+            && Object.prototype.hasOwnProperty.call(rt, vehicleNumber)) {
           const vehicleData = rt[vehicleNumber];
           if (Object.prototype.hasOwnProperty.call(vehicleData, 'markers')) {
             const markersData = vehicleData.markers;
             markersData.push(marker);
           } else {
             vehicleData.markers = [marker];
+          }
+        } else if (vehicleNumber == null) {
+          if (Object.prototype.hasOwnProperty.call(vehicleJourneyData, 'markers')) {
+            const markersData = vehicleJourneyData.markers;
+            markersData.push(marker);
+          } else {
+            vehicleJourneyData.markers = [marker];
           }
         }
       }
