@@ -31,8 +31,6 @@ const options = {
 
 let indexData = {};
 
-const onscreen = false;
-
 // Get the URL of the currently selected dataset
 const getSelectedDatasetURL = () => {
   // Get the publication currently selected (date)
