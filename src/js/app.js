@@ -43,6 +43,15 @@ const getSelectedDatasetURL = () => {
   return `${publicationInUse.url}${datasetInUse.filename}`;
 };
 
+const getSelectedDatasetMarkersURL = () => {
+  // Get the publication currently selected (date)
+  const publicationInUse = indexData.publications
+    .find(pub => pub.date === document.getElementById('day').value);
+  // Get the dataset currently selected (group of lines) within the publication selected
+  // Compute URL of dataset selected
+  return `${publicationInUse.url}markers.json`;
+};
+
 // Load the available line-directions within this group of lines
 const loadAvailableLineDirections = () => {
   fetch(getSelectedDatasetURL())
@@ -110,7 +119,7 @@ const processIndex = () => {
   const defaultDatasetURL = `${publications[0].url}${publications[0].datasets[0].filename}`;
   Object.assign(options, { selectedDate: publications[0].date });
   fetch(defaultDatasetURL).then(r => r.json())
-    .then((defaultData) => { new PTDS(defaultData, options); });
+    .then((defaultData) => { new PTDS(defaultData, options, null); });
 };
 
 // Form submission handler
@@ -140,7 +149,12 @@ const formSubmit = (event) => {
         options.mode = 'spiralSimulation';
       }
       Object.assign(options, { selectedDate: document.getElementById('day').value });
-      new PTDS(data, options);
+
+      const urlMarkersSelected = getSelectedDatasetMarkersURL();
+      fetch(urlMarkersSelected).then(r => r.json())
+        .then((markerdata) => {
+          new PTDS(data, options, markerdata);
+        });
     });
 };
 

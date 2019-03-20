@@ -142,8 +142,9 @@ export default class VehicleJourney {
     // Extract array of static schedule distances at each stop
     const staticDistances = this.journeyPattern.distances;
 
-    return Object.values(this.rt).map(({ vehicleNumber, times, distances }) => ({
+    return Object.values(this.rt).map(({ vehicleNumber, times, distances, markers }) => ({
       vehicleNumber,
+      markers,
       // Enrich the vehicles position data with the distance since the last stop
       // and the index of that stop, as well as the status compared to the schedule
       positions: times.map((time, index) => {
