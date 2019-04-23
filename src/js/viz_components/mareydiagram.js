@@ -33,7 +33,8 @@ export default class MareyDiagram {
   /**
    *
    * @param {Object} journeyPatternMix - Information to draw on the diagram
-   * @param {{diagram: Object, scroll: Object, stopSelection: Object}} svgGroups - SVG groups
+   * @param {{label: Object, diagram: Object,
+   *   scroll: Object, stopSelection: Object}} svgGroups - SVG groups
    *   for the diagram, the scroll and the stop selection
    * @param {Object} dims - Dimensions of the diagram
    * @param {Function} changeCallback - Callback for the time change

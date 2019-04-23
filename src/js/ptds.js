@@ -145,6 +145,10 @@ export default class PTDS {
       this.dims.marey.innerWidth = this.dims.marey.outerWidth - margins.marey.left
                                    - margins.marey.right - this.dims.mareyScroll.width
                                    - this.dims.mareyStopSelection.width - 30;
+      margins.mareyLabel = {
+        left: margins.marey.left + this.dims.marey.innerWidth + 50,
+        top: 50,
+      };
       margins.mareyScroll = {
         left: margins.marey.left + this.dims.marey.innerWidth + 100,
         top: margins.marey.top,
@@ -174,6 +178,12 @@ export default class PTDS {
 
       // Create transformed groups and store their reference
       this.mareySVGgroups = {
+        label: mareySVG.append('g')
+          .attr('transform', `translate(${margins.mareyLabel.left}, ${margins.mareyLabel.top})`)
+          .append('text')
+          .text(`${this.options.line} - ${this.options.direction}`)
+          .attr('font-size', '16')
+          .attr('font-weight', 'bold'),
         diagram: mareySVG.append('g')
           .attr('transform', `translate(${margins.marey.left},${margins.marey.top})`),
         scroll: mareySVG.append('g')
