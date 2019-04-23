@@ -690,8 +690,14 @@ export default class MareyDiagram {
                 marker.distance = xM;
                 tripMarkers.push(marker);
                 leftOverMarkers.splice(indexM, 1);
-                break;
               }
+              if ((indexP === staticSchedule.length - 2)
+                  && marker.time.getTime() === nextPosition.time.getTime()) {
+                marker.distance = nextPosition.distance;
+                tripMarkers.push(marker);
+                leftOverMarkers.splice(indexM, 1);
+              }
+              if (leftOverMarkers.length === 0) break;
             }
           }
         }
@@ -771,8 +777,14 @@ export default class MareyDiagram {
                     marker.distance = xM;
                     tripMarkers.push(marker);
                     leftOverMarkers.splice(indexM, 1);
-                    break;
                   }
+                  if ((indexP === staticSequence.length - 2)
+                      && marker.time.getTime() === nextPosition.time.getTime()) {
+                    marker.distance = nextPosition.distance;
+                    tripMarkers.push(marker);
+                    leftOverMarkers.splice(indexM, 1);
+                  }
+                  if (leftOverMarkers.length === 0) break;
                 }
               }
             }
@@ -839,8 +851,14 @@ export default class MareyDiagram {
                       marker.distance = xM;
                       tripMarkers.push(marker);
                       leftOverMarkers.splice(indexM, 1);
-                      break;
                     }
+                    if ((indexP === vehicleSequence.length - 2)
+                         && marker.time.getTime() === nextPosition.time.getTime()) {
+                      marker.distance = nextPosition.distance;
+                      tripMarkers.push(marker);
+                      leftOverMarkers.splice(indexM, 1);
+                    }
+                    if (leftOverMarkers.length === 0) break;
                   }
                 }
               }
@@ -1088,6 +1106,9 @@ export default class MareyDiagram {
     // Trip enter + update > marker exit
     tripMarkersSel.exit().remove();
 
+    const referenceJPstopsDistances = this.journeyPatternMix.referenceJP.distances;
+    const lastStopDistance = referenceJPstopsDistances[referenceJPstopsDistances.length - 1];
+
     // Trip enter + update > marker enter
     const tripMarkersGroup = tripMarkersSel.enter().append('g').attr('class', 'marker');
     tripMarkersGroup
@@ -1100,7 +1121,7 @@ export default class MareyDiagram {
         d3.select(this).select('text.message').remove();
       })
       .merge(tripMarkersSel)
-      .attr('transform', ({ distance, time }) => `translate(${this.xScale(distance)},${this.yScale(time)})`);
+      .attr('transform', ({ distance, time }) => `translate(${this.xScale(distance) + (distance === lastStopDistance ? -15 : 0)},${this.yScale(time)})`);
 
     tripMarkersGroup.append('image')
       .attr('width', 15)
