@@ -80,7 +80,8 @@ export default class PTDS {
 
     // Compute the shared sequences between the longest journey pattern and all the other ones
     for (const journeyPattern of Object.values(this.data.journeyPatterns)) {
-      if (journeyPattern.code !== maxNstopsJP.code) {
+      if (journeyPattern.code !== maxNstopsJP.code
+        && (this.options.overlap || journeyPattern.line.code === maxNstopsJP.line.code)) {
         const sharedSequences = maxNstopsJP.sharedSequences(journeyPattern);
         if (sharedSequences) journeyPatternMix.otherJPs.push({ journeyPattern, sharedSequences });
       }

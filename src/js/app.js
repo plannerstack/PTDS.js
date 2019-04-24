@@ -145,6 +145,7 @@ const formSubmit = (event) => {
         const [line, direction] = document.getElementById('line-direction').value.split(' - ');
         options.line = line;
         options.direction = parseInt(direction, 10);
+        options.overlap = document.getElementById('line-direction-overlap').checked;
       } else {
         options.mode = 'spiralSimulation';
       }
