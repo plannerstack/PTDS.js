@@ -296,6 +296,11 @@ export default class PTDS {
       );
     }
 
+    let selectedTrip = null;
+    if (this.options.trip !== null) {
+      selectedTrip = this.data.vehicleJourneys[this.options.trip];
+    }
+
     // If we are in "dual" mode, draw the Marey diagram of the chosen journey pattern
     if (this.options.mode === 'dual') {
       // Callback that updates the map when the timeline is moved in the Marey diagram
@@ -322,6 +327,7 @@ export default class PTDS {
         this.mareySVGgroups,
         this.dims,
         timelineChangeCallback,
+        selectedTrip,
       );
     } else if (this.options.mode === 'marey') {
       // Creation of the Marey diagram
@@ -329,6 +335,8 @@ export default class PTDS {
         this.journeyPatternMix,
         this.mareySVGgroups,
         this.dims,
+        null,
+        selectedTrip,
       );
     }
   }

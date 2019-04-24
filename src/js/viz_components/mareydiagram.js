@@ -38,11 +38,13 @@ export default class MareyDiagram {
    *   for the diagram, the scroll and the stop selection
    * @param {Object} dims - Dimensions of the diagram
    * @param {Function} changeCallback - Callback for the time change
+   * @param {Object} trip - Initial selected trip
    */
-  constructor(journeyPatternMix, svgGroups, dims, changeCallback) {
+  constructor(journeyPatternMix, svgGroups, dims, changeCallback, trip) {
     this.journeyPatternMix = journeyPatternMix;
     this.g = svgGroups;
     this.dims = dims;
+    this.trip = trip;
 
     // Compute information needed to draw the trips
     this.trips = this.computeTrips();
@@ -50,6 +52,25 @@ export default class MareyDiagram {
     this.initialSetup(changeCallback);
     // Draw the trips in the diagram
     this.drawTrips();
+
+    // Refactor this, so tripClick and below is the same
+    if (this.trip !== null) {
+      let { first, last } = this.trip.firstAndLastTimes;
+      first = d3.timeMinute.offset(first, -5);
+      last = d3.timeMinute.offset(last, +60);
+      // Update zoom status to reflect change in domain
+      this.g.diagram.call(this.zoomBehaviour.transform, d3.zoomIdentity
+        .scale(this.lastK)
+        .translate(0, -this.yScrollScale(first)));
+      // Update brush status to reflect change in domain
+      this.g.scroll
+        .call(this.brushBehaviour.move, [
+          this.yScrollScale(first),
+          this.yScrollScale(last),
+        ]);
+      // Update Marey diagram domain
+      this.yScale.domain([first, last]);
+    }
   }
 
   /**
