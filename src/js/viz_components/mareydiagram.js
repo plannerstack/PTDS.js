@@ -64,8 +64,8 @@ export default class MareyDiagram {
     // Refactor this, so tripClick and below is the same
     if (this.trip !== null) {
       let { first, last } = this.trip.firstAndLastTimes;
-      first = d3.timeMinute.offset(first, -5);
-      last = d3.timeMinute.offset(last, +60);
+      first = d3.timeMinute.offset(first, -1);
+      last = d3.timeMinute.offset(last, +1);
       // Update zoom status to reflect change in domain
       this.g.diagram.call(this.zoomBehaviour.transform, d3.zoomIdentity
         .scale(this.lastK)
@@ -1021,6 +1021,9 @@ export default class MareyDiagram {
       // Update Marey diagram domain
       that.yScale.domain([first, last]);
       tripMouseOut.call(this, trip);
+
+      // Update the Window Location Hash
+      window.location.hash = trip.code;
     }
 
     // Trip enter
