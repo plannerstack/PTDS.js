@@ -26,6 +26,14 @@ const d3 = Object.assign({}, {
   zoomIdentity,
 });
 
+// TODO: move these constants in a separate config file
+const selectedTripStaticStopRadius = 3;
+const selectedTripRTposRadius = 3;
+const selectedTripRadius = 6;
+const deSelectedTripStaticStopRadius = 2;
+const deSelectedTripRTposRadius = 2;
+const deSelectedTripRadius = 3;
+
 /**
  * This class manages the Marey diagram visualization.
  */
@@ -70,6 +78,14 @@ export default class MareyDiagram {
         ]);
       // Update Marey diagram domain
       this.yScale.domain([first, last]);
+
+      const tripSel = d3.select(`g.trip[data-trip-code='${this.trip.code}']`);
+      // Add 'selected' class to the trip SVG group
+      tripSel.classed('selected', true);
+      tripSel.selectAll('circle.static-stop').attr('r', selectedTripStaticStopRadius);
+      tripSel.selectAll('circle.rt-position').attr('r', selectedTripRTposRadius);
+      // In the map, highlight the vehicle
+      d3.select(`#map g.trip[data-code='${this.trip.code}'] circle`).attr('r', selectedTripRadius);
     }
   }
 
@@ -922,14 +938,6 @@ export default class MareyDiagram {
    * @param {number} transitionDuration - Duration of the transition in case of stop selection
    */
   drawTrips(transitionDuration) {
-    // TODO: move these constants in a separate config file
-    const selectedTripStaticStopRadius = 3;
-    const selectedTripRTposRadius = 3;
-    const selectedTripRadius = 6;
-    const deSelectedTripStaticStopRadius = 2;
-    const deSelectedTripRTposRadius = 2;
-    const deSelectedTripRadius = 3;
-
     // Determines if a trip is in the currently selected domain
     const tripInSelectedDomain = (trip) => {
       const [minShownTime, maxShownTime] = this.yScale.domain();
@@ -962,6 +970,7 @@ export default class MareyDiagram {
     function tripMouseOver(trip) {
       // Get the SVG g element corresponding to this trip
       const tripSel = d3.select(this);
+
       // Get the current mouse position
       const [xPos, yPos] = d3.mouse(overlay.node());
       // Add label with the code of the trip next to the mouse cursor
@@ -983,12 +992,15 @@ export default class MareyDiagram {
     function tripMouseOut(trip) {
       // Similarly as above
       const tripSel = d3.select(this);
-      tripSel.select('text.tripLabel').remove();
-      tripSel.classed('selected', false);
 
+      if (that.trip !== null && that.trip.code !== tripSel.datum().code) {
+        tripSel.classed('selected', false);
+        d3.select(`#map g.trip[data-code='${trip.code}'] circle`).attr('r', deSelectedTripRadius);
+      }
+
+      tripSel.select('text.tripLabel').remove();
       tripSel.selectAll('circle.static-stop').attr('r', deSelectedTripStaticStopRadius);
       tripSel.selectAll('circle.rt-position').attr('r', deSelectedTripRTposRadius);
-      d3.select(`#map g.trip[data-code='${trip.code}'] circle`).attr('r', deSelectedTripRadius);
     }
 
     // Handle click on a trip
