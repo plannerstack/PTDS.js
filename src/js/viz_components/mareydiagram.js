@@ -52,7 +52,8 @@ export default class MareyDiagram {
     this.journeyPatternMix = journeyPatternMix;
     this.g = svgGroups;
     this.dims = dims;
-    this.trip = trip;
+
+    this.trip = (trip !== undefined ? trip : null);
 
     // Compute information needed to draw the trips
     this.trips = this.computeTrips();
@@ -993,14 +994,14 @@ export default class MareyDiagram {
       // Similarly as above
       const tripSel = d3.select(this);
 
-      if (that.trip !== null && that.trip.code !== tripSel.datum().code) {
+      if (that.trip === null || that.trip.code !== tripSel.datum().code) {
         tripSel.classed('selected', false);
         d3.select(`#map g.trip[data-code='${trip.code}'] circle`).attr('r', deSelectedTripRadius);
+        tripSel.selectAll('circle.static-stop').attr('r', deSelectedTripStaticStopRadius);
+        tripSel.selectAll('circle.rt-position').attr('r', deSelectedTripRTposRadius);
       }
 
       tripSel.select('text.tripLabel').remove();
-      tripSel.selectAll('circle.static-stop').attr('r', deSelectedTripStaticStopRadius);
-      tripSel.selectAll('circle.rt-position').attr('r', deSelectedTripRTposRadius);
     }
 
     // Handle click on a trip

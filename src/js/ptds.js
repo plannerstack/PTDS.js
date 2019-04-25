@@ -177,14 +177,28 @@ export default class PTDS {
         .attr('width', this.dims.marey.outerWidth)
         .attr('height', this.dims.marey.outerHeight);
 
+      const label = mareySVG.append('g')
+        .attr('transform', `translate(${margins.mareyLabel.left}, ${margins.mareyLabel.top})`);
+
+      label.append('text')
+        .text(`${this.options.line} - ${this.options.direction}`)
+        .attr('font-size', '16')
+        .attr('font-weight', 'bold');
+
+      label.append('text')
+        .attr('transform', 'translate(100, 0)')
+        .text('reverse')
+        .on('click', () => {
+          d3.select('#marey-container').remove();
+          this.options.trip = null;
+          this.options.direction = (this.options.direction === 1 ? 2 : 1);
+          this.journeyPatternMix = this.computeJourneyPatternMix();
+          this.createVisualizations();
+        });
+
       // Create transformed groups and store their reference
       this.mareySVGgroups = {
-        label: mareySVG.append('g')
-          .attr('transform', `translate(${margins.mareyLabel.left}, ${margins.mareyLabel.top})`)
-          .append('text')
-          .text(`${this.options.line} - ${this.options.direction}`)
-          .attr('font-size', '16')
-          .attr('font-weight', 'bold'),
+        label,
         diagram: mareySVG.append('g')
           .attr('transform', `translate(${margins.marey.left},${margins.marey.top})`),
         scroll: mareySVG.append('g')
@@ -297,7 +311,7 @@ export default class PTDS {
     }
 
     let selectedTrip = null;
-    if (this.options.trip !== null) {
+    if (this.options.trip !== undefined) {
       selectedTrip = this.data.vehicleJourneys[this.options.trip];
     }
 
