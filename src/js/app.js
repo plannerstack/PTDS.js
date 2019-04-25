@@ -135,7 +135,7 @@ const urlHashTripSelection = (url, tripCode, date) => {
       const journeyPattern = data.journeyPatterns[data.vehicleJourneys[tripCode].journeyPatternRef];
 
       // Create new visualization, using the specified mode.
-      const selectedMode = 'marey';
+      const selectedMode = 'dual';
       options.mode = selectedMode;
       options.line = journeyPattern.lineRef;
       options.direction = journeyPattern.direction;

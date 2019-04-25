@@ -189,6 +189,7 @@ export default class PTDS {
         .attr('transform', 'translate(100, 0)')
         .text('reverse')
         .on('click', () => {
+          d3.select('#map').remove();
           d3.select('#marey-container').remove();
           this.options.trip = null;
           this.options.direction = (this.options.direction === 1 ? 2 : 1);
