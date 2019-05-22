@@ -20,9 +20,10 @@ const d3 = Object.assign({}, {
 export default class PTDS {
   constructor(inputData, options, markerData) {
     this.marey = null;
-    this.data = new PTDataset(inputData, options.selectedDate, markerData);
+    this.options = options;
+    this.data = new PTDataset(inputData, this.options.selectedDate, markerData);
 
-    if (this.data.updateUrl !== undefined) {
+    if (this.options.realtime === true && this.data.updateUrl !== undefined) {
       this.dataUpdateTimer = d3.interval(() => {
         if (this.marey !== null) {
           fetch(this.data.updateUrl).then(r => r.json()).then((updateData) => {
@@ -33,11 +34,9 @@ export default class PTDS {
       }, 15000, 15000);
     }
 
-    this.options = options;
-
-    if (['dual', 'marey'].includes(options.mode)) {
+    if (['dual', 'marey'].includes(this.options.mode)) {
       this.journeyPatternMix = this.computeJourneyPatternMix();
-    } else if (options.mode === 'spiralSimulation') {
+    } else if (this.options.mode === 'spiralSimulation') {
       this.widgetTimeFormat = d3.timeFormat('%Y-%m-%d %H:%M:%S');
       this.createSimulationWidget();
     }
@@ -197,6 +196,16 @@ export default class PTDS {
           this.createVisualizations();
         });
 
+      label.append('text')
+        .attr('transform', 'translate(150, 0)')
+        .text('realtime')
+        .on('click', () => {
+          d3.select('#map').remove();
+          d3.select('#marey-container').remove();
+          this.options.realtime = !this.options.realtime;
+          this.createVisualizations();
+        });
+
       // Create transformed groups and store their reference
       this.mareySVGgroups = {
         label,
@@ -343,6 +352,7 @@ export default class PTDS {
         this.dims,
         timelineChangeCallback,
         selectedTrip,
+        this.options.realtime,
       );
     } else if (this.options.mode === 'marey') {
       // Creation of the Marey diagram
@@ -352,6 +362,7 @@ export default class PTDS {
         this.dims,
         null,
         selectedTrip,
+        this.options.realtime,
       );
     }
   }

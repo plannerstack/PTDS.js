@@ -47,11 +47,13 @@ export default class MareyDiagram {
    * @param {Object} dims - Dimensions of the diagram
    * @param {Function} changeCallback - Callback for the time change
    * @param {Object} trip - Initial selected trip
+   * @param {Boolean} realtime - Show realtime information
    */
-  constructor(journeyPatternMix, svgGroups, dims, changeCallback, trip) {
+  constructor(journeyPatternMix, svgGroups, dims, changeCallback, trip, realtime) {
     this.journeyPatternMix = journeyPatternMix;
     this.g = svgGroups;
     this.dims = dims;
+    this.realtime = realtime;
 
     this.trip = (trip !== undefined ? trip : null);
 
@@ -1075,65 +1077,67 @@ export default class MareyDiagram {
       .attr('cx', ({ distance }) => this.xScale(distance))
       .attr('cy', ({ time }) => this.yScale(time));
 
-    // Trip enter + update > realtime vehicle sequences selection
-    const realtimeVehiclesSel = tripsEnterUpdateSel
-      .selectAll('g.vehicle')
-      .data(({ realtimeSequences }) => realtimeSequences);
+    if (this.realtime) {
+      // Trip enter + update > realtime vehicle sequences selection
+      const realtimeVehiclesSel = tripsEnterUpdateSel
+        .selectAll('g.vehicle')
+        .data(({ realtimeSequences }) => realtimeSequences);
 
-    // Trip enter + update > realtime vehicle sequences exit
-    realtimeVehiclesSel.exit().remove();
+      // Trip enter + update > realtime vehicle sequences exit
+      realtimeVehiclesSel.exit().remove();
 
-    // Trip enter + update > realtime vehicle sequences enter
-    const realtimeVehiclesEnterUpdateSel = realtimeVehiclesSel.enter()
-      .append('g')
-      .attr('class', 'vehicle')
-      .attr('data-vehicle-number', ({ vehicleNumber }) => vehicleNumber)
-      // Trip enter + update > realtime vehicle sequences enter + update
-      .merge(realtimeVehiclesSel);
+      // Trip enter + update > realtime vehicle sequences enter
+      const realtimeVehiclesEnterUpdateSel = realtimeVehiclesSel.enter()
+        .append('g')
+        .attr('class', 'vehicle')
+        .attr('data-vehicle-number', ({ vehicleNumber }) => vehicleNumber)
+        // Trip enter + update > realtime vehicle sequences enter + update
+        .merge(realtimeVehiclesSel);
 
-    // Trip enter + update > realtime vehicle sequences > realtime link selection
-    const realtimeVehiclesLinksSel = realtimeVehiclesEnterUpdateSel
-    // const realtimeVehiclesEnterUpdateSel
-      .selectAll('path.rt-sequence')
-      // Compute the realtime links for each sequence and make a single array out of it
-      .data(({ sequences }) => flatten(sequences.map(sequence => MareyDiagram
-        .getRealtimePaths(sequence))));
+      // Trip enter + update > realtime vehicle sequences > realtime link selection
+      const realtimeVehiclesLinksSel = realtimeVehiclesEnterUpdateSel
+        // const realtimeVehiclesEnterUpdateSel
+        .selectAll('path.rt-sequence')
+        // Compute the realtime links for each sequence and make a single array out of it
+        .data(({ sequences }) => flatten(sequences.map(sequence => MareyDiagram
+          .getRealtimePaths(sequence))));
 
-    // Trip enter + update > realtime vehicle sequences > realtime link exit
-    realtimeVehiclesLinksSel.exit().remove();
+      // Trip enter + update > realtime vehicle sequences > realtime link exit
+      realtimeVehiclesLinksSel.exit().remove();
 
-    // // Trip enter + update > realtime vehicle sequences > realtime link enter
-    realtimeVehiclesLinksSel.enter()
-      .append('path')
-      // Trip enter + update > realtime vehicle sequences > realtime link enter + update
-      .merge(realtimeVehiclesLinksSel)
-      .attr('class', ({ status }) => `rt-sequence ${status}`)
-      .classed('prognosed', ({ prognosed }) => prognosed)
-      .transition()
-      .duration(transitionDuration)
-      .attr('d', ({ positions }) => this.tripLineGenerator(positions));
+      // Trip enter + update > realtime vehicle sequences > realtime link enter
+      realtimeVehiclesLinksSel.enter()
+        .append('path')
+        // Trip enter + update > realtime vehicle sequences > realtime link enter + update
+        .merge(realtimeVehiclesLinksSel)
+        .attr('class', ({ status }) => `rt-sequence ${status}`)
+        .classed('prognosed', ({ prognosed }) => prognosed)
+        .transition()
+        .duration(transitionDuration)
+        .attr('d', ({ positions }) => this.tripLineGenerator(positions));
 
-    // Trip enter + update > realtime vehicle sequences > realtime position selection
-    const realtimeVehiclesPositionsSel = realtimeVehiclesEnterUpdateSel
-      .selectAll('circle.rt-position')
-      // Draw the circles representing the positions only at the maximum zoom level
-      .data(({ sequences }) => (this.currentApproximation.showDots ? flatten(sequences) : []));
+      // Trip enter + update > realtime vehicle sequences > realtime position selection
+      const realtimeVehiclesPositionsSel = realtimeVehiclesEnterUpdateSel
+        .selectAll('circle.rt-position')
+        // Draw the circles representing the positions only at the maximum zoom level
+        .data(({ sequences }) => (this.currentApproximation.showDots ? flatten(sequences) : []));
 
-    // Trip enter + update > realtime vehicle sequences > realtime position exit
-    realtimeVehiclesPositionsSel.exit().remove();
+      // Trip enter + update > realtime vehicle sequences > realtime position exit
+      realtimeVehiclesPositionsSel.exit().remove();
 
-    // Trip enter + update > realtime vehicle sequences > realtime position enter
-    realtimeVehiclesPositionsSel.enter()
-      .append('circle')
-      .attr('class', ({ status }) => `rt-position ${status}`)
-      .classed('prognosed', ({ prognosed }) => prognosed)
-      .attr('r', deSelectedTripRTposRadius)
-      .merge(realtimeVehiclesPositionsSel)
-      .transition()
-      .duration(transitionDuration)
-      .attr('cx', ({ distance }) => this.xScale(distance))
       // Trip enter + update > realtime vehicle sequences > realtime position enter
-      .attr('cy', ({ time }) => this.yScale(time));
+      realtimeVehiclesPositionsSel.enter()
+        .append('circle')
+        .attr('class', ({ status }) => `rt-position ${status}`)
+        .classed('prognosed', ({ prognosed }) => prognosed)
+        .attr('r', deSelectedTripRTposRadius)
+        .merge(realtimeVehiclesPositionsSel)
+        .transition()
+        .duration(transitionDuration)
+        .attr('cx', ({ distance }) => this.xScale(distance))
+        // Trip enter + update > realtime vehicle sequences > realtime position enter
+        .attr('cy', ({ time }) => this.yScale(time));
+    }
 
     // Draw the markers at the end so that they are on top of everything else
     // Trip enter + update > marker selection

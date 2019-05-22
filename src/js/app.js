@@ -116,10 +116,10 @@ const processIndex = () => {
 
   /* eslint no-new: "off" */
   // Fetch default dataset and create its corresponding visualization
-  const defaultDatasetURL = `${publications[0].url}${publications[0].datasets[0].filename}`;
+  // const defaultDatasetURL = `${publications[0].url}${publications[0].datasets[0].filename}`;
   Object.assign(options, { selectedDate: publications[0].date });
-  fetch(defaultDatasetURL).then(r => r.json())
-    .then((defaultData) => { new PTDS(defaultData, options, null); });
+  // fetch(defaultDatasetURL).then(r => r.json())
+  //  .then((defaultData) => { new PTDS(defaultData, options, null); });
 };
 
 // URL Hash trip selection
@@ -135,11 +135,12 @@ const urlHashTripSelection = (url, tripCode, date) => {
       const journeyPattern = data.journeyPatterns[data.vehicleJourneys[tripCode].journeyPatternRef];
 
       // Create new visualization, using the specified mode.
-      const selectedMode = 'dual';
+      const selectedMode = 'marey';
       options.mode = selectedMode;
       options.line = journeyPattern.lineRef;
       options.direction = journeyPattern.direction;
       options.overlap = true;
+      options.realtime = true;
       options.trip = tripCode;
       Object.assign(options, { selectedDate: date });
       new PTDS(data, options, null);
@@ -170,6 +171,7 @@ const formSubmit = (event) => {
         options.line = line;
         options.direction = parseInt(direction, 10);
         options.overlap = document.getElementById('line-direction-overlap').checked;
+        options.realtime = document.getElementById('realtime').checked;
       } else {
         options.mode = 'spiralSimulation';
       }
@@ -194,6 +196,7 @@ $(document).ready(() => {
     // Process the index file when finished loading it
     .then((data) => {
       indexData = data;
+      processIndex();
 
       // Handle loading a trip from a URL
       const { hash } = window.location;
@@ -202,39 +205,37 @@ $(document).ready(() => {
         const parts = tripCode.split(':');
         const lineCode = parts[1];
         const date = parts[3];
+        document.getElementById('day').value = date;
+        document.getElementById('mode').value = 'marey';
+
         const publication = indexData.publications.filter(e => (e.date === date));
         if (publication.length > 0) {
           const publicationInUse = publication[0];
           const dataset = publicationInUse.datasets.filter(e => (e.lines.includes(lineCode)));
           if (dataset.length > 0) {
             const datasetInUse = dataset[0];
+            document.getElementById('lines-groups').value = datasetInUse.filename;
             const url = `${publicationInUse.url}${datasetInUse.filename}`;
             urlHashTripSelection(url, tripCode, date);
-            document.getElementById('sidebar').style.visibility = 'hidden';
-            document.getElementById('navbar').style.visibility = 'hidden';
-
-            return;
           }
         }
       }
-      processIndex();
     });
 
   const { hash } = window.location;
-  if (hash === '' || hash === '#') {
-    // Activate sidebar plugin
-    $('#sidebar').simplerSidebar({
-      init: 'opened',
-      selectors: {
-        trigger: '#toggle-sidebar',
-        quitter: '.close-sidebar',
-      },
-    });
-    // and make it visible again
-    document.getElementById('sidebar').style.visibility = 'visible';
-    document.getElementById('navbar').style.visibility = 'visible';
 
-    // Handle new dataset/mode loading
-    document.getElementById('viz-options').onsubmit = formSubmit;
-  }
+  // Activate sidebar plugin
+  $('#sidebar').simplerSidebar({
+    init: (hash === '' || hash === '#') ? 'opened' : 'closed',
+    selectors: {
+      trigger: '#toggle-sidebar',
+      quitter: '.close-sidebar',
+    },
+  });
+  // and make it visible again
+  document.getElementById('sidebar').style.visibility = 'visible';
+  document.getElementById('navbar').style.visibility = 'visible';
+
+  // Handle new dataset/mode loading
+  document.getElementById('viz-options').onsubmit = formSubmit;
 });
