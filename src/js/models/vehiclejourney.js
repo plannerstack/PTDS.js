@@ -72,6 +72,15 @@ export default class VehicleJourney {
     };
   }
 
+  get tripLabel() {
+    if (this.isRealTime) {
+      /* TODO: Temporary workaround, we should have all blocks */
+      const firstRt = this.rt[Object.keys(this.rt)[0]];
+      return `${this.journeyPattern.line.code} - ${(firstRt.blockNumber !== undefined ? firstRt.blockNumber : '?')} (${firstRt.vehicleNumber})`;
+    }
+    return `${this.journeyPattern.line.code}`;
+  }
+
   /**
    * Check if given a specific time, the journey is active
    * @param  {Date}  time - Time
@@ -132,6 +141,7 @@ export default class VehicleJourney {
    * Computes the realtime positions information of the vehicles belonging to this journey
    * @return {Array.<{
    *           vehicleNumber: number,
+   *           blockNumber: number,
    *           positions: {time: Date, distanceSinceLastStop: number, distanceFromStart: number,
    *           status: string, prognosed: boolean}
    *          }>} - List of enriched realtime position info
@@ -142,8 +152,11 @@ export default class VehicleJourney {
     // Extract array of static schedule distances at each stop
     const staticDistances = this.journeyPattern.distances;
 
-    return Object.values(this.rt).map(({ vehicleNumber, times, distances }) => ({
+    return Object.values(this.rt).map(({ vehicleNumber, blockNumber, times,
+      distances, markers }) => ({
       vehicleNumber,
+      blockNumber,
+      markers,
       // Enrich the vehicles position data with the distance since the last stop
       // and the index of that stop, as well as the status compared to the schedule
       positions: times.map((time, index) => {

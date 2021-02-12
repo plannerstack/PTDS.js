@@ -219,7 +219,8 @@ export default class InteractiveMap {
     // Stoparea selection
     const stopAreasSel = this.stopAreasGroup.selectAll('g.stopArea')
       .data(
-        this.data.stopAreas.map(({ code, center }) => ({ code, center: this.mapToCanvas(center) })),
+        this.data.stopAreas.map(({ code, center, name }) => (
+          { code, center: this.mapToCanvas(center), name })),
         ({ code }) => code,
       );
 
@@ -248,7 +249,7 @@ export default class InteractiveMap {
       .append('text')
       .attr('x', 0)
       .attr('y', -1.5)
-      .text(({ code }) => code);
+      .text(({ name }) => name);
   }
 
   /**

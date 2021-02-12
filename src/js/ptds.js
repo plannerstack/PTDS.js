@@ -1,6 +1,6 @@
 import { select } from 'd3-selection';
 import { timeFormat } from 'd3-time-format';
-import { timer } from 'd3-timer';
+import { timer, interval } from 'd3-timer';
 import dat from 'dat.gui';
 
 import PTDataset from './ptdataset';
@@ -11,19 +11,32 @@ const d3 = Object.assign({}, {
   select,
   timeFormat,
   timer,
+  interval,
 });
 
 /**
  * Main class
  */
 export default class PTDS {
-  constructor(inputData, options) {
-    this.data = new PTDataset(inputData, options.selectedDate);
+  constructor(inputData, options, markerData) {
+    this.marey = null;
     this.options = options;
+    this.data = new PTDataset(inputData, this.options.selectedDate, markerData);
 
-    if (['dual', 'marey'].includes(options.mode)) {
+    if (this.options.realtime === true && this.data.updateUrl !== undefined) {
+      this.dataUpdateTimer = d3.interval(() => {
+        if (this.marey !== null) {
+          fetch(this.data.updateUrl).then(r => r.json()).then((updateData) => {
+            this.data.updateVehicleJourneys(updateData.vehicleJourneys);
+          });
+          this.marey.update();
+        }
+      }, 15000, 15000);
+    }
+
+    if (['dual', 'marey'].includes(this.options.mode)) {
       this.journeyPatternMix = this.computeJourneyPatternMix();
-    } else if (options.mode === 'spiralSimulation') {
+    } else if (this.options.mode === 'spiralSimulation') {
       this.widgetTimeFormat = d3.timeFormat('%Y-%m-%d %H:%M:%S');
       this.createSimulationWidget();
     }
@@ -66,7 +79,8 @@ export default class PTDS {
 
     // Compute the shared sequences between the longest journey pattern and all the other ones
     for (const journeyPattern of Object.values(this.data.journeyPatterns)) {
-      if (journeyPattern.code !== maxNstopsJP.code) {
+      if (journeyPattern.code !== maxNstopsJP.code
+        && (this.options.overlap || journeyPattern.line.code === maxNstopsJP.line.code)) {
         const sharedSequences = maxNstopsJP.sharedSequences(journeyPattern);
         if (sharedSequences) journeyPatternMix.otherJPs.push({ journeyPattern, sharedSequences });
       }
@@ -131,6 +145,10 @@ export default class PTDS {
       this.dims.marey.innerWidth = this.dims.marey.outerWidth - margins.marey.left
                                    - margins.marey.right - this.dims.mareyScroll.width
                                    - this.dims.mareyStopSelection.width - 30;
+      margins.mareyLabel = {
+        left: margins.marey.left + this.dims.marey.innerWidth + 50,
+        top: 50,
+      };
       margins.mareyScroll = {
         left: margins.marey.left + this.dims.marey.innerWidth + 100,
         top: margins.marey.top,
@@ -158,8 +176,39 @@ export default class PTDS {
         .attr('width', this.dims.marey.outerWidth)
         .attr('height', this.dims.marey.outerHeight);
 
+      const label = mareySVG.append('g')
+        .attr('transform', `translate(${margins.mareyLabel.left}, ${margins.mareyLabel.top})`);
+
+      label.append('text')
+        .text(`${this.options.line} - ${this.options.direction}`)
+        .attr('font-size', '16')
+        .attr('font-weight', 'bold');
+
+      label.append('text')
+        .attr('transform', 'translate(100, 0)')
+        .text('reverse')
+        .on('click', () => {
+          d3.select('#map').remove();
+          d3.select('#marey-container').remove();
+          this.options.trip = null;
+          this.options.direction = (this.options.direction === 1 ? 2 : 1);
+          this.journeyPatternMix = this.computeJourneyPatternMix();
+          this.createVisualizations();
+        });
+
+      label.append('text')
+        .attr('transform', 'translate(150, 0)')
+        .text('realtime')
+        .on('click', () => {
+          d3.select('#map').remove();
+          d3.select('#marey-container').remove();
+          this.options.realtime = !this.options.realtime;
+          this.createVisualizations();
+        });
+
       // Create transformed groups and store their reference
       this.mareySVGgroups = {
+        label,
         diagram: mareySVG.append('g')
           .attr('transform', `translate(${margins.marey.left},${margins.marey.top})`),
         scroll: mareySVG.append('g')
@@ -271,6 +320,11 @@ export default class PTDS {
       );
     }
 
+    let selectedTrip = null;
+    if (this.options.trip !== undefined) {
+      selectedTrip = this.data.vehicleJourneys[this.options.trip];
+    }
+
     // If we are in "dual" mode, draw the Marey diagram of the chosen journey pattern
     if (this.options.mode === 'dual') {
       // Callback that updates the map when the timeline is moved in the Marey diagram
@@ -297,6 +351,8 @@ export default class PTDS {
         this.mareySVGgroups,
         this.dims,
         timelineChangeCallback,
+        selectedTrip,
+        this.options.realtime,
       );
     } else if (this.options.mode === 'marey') {
       // Creation of the Marey diagram
@@ -304,6 +360,9 @@ export default class PTDS {
         this.journeyPatternMix,
         this.mareySVGgroups,
         this.dims,
+        null,
+        selectedTrip,
+        this.options.realtime,
       );
     }
   }
